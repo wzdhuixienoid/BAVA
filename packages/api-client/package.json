@@ -1,0 +1,13 @@
+{
+  "name": "@banking/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "types": "./src/schema.d.ts",
+  "scripts": {
+    "generate": "openapi-typescript ${OPENAPI_URL:-http://localhost:8000/openapi.json} -o src/schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.9.1"
+  }
+}
+

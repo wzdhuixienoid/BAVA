@@ -1,0 +1,11 @@
+.git
+.env
+node_modules
+.pnpm-store
+**/node_modules
+**/.next
+apps/api/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+.DS_Store

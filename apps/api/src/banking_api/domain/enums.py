@@ -1,0 +1,59 @@
+from enum import StrEnum
+
+
+class MessageRole(StrEnum):
+    USER = "USER"
+    ASSISTANT = "ASSISTANT"
+    SYSTEM_NOTICE = "SYSTEM_NOTICE"
+
+
+class TaskStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    WAITING_USER = "WAITING_USER"
+    WAITING_EXTERNAL = "WAITING_EXTERNAL"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    SKIPPED = "SKIPPED"
+
+
+class WorkflowStatus(StrEnum):
+    CREATED = "CREATED"
+    RUNNING = "RUNNING"
+    WAITING = "WAITING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class ApprovalStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+    CONSUMED = "CONSUMED"
+    INVALIDATED = "INVALIDATED"
+
+
+class OperationStatus(StrEnum):
+    CREATED = "CREATED"
+    SUBMITTED = "SUBMITTED"
+    UNKNOWN = "UNKNOWN"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
+class PolicyDecision(StrEnum):
+    ALLOW = "ALLOW"
+    DENY = "DENY"
+    REQUIRE_APPROVAL = "REQUIRE_APPROVAL"
+    REQUIRE_REAUTH = "REQUIRE_REAUTH"
+    REQUIRE_APPROVAL_AND_REAUTH = "REQUIRE_APPROVAL_AND_REAUTH"
+
+
+class RiskLevel(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+

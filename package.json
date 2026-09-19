@@ -1,0 +1,12 @@
+{
+  "name": "ai-banking-agent",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "api:generate": "pnpm --filter @banking/api-client generate",
+    "web:dev": "pnpm --filter @banking/web dev",
+    "web:lint": "pnpm --filter @banking/web lint",
+    "web:typecheck": "pnpm --filter @banking/web typecheck",
+    "web:build": "pnpm --filter @banking/web build"
+  }
+}
