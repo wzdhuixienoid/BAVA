@@ -1,40 +1,49 @@
 # AI Banking Agent
 
-Iteration 0 is an application skeleton for a future banking agent. It proves durable application state and a complete browser → API → database → deterministic runtime → SSE → browser loop without using an LLM or an agent framework.
+Iteration 0 是面向未来 Banking Agent 的应用骨架。它不使用 LLM 或 Agent 框架，当前目标是验证一条完整、可持久化、可测试的链路：浏览器 → API → 数据库 → 确定性运行时 → SSE → 浏览器。
 
-The frozen design is documented in [Architecture Baseline v0.1](docs/architecture-baseline-v0.1.md) and [Codex Bootstrap Specification v0.1](docs/codex-bootstrap-v0.1.md).
+冻结的设计说明位于：[架构基线 v0.1](docs/architecture-baseline-v0.1.md) 和 [Codex Bootstrap 规格 v0.1](docs/codex-bootstrap-v0.1.md)。
 
-## Architecture
+## 系统架构
 
 ```text
-Next.js UI ── HTTP/SSE ── FastAPI modular monolith ── PostgreSQL
+Next.js UI ── HTTP/SSE ── FastAPI 模块化单体 ── PostgreSQL
                               │
                               ├─ ConversationService
                               ├─ TaskService
-                              ├─ deterministic BootstrapRuntime
-                              └─ durable Events + in-process live transport
+                              ├─ 确定性 BootstrapRuntime
+                              └─ 持久化 Event + 进程内实时传输
 ```
 
-The frontend displays server-owned Conversation, Message, and Task state. SSE is only a live notification transport; a reconnect or page refresh recovers state from the resource APIs. The bootstrap runtime is deliberately replaceable and is not an agent.
+Frontend 只展示服务器拥有的 Conversation、Message 和 Task 状态。SSE 只是实时通知通道；连接中断或页面刷新后，Frontend 会通过资源 API 恢复状态。Bootstrap Runtime 是临时且可替换的确定性运行时，不是 Agent。
 
-## Prerequisites
+## 环境要求
 
-- Docker with Docker Compose for the full stack, or PostgreSQL 15+ for local development
-- Python 3.12+ and [uv](https://docs.astral.sh/uv/)
-- Node.js 22+ and pnpm 11+
+- 完整容器环境：Docker 和 Docker Compose
+- 本地开发：PostgreSQL 15+
+- Python 3.12+ 和 [uv](https://docs.astral.sh/uv/)
+- Node.js 22+ 和 pnpm 11+
 
-## Start the full stack
+## 启动完整应用
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-The web app is available at `http://localhost:3000`, the API at `http://localhost:8000`, and OpenAPI at `http://localhost:8000/docs`. The API container runs Alembic migrations before starting.
+启动后：
 
-## Local development
+- Web：`http://localhost:3000`
+- API：`http://localhost:8000`
+- OpenAPI：`http://localhost:8000/docs`
 
-Use a local PostgreSQL URL (host `localhost`, not the Compose service name) in `.env`.
+API 容器会在启动 FastAPI 前自动执行 Alembic migration。
+
+## 本地开发
+
+本地运行时，请在 `.env` 中使用指向 `localhost` 的 PostgreSQL URL，不要使用 Compose 内部服务名 `postgres`。
+
+启动 Backend：
 
 ```bash
 cd apps/api
@@ -43,23 +52,23 @@ uv run alembic upgrade head
 uv run uvicorn banking_api.main:app --reload
 ```
 
-In another terminal:
+在另一个终端启动 Frontend：
 
 ```bash
 pnpm install
 pnpm web:dev
 ```
 
-## Database migrations
+## 数据库 Migration
 
 ```bash
 cd apps/api
 uv run alembic upgrade head
 ```
 
-Iteration 0 creates exactly four application tables: `conversations`, `messages`, `tasks`, and `events` (plus Alembic's version table).
+Iteration 0 只创建四张应用表：`conversations`、`messages`、`tasks` 和 `events`，除此之外只有 Alembic 自己的版本表。
 
-## Tests and validation
+## 测试与验证
 
 ```bash
 cd apps/api
@@ -72,39 +81,39 @@ pnpm web:typecheck
 pnpm web:build
 ```
 
-Backend tests use an isolated async SQLite database for fast repository/application/API tests; production and Compose use PostgreSQL through `asyncpg`.
+Backend 测试使用隔离的异步 SQLite 数据库，以便快速验证 Repository、Application Service 和 API；生产环境及 Docker Compose 使用 PostgreSQL 和 `asyncpg`。
 
-## Generate frontend API types
+## 生成 Frontend API 类型
 
-Start FastAPI on port 8000, then run:
+先在 8000 端口启动 FastAPI，然后运行：
 
 ```bash
 pnpm api:generate
 ```
 
-This reads `/openapi.json` and replaces `packages/api-client/src/schema.d.ts`. Pydantic schemas remain the source of truth; the web app imports the generated types.
+该命令读取 `/openapi.json`，并重新生成 `packages/api-client/src/schema.d.ts`。Pydantic Schema 是 API 类型的唯一事实来源，Frontend 直接导入生成的类型，不长期维护重复 Schema。
 
-## Implemented in Iteration 0
+## Iteration 0 已实现内容
 
-- Dev principal injection with fixed user `dev-user-001`
-- Durable Conversation, Message, Task, and Event models
-- Message submission and deterministic `BOOTSTRAP_MESSAGE_PROCESSING`
-- Task transitions `PENDING → RUNNING → COMPLETED` and controlled `FAILED`
-- Globally increasing persisted event sequence
-- Conversation-filtered SSE with keep-alives
-- Conversation/message/task workspace and reconnect-safe server refreshes
-- Empty Agent, Skill, Workflow, and Tool registries
-- Default-deny PolicyService, ContextBuilder boundary, and read-only MockBankService
-- Workflow, Approval, and Operation schemas without tables or execution
+- 通过 Dependency 注入固定开发用户 `dev-user-001`
+- 持久化 Conversation、Message、Task 和 Event
+- Message 提交与确定性的 `BOOTSTRAP_MESSAGE_PROCESSING`
+- Task 状态转换 `PENDING → RUNNING → COMPLETED`，以及受控 `FAILED`
+- 全局递增、持久化的 Event sequence
+- 带 keep-alive、按 Conversation 过滤的 SSE
+- Conversation、Message、Task 工作区和断线恢复
+- 空的 Agent、Skill、Workflow、Tool Registry
+- 默认拒绝的 PolicyService、ContextBuilder 边界和只读 MockBankService
+- 不进入数据库、不执行的 Workflow、Approval、Operation Schema
 
-## Current limitations
+## 当前限制
 
-- `BootstrapRuntime` is temporary deterministic test infrastructure, not an agent runtime.
-- The live event bus is process-local. PostgreSQL Events are durable; live fan-out is not distributed.
-- SSE replay via `Last-Event-ID` is not implemented. Clients recover resources through GET APIs.
-- Authentication is a development-only fixed principal.
-- There is no background worker; runtime work is attached to the API process.
-- Compose validation requires Docker, which must be installed on the development host.
+- `BootstrapRuntime` 是临时确定性基础设施，不是真正的 Agent Runtime。
+- 实时 EventBus 仅在单进程内工作；PostgreSQL Event 是持久事实，实时 fan-out 不是分布式的。
+- SSE 尚未实现 `Last-Event-ID` replay；客户端通过 GET API 恢复资源状态。
+- Authentication 只是固定开发身份。
+- 没有 Background Worker；Bootstrap Runtime 依附于 API 进程执行。
+- 完整 Compose 验证要求开发主机已安装 Docker。
 
-Not implemented: LLM calls, LangGraph/LangChain, MCP, RAG, embeddings, vector databases, Redis, workers, real banking APIs, real authentication, approvals, operations, concrete workflows, agents, or executable skills. There are no transfer, investment purchase, card freeze, or subscription cancellation endpoints/tools.
+当前明确没有实现：LLM 调用、LangGraph/LangChain、MCP、RAG、Embedding、Vector Database、Redis、Worker、真实银行 API、真实认证、Approval、Operation、具体 Workflow、Agent 或可执行 Skill。系统中不存在转账、投资购买、冻结银行卡或取消订阅的 API/Tool。
 

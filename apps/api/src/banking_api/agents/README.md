@@ -1,4 +1,3 @@
-# Agents
+# Agent
 
-Reserved for a later specification. Iteration 0 defines no agents and the `AgentRegistry` is empty.
-
+该目录为后续规格预留。Iteration 0 不定义任何 Agent，`AgentRegistry` 保持为空。

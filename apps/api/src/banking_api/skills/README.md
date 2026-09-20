@@ -1,4 +1,3 @@
-# Skills
+# Skill
 
-Reserved for a later specification. Iteration 0 defines no executable skills and the `SkillRegistry` is empty.
-
+该目录为后续规格预留。Iteration 0 不定义任何可执行 Skill，`SkillRegistry` 保持为空。

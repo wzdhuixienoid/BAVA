@@ -1,112 +1,112 @@
-# AI Banking Agent — Codex Bootstrap Specification v0.1
+# AI Banking Agent — Codex Bootstrap 规格 v0.1
 
-Status: `FROZEN FOR BOOTSTRAP`  
-Architecture baseline: `v0.1`  
-Bootstrap iteration: `Iteration 0`
+状态：`FROZEN FOR BOOTSTRAP`  
+架构基线：`v0.1`  
+Bootstrap 迭代：`Iteration 0`
 
-This document records the normative Iteration 0 contract used to build the repository. It is intentionally limited to an application skeleton; the next-stage Minimal Agent Runtime is out of scope.
+本文档记录构建当前代码库时使用的 Iteration 0 规范。它只定义应用骨架；下一阶段的 Minimal Agent Runtime 不在本轮范围内。
 
-## Goal and required flow
+## 目标与必需链路
 
-Build a structurally correct, persistent, testable modular monolith that proves:
+建立一个结构正确、可持久化、可测试的模块化单体，并证明以下链路能够运行：
 
 ```text
-Browser → Next.js → POST message → FastAPI → persisted Conversation/Message
-        → Task → deterministic bootstrap runtime → durable state transition
-        → persisted Event → SSE → frontend refresh → updated Task UI
+Browser → Next.js → POST Message → FastAPI → 持久化 Conversation/Message
+        → Task → 确定性 Bootstrap Runtime → 持久化状态变化
+        → 持久化 Event → SSE → Frontend 刷新 → Task UI 更新
 ```
 
-No real LLM reasoning is part of this iteration.
+本轮不包含任何真实 LLM 推理。
 
-## Frozen architecture constraints
+## 冻结的架构约束
 
-1. Workflow first, agent second. No Transfer/Card/Subscription/Wealth/Lifestyle agents.
-2. The frontend calls the Banking Application API, never an agent framework.
-3. Domain models do not depend on an agent framework.
-4. Structured persisted state, not `messages[]`, is the business source of truth.
-5. Server state is authoritative for Task, Workflow, Approval, and Operation outcomes.
-6. Default deny. No high-risk write capabilities are registered.
-7. Use one modular-monolith backend; do not split Mock Bank, policy, or runtime into services.
-8. Prefer explicit code and boundaries over factories, generic repositories, or universal context/state objects.
+1. Workflow First, Agent Second。不得创建 Transfer、Card、Subscription、Wealth 或 Lifestyle Agent。
+2. Frontend 只调用 Banking Application API，不直接调用 Agent Framework。
+3. Domain Model 不依赖 Agent Framework。
+4. 结构化持久状态是业务事实来源，不能只依赖 `messages[]`。
+5. Task、Workflow、Approval、Operation 的结果以 Server State 为准。
+6. Default Deny。本轮不注册任何高风险写能力。
+7. Backend 使用模块化单体；Mock Bank、Policy 和 Runtime 不拆成微服务。
+8. 优先使用显式实现，不创建 Generic Repository、通用 Factory 或万能 Context/State。
 
-## Technology baseline
+## 技术基线
 
-- Monorepo with Next.js, React, TypeScript, Tailwind CSS
-- Python 3.12+, FastAPI, Pydantic/Pydantic Settings, SQLAlchemy 2.x, asyncpg, Alembic
-- PostgreSQL; no Redis
-- FastAPI `StreamingResponse` SSE and an in-process live event bus
-- uv, pytest/pytest-asyncio, ruff, pnpm, ESLint, TypeScript, openapi-typescript
+- Monorepo：Next.js、React、TypeScript、Tailwind CSS
+- Python 3.12+、FastAPI、Pydantic、Pydantic Settings、SQLAlchemy 2.x、asyncpg、Alembic
+- PostgreSQL；不使用 Redis
+- FastAPI `StreamingResponse` SSE 与进程内实时 EventBus
+- uv、pytest、pytest-asyncio、ruff、pnpm、ESLint、TypeScript、openapi-typescript
 
-Forbidden runtime dependencies include LangGraph, LangChain, AutoGen, AgentScope, MCP SDKs, vector databases, embeddings/RAG frameworks, Redis, Kafka, RabbitMQ, Celery, Kubernetes, real bank/auth providers, and all LLM SDKs.
+禁止引入的运行依赖包括：LangGraph、LangChain、AutoGen、AgentScope、MCP SDK、Vector Database、Embedding/RAG Framework、Redis、Kafka、RabbitMQ、Celery、Kubernetes、真实银行/认证 Provider，以及所有 LLM SDK。
 
-## Persisted domain model
+## 持久化 Domain Model
 
-Only the following application tables exist in Iteration 0:
+Iteration 0 只包含以下应用表：
 
-- `conversations`: id, user_id, title, created_at, updated_at
-- `messages`: id, conversation_id, role, content, created_at
-- `tasks`: id, conversation_id, task_type, status, input_json, output_json, error_json, version, created_at, updated_at
-- `events`: id, event_type, conversation_id, task_id, global sequence, data_json, created_at
+- `conversations`：id、user_id、title、created_at、updated_at
+- `messages`：id、conversation_id、role、content、created_at
+- `tasks`：id、conversation_id、task_type、status、input_json、output_json、error_json、version、created_at、updated_at
+- `events`：id、event_type、conversation_id、task_id、全局 sequence、data_json、created_at
 
-Message roles are `USER`, `ASSISTANT`, and `SYSTEM_NOTICE`; there is no agent-specific role.
+Message role 只允许 `USER`、`ASSISTANT` 和 `SYSTEM_NOTICE`，不允许 Agent-specific role。
 
-Task statuses are `PENDING`, `RUNNING`, `WAITING_USER`, `WAITING_EXTERNAL`, `COMPLETED`, `FAILED`, `CANCELLED`, and `SKIPPED`. The bootstrap runtime uses only `PENDING`, `RUNNING`, `COMPLETED`, and `FAILED`. Every Task transition increments `version`.
+Task status 包含 `PENDING`、`RUNNING`、`WAITING_USER`、`WAITING_EXTERNAL`、`COMPLETED`、`FAILED`、`CANCELLED` 和 `SKIPPED`。Bootstrap Runtime 只使用 `PENDING`、`RUNNING`、`COMPLETED` 和 `FAILED`。每次 Task 状态变化必须增加 `version`。
 
-Event sequence is globally stable and increasing. Events are persisted; SSE is never the durable source of truth.
+Event sequence 全局稳定递增。Event 必须持久化，SSE 永远不是持久化事实来源。
 
-## Schema-only boundaries
+## 只定义 Schema 的边界
 
-Workflow, Approval, and Operation domain schemas freeze future concepts but have no tables, APIs, or execution behavior.
+Workflow、Approval 和 Operation 只冻结未来概念，不创建数据库表、API 或执行逻辑。
 
-- Workflow: id, type, status, version
-- Approval: id, workflow id, payload hash, status, timestamps; statuses `PENDING`, `APPROVED`, `REJECTED`, `EXPIRED`, `CONSUMED`, `INVALIDATED`
-- Operation: id, workflow id, idempotency key, status, external reference; statuses `CREATED`, `SUBMITTED`, `UNKNOWN`, `SUCCEEDED`, `FAILED`
+- Workflow：id、type、status、version
+- Approval：id、workflow id、payload hash、status 和时间戳；状态包括 `PENDING`、`APPROVED`、`REJECTED`、`EXPIRED`、`CONSUMED`、`INVALIDATED`
+- Operation：id、workflow id、idempotency key、status、external reference；状态包括 `CREATED`、`SUBMITTED`、`UNKNOWN`、`SUCCEEDED`、`FAILED`
 
-Workflow means a deterministic business process with explicit state transitions. High-risk financial operations must eventually execute through workflows, not directly through agents.
+Workflow 是具有显式状态变化的确定性业务流程。未来高风险金融操作必须通过 Workflow 执行，不能由 Agent 直接执行。
 
-## Deterministic bootstrap runtime
+## 确定性 Bootstrap Runtime
 
-On an accepted User Message:
+收到一条 User Message 后：
 
-1. Persist the User Message.
-2. Create a `BOOTSTRAP_MESSAGE_PROCESSING` Task in `PENDING`.
-3. Persist and publish `task.created`.
-4. Transition the Task to `RUNNING`; persist and publish `task.started`.
-5. Perform deterministic processing only.
-6. Persist Assistant Message `Bootstrap runtime received your message.`
-7. Transition the Task to `COMPLETED`; persist and publish `task.completed`.
-8. Persist and publish the assistant message event.
-9. A controlled failure transitions the Task to `FAILED` and emits `task.failed`.
+1. 持久化 User Message。
+2. 创建 `BOOTSTRAP_MESSAGE_PROCESSING` Task，初始状态为 `PENDING`。
+3. 持久化并发布 `task.created`。
+4. 将 Task 转换为 `RUNNING`，持久化并发布 `task.started`。
+5. 只执行确定性处理。
+6. 持久化 Assistant Message：`Bootstrap runtime received your message.`
+7. 将 Task 转换为 `COMPLETED`，持久化并发布 `task.completed`。
+8. 持久化并发布 Assistant Message Event。
+9. 受控异常必须将 Task 转换为 `FAILED`，并产生 `task.failed`。
 
-An optional short delay may make UI transitions observable, but is not business logic. The runtime must remain easy to delete and must not become the basis of a future agent architecture.
+允许用极短 delay 帮助观察 UI 状态，但 delay 不是业务逻辑依赖。该 Runtime 必须容易删除，不得演化为未来 Agent 架构的基础。
 
-## Boundaries and safety skeletons
+## Registry、安全与上下文边界
 
-- AgentRegistry, SkillRegistry, WorkflowRegistry, and ToolRegistry use simple typed dictionary registration and start empty.
-- Tool metadata reserves capability id, name, risk, side effect, and allowed callers. No high-risk writes are registered.
-- Policy decisions include `ALLOW`, `DENY`, approval and re-auth variants. Unknown bootstrap capabilities default to `DENY`.
-- ContextEnvelope reserves Task, Conversation, memory, upstream results, and constraints. No retrieval, RAG, prompt building, or token budgeting exists.
-- MockBankService exposes only deterministic `list_accounts()` and `get_account_summary()` data. It is not a formal tool and implements no write method.
+- AgentRegistry、SkillRegistry、WorkflowRegistry、ToolRegistry 使用简单的 typed dictionary registration，并且初始为空。
+- Tool metadata 预留 capability id、name、risk、side effect、allowed callers。本轮不注册高风险写能力。
+- Policy decision 包含 `ALLOW`、`DENY` 和 Approval/Re-auth 组合。未知能力默认 `DENY`。
+- ContextEnvelope 预留 Task、Conversation、Memory、Upstream Results 和 Constraints；不实现 Retrieval、RAG、Prompt Construction 或 Token Budgeting。
+- MockBankService 只提供确定性的 `list_accounts()` 和 `get_account_summary()`。它不是正式 Tool，不得包含写方法。
 
-## Persistence and repository rules
+## Persistence 与 Repository 规则
 
-Routes never execute SQL directly. Explicit Conversation, Message, Task, and Event repositories are used; there is no generic repository or unit-of-work framework. PostgreSQL is the production database and Alembic owns the schema.
+API Route 不直接执行 SQL。Conversation、Message、Task 和 Event 分别使用显式 Repository；不得建立 Generic Repository 或复杂 Unit of Work Framework。生产数据库为 PostgreSQL，Schema 由 Alembic 管理。
 
 ## HTTP API
 
 - `GET /health` → `{"status":"ok"}`
 - `GET/POST /api/v1/conversations`
-- `GET /api/v1/conversations/{conversation_id}` including Messages
-- `POST /api/v1/conversations/{conversation_id}/messages` → 202 with message_id, task_id, request_id
+- `GET /api/v1/conversations/{conversation_id}`，响应包含 Messages
+- `POST /api/v1/conversations/{conversation_id}/messages` → 202，并返回 message_id、task_id、request_id
 - `GET /api/v1/tasks?conversation_id=...`
 - `GET /api/v1/tasks/{task_id}`
-- `GET /api/v1/events?conversation_id=...` as SSE
+- `GET /api/v1/events?conversation_id=...`，响应为 SSE
 
-No transfer, purchase, card write, cancellation, `/agents`, `/skills`, or framework-specific endpoint exists. A `DevPrincipal` dependency supplies `dev-user-001`; routes do not hard-code identity.
+不得创建 Transfer、Purchase、Card Write、Cancellation、`/agents`、`/skills` 或 Framework-specific Endpoint。`DevPrincipal` Dependency 提供 `dev-user-001`，Route 不直接硬编码身份。
 
-## Event protocol and SSE
+## Event Protocol 与 SSE
 
-The envelope contains event_id, event_type, timestamp, conversation_id, nullable task_id, sequence, and data. Supported events are:
+统一 Event Envelope 包含 event_id、event_type、timestamp、conversation_id、可为空的 task_id、sequence 和 data。本轮支持：
 
 - `conversation.message.created`
 - `conversation.message.completed`
@@ -115,36 +115,40 @@ The envelope contains event_id, event_type, timestamp, conversation_id, nullable
 - `task.completed`
 - `task.failed`
 
-Names describe domain/runtime state, never internal agents. The in-memory bus is explicitly single-process bootstrap transport. On disconnect, clients recover Conversation and Task resources through GET; replay and distributed fan-out are deferred.
+Event 名称描述 Domain/Runtime 状态，不描述内部 Agent。进程内 EventBus 明确属于单进程 Bootstrap 基础设施。SSE 断开后，客户端通过 GET API 恢复 Conversation 和 Task；Event replay 与分布式 fan-out 延后实现。
 
-## Frontend contract
+## Frontend 契约
 
-The workspace supports creating/loading Conversations, sending Messages, showing user/assistant Messages, and listing Task type/status/id. It connects an `EventSource` for the selected Conversation. Every relevant event causes authoritative Conversation and Task data to be re-fetched. Only selection, composer input, connection state, and view state are local UI facts.
+Workspace 支持创建和加载 Conversation、发送 Message、显示 User/Assistant Message，以及展示 Task type、status、id。Frontend 为当前 Conversation 建立 `EventSource`。收到相关 Event 后，必须重新获取权威的 Conversation 和 Task 数据。只有当前选择、输入框、连接状态和 UI 展示状态可以保存在本地。
 
-Pydantic/OpenAPI is the source of API types. `pnpm api:generate` reads a running FastAPI `/openapi.json` into `packages/api-client/src/schema.d.ts`.
+Pydantic/OpenAPI 是 API 类型来源。`pnpm api:generate` 从运行中的 FastAPI `/openapi.json` 生成 `packages/api-client/src/schema.d.ts`。
 
-## Compose and environment
+## Compose 与环境变量
 
-Compose contains only PostgreSQL, API, and web services. `.env.example` declares PostgreSQL, database URL, API host/port, web port, and public API base URL. `docker compose up --build` is the target full-stack command.
+Docker Compose 只包含 PostgreSQL、API 和 Web。`.env.example` 声明 PostgreSQL、Database URL、API host/port、Web port 和公开 API base URL。完整应用的目标启动命令是：
 
-## Required validation
+```bash
+docker compose up --build
+```
 
-- Health 200
-- Conversation and Message persistence
-- Message creates Task
-- Runtime reaches persisted `COMPLETED` and supports persisted `FAILED`
-- State transitions produce durable, ordered Events
-- Live event transport delivers persisted events
-- Backend test suite and ruff pass
-- Frontend lint, typecheck, and production build pass
-- OpenAPI TypeScript generation succeeds
-- Repository dependency audit finds no LLM, agent framework, MCP, RAG/vector, Redis, or high-risk banking execution dependency/capability
+## 必需验证
 
-## Current limitations
+- Health 返回 200
+- Conversation 和 Message 能够持久化
+- Message 能够创建 Task
+- Runtime 最终产生持久化 `COMPLETED`，并支持持久化 `FAILED`
+- 状态变化产生有序、持久化的 Event
+- 实时 EventBus 能够投递已经持久化的 Event
+- Backend tests 和 ruff 通过
+- Frontend lint、typecheck 和 production build 通过
+- OpenAPI TypeScript 生成成功
+- 依赖审计不存在 LLM、Agent Framework、MCP、RAG/Vector、Redis 或高风险银行执行能力
 
-Iteration 0 has no LLM, agent, real skill, concrete workflow, approval execution, operation execution, re-authentication, memory, RAG, scheduler, worker, distributed event transport, real banking API, or real authentication. Bootstrap completion ends this iteration; no next-stage capability may be added without a new specification.
+## 当前限制
 
-## Architecture questions
+Iteration 0 不包含 LLM、Agent、真实 Skill、具体 Workflow、Approval Execution、Operation Execution、Re-authentication、Memory、RAG、Scheduler、Worker、分布式 Event Transport、真实银行 API 或真实认证。Bootstrap 完成后必须停止，未经新规格不得进入下一阶段。
 
-None discovered during bootstrap implementation.
+## 架构问题
+
+本轮实现未发现需要改变冻结架构的 Architecture Question。
 
