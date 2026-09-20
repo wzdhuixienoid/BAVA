@@ -13,7 +13,24 @@ const colors: Record<TaskStatusValue, string> = {
   SKIPPED: "bg-slate-200 text-slate-700",
 };
 
-export function TaskStatus({ status }: { status: TaskStatusValue }) {
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors[status]}`}>{status}</span>;
-}
+const labels: Record<TaskStatusValue, string> = {
+  PENDING: "待处理",
+  RUNNING: "处理中",
+  WAITING_USER: "等待用户",
+  WAITING_EXTERNAL: "等待外部系统",
+  COMPLETED: "已完成",
+  FAILED: "失败",
+  CANCELLED: "已取消",
+  SKIPPED: "已跳过",
+};
 
+export function TaskStatus({ status }: { status: TaskStatusValue }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors[status]}`}
+      title={status}
+    >
+      {labels[status]}
+    </span>
+  );
+}

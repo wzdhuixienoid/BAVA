@@ -42,5 +42,5 @@ async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
         assert task.version == 3
         assert task.error == {
             "type": "RuntimeError",
-            "message": "Controlled bootstrap processing failure",
+            "message": "启动运行时受控处理失败",
         }

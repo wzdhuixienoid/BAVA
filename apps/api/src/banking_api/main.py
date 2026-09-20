@@ -11,7 +11,7 @@ from banking_api.runtime.event_bus import EventBus
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    application = FastAPI(title="AI Banking Agent API", version="0.1.0")
+    application = FastAPI(title="AI 银行助理 API", version="0.1.0")
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -30,4 +30,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-

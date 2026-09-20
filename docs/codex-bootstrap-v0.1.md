@@ -18,6 +18,10 @@ Browser → Next.js → POST Message → FastAPI → 持久化 Conversation/Mess
 
 本轮不包含任何真实 LLM 推理。
 
+## 产品语言
+
+产品面向中国用户，用户可见 UI、系统回复和错误提示以中文为主。API 字段、Event type、Task type 与状态枚举保持稳定的英文机器标识，由 Frontend 映射为中文显示文案。
+
 ## 冻结的架构约束
 
 1. Workflow First, Agent Second。不得创建 Transfer、Card、Subscription、Wealth 或 Lifestyle Agent。
@@ -73,7 +77,7 @@ Workflow 是具有显式状态变化的确定性业务流程。未来高风险�
 3. 持久化并发布 `task.created`。
 4. 将 Task 转换为 `RUNNING`，持久化并发布 `task.started`。
 5. 只执行确定性处理。
-6. 持久化 Assistant Message：`Bootstrap runtime received your message.`
+6. 持久化 Assistant Message：`启动运行时已收到你的消息。`
 7. 将 Task 转换为 `COMPLETED`，持久化并发布 `task.completed`。
 8. 持久化并发布 Assistant Message Event。
 9. 受控异常必须将 Task 转换为 `FAILED`，并产生 `task.failed`。
@@ -151,4 +155,3 @@ Iteration 0 不包含 LLM、Agent、真实 Skill、具体 Workflow、Approval Ex
 ## 架构问题
 
 本轮实现未发现需要改变冻结架构的 Architecture Question。
-

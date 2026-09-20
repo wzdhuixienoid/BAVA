@@ -24,7 +24,7 @@ async def stream_events(
         conversation_id, principal.user_id
     )
     if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        raise HTTPException(status_code=404, detail="未找到该对话")
 
     async def event_stream() -> AsyncIterator[str]:
         async with bus.subscribe(conversation_id) as queue:

@@ -22,19 +22,18 @@ export function MessageComposer({ onSend }: { onSend: (content: string) => Promi
   return (
     <form onSubmit={submit} className="flex gap-3 border-t border-slate-200 p-4">
       <input
-        aria-label="Message"
+        aria-label="消息"
         value={content}
         onChange={(event) => setContent(event.target.value)}
-        placeholder="Type a message…"
+        placeholder="输入消息…"
         className="min-w-0 flex-1 rounded-lg border border-slate-300 px-4 py-3 outline-none ring-cyan-500 focus:ring-2"
       />
       <button
         disabled={!content.trim() || sending}
         className="rounded-lg bg-slate-900 px-5 py-3 font-semibold text-white hover:bg-slate-800"
       >
-        {sending ? "Sending…" : "Send"}
+        {sending ? "发送中…" : "发送"}
       </button>
     </form>
   );
 }
-

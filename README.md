@@ -17,6 +17,10 @@ Next.js UI ── HTTP/SSE ── FastAPI 模块化单体 ── PostgreSQL
 
 Frontend 只展示服务器拥有的 Conversation、Message 和 Task 状态。SSE 只是实时通知通道；连接中断或页面刷新后，Frontend 会通过资源 API 恢复状态。Bootstrap Runtime 是临时且可替换的确定性运行时，不是 Agent。
 
+## 产品语言
+
+产品面向中国用户，用户可见界面、系统回复和错误提示默认使用中文。API 字段名、Event type、Task type 和状态枚举继续使用稳定的英文机器标识，Frontend 负责显示对应的中文名称。
+
 ## 环境要求
 
 - 完整容器环境：Docker 和 Docker Compose
@@ -38,6 +42,8 @@ docker compose up --build
 - OpenAPI：`http://localhost:8000/docs`
 
 API 容器会在启动 FastAPI 前自动执行 Alembic migration。
+
+完整 Compose 构建与启动流程已使用 Docker Engine 29.8 和 Docker Compose 5.5 完成验证。
 
 ## 本地开发
 
@@ -113,7 +119,5 @@ pnpm api:generate
 - SSE 尚未实现 `Last-Event-ID` replay；客户端通过 GET API 恢复资源状态。
 - Authentication 只是固定开发身份。
 - 没有 Background Worker；Bootstrap Runtime 依附于 API 进程执行。
-- 完整 Compose 验证要求开发主机已安装 Docker。
 
 当前明确没有实现：LLM 调用、LangGraph/LangChain、MCP、RAG、Embedding、Vector Database、Redis、Worker、真实银行 API、真实认证、Approval、Operation、具体 Workflow、Agent 或可执行 Skill。系统中不存在转账、投资购买、冻结银行卡或取消订阅的 API/Tool。
-

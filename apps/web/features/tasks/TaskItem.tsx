@@ -3,16 +3,26 @@ import { TaskStatus } from "@/components/agent-ui/TaskStatus";
 
 type Task = components["schemas"]["Task"];
 
+const taskTypeLabels: Record<string, string> = {
+  BOOTSTRAP_MESSAGE_PROCESSING: "启动消息处理",
+};
+
 export function TaskItem({ task }: { task: Task }) {
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3">
       <div className="flex items-start justify-between gap-3">
-        <p className="break-all text-xs font-semibold text-slate-800">{task.task_type}</p>
+        <div>
+          <p className="text-xs font-semibold text-slate-800">
+            {taskTypeLabels[task.task_type] ?? task.task_type}
+          </p>
+          <p className="mt-1 break-all font-mono text-[9px] text-slate-400">{task.task_type}</p>
+        </div>
         <TaskStatus status={task.status} />
       </div>
-      <p className="mt-2 break-all font-mono text-[10px] text-slate-500">{task.task_id}</p>
-      <p className="mt-1 text-[10px] text-slate-400">server version {task.version}</p>
+      <p className="mt-2 break-all font-mono text-[10px] text-slate-500">
+        任务 ID：{task.task_id}
+      </p>
+      <p className="mt-1 text-[10px] text-slate-400">服务端版本 {task.version}</p>
     </article>
   );
 }
-

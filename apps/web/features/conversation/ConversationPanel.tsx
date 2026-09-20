@@ -27,7 +27,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
       setTasks(nextTasks);
       setError(null);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load server state");
+      setError(reason instanceof Error ? reason.message : "无法加载服务器状态");
     }
   }, [conversationId]);
 
@@ -51,11 +51,11 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     <div className="grid min-h-screen grid-rows-[auto_1fr]">
       <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
         <div>
-          <h2 className="font-semibold">{conversation?.title ?? "Loading conversation…"}</h2>
-          <p className="mt-1 font-mono text-[10px] text-slate-400">{conversationId}</p>
+          <h2 className="font-semibold">{conversation?.title ?? "正在加载对话…"}</h2>
+          <p className="mt-1 font-mono text-[10px] text-slate-400">对话 ID：{conversationId}</p>
         </div>
         <span className={`text-xs font-medium ${connected ? "text-emerald-600" : "text-amber-600"}`}>
-          {connected ? "● SSE connected" : "○ SSE reconnecting"}
+          {connected ? "● SSE 已连接" : "○ SSE 重连中"}
         </span>
       </header>
       {error ? (
@@ -72,4 +72,3 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     </div>
   );
 }
-

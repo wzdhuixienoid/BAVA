@@ -45,7 +45,7 @@ class BootstrapRuntime:
             if self.delay_seconds:
                 await asyncio.sleep(self.delay_seconds)
             if fail:
-                raise RuntimeError("Controlled bootstrap processing failure")
+                raise RuntimeError("启动运行时受控处理失败")
 
             async with self.session_factory() as session:
                 tasks = TaskRepository(session)
@@ -57,7 +57,7 @@ class BootstrapRuntime:
                 assistant = await messages.create(
                     conversation_id=task.conversation_id,
                     role=MessageRole.ASSISTANT,
-                    content="Bootstrap runtime received your message.",
+                    content="启动运行时已收到你的消息。",
                 )
                 await tasks.transition(
                     task,

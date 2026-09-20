@@ -28,4 +28,4 @@ async def get_task(
     try:
         return await TaskService(session).get(task_id, user_id=principal.user_id)
     except TaskNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Task not found") from exc
+        raise HTTPException(status_code=404, detail="未找到该任务") from exc

@@ -14,8 +14,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`API ${response.status}: ${detail}`);
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    const detail = payload?.detail ?? "请求失败";
+    throw new Error(`请求失败（${response.status}）：${detail}`);
   }
   return response.json() as Promise<T>;
 }
@@ -37,4 +38,3 @@ export const api = {
   listTasks: (conversationId: string) =>
     request<Task[]>(`/api/v1/tasks?conversation_id=${encodeURIComponent(conversationId)}`),
 };
-

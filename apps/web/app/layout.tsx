@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Banking Agent — Bootstrap",
-  description: "Iteration 0 application skeleton",
+  title: "AI 银行助理 — 启动骨架",
+  description: "AI 银行助理应用骨架",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -13,4 +13,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-

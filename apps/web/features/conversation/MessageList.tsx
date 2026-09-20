@@ -2,12 +2,18 @@ import type { components } from "@banking/api-client";
 
 type Message = components["schemas"]["Message"];
 
+const roleLabels: Record<Message["role"], string> = {
+  USER: "用户",
+  ASSISTANT: "助理",
+  SYSTEM_NOTICE: "系统通知",
+};
+
 export function MessageList({ messages }: { messages: Message[] }) {
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-6">
       {messages.length === 0 && (
         <div className="m-auto max-w-md text-center text-sm text-slate-500">
-          Send a message. The deterministic bootstrap runtime will acknowledge it without an LLM.
+          发送一条消息。确定性的启动运行时会在不使用大模型的情况下回复你。
         </div>
       )}
       {messages.map((message) => {
@@ -20,7 +26,7 @@ export function MessageList({ messages }: { messages: Message[] }) {
             }`}
           >
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider opacity-65">
-              {message.role}
+              {roleLabels[message.role]}
             </p>
             <p className="whitespace-pre-wrap">{message.content}</p>
           </article>
@@ -29,4 +35,3 @@ export function MessageList({ messages }: { messages: Message[] }) {
     </div>
   );
 }
-

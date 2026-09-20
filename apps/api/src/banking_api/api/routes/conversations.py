@@ -51,7 +51,7 @@ async def get_conversation(
             conversation_id=conversation_id, user_id=principal.user_id
         )
     except ConversationNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+        raise HTTPException(status_code=404, detail="未找到该对话") from exc
 
 
 @router.post(
@@ -75,6 +75,6 @@ async def post_message(
             content=body.content,
         )
     except ConversationNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+        raise HTTPException(status_code=404, detail="未找到该对话") from exc
     background_tasks.add_task(runtime.run, accepted.task_id)
     return accepted

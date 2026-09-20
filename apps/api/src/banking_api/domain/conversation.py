@@ -17,7 +17,7 @@ class Conversation(BaseModel):
 
 
 class ConversationCreate(BaseModel):
-    title: str = "New conversation"
+    title: str = "新对话"
 
 
 class ConversationDetail(Conversation):

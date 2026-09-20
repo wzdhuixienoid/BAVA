@@ -23,7 +23,7 @@ export default function HomePage() {
   }, [refresh]);
 
   async function createConversation() {
-    const conversation = await api.createConversation({ title: "New conversation" });
+    const conversation = await api.createConversation({ title: "新对话" });
     await refresh();
     setSelectedId(conversation.conversation_id);
   }
@@ -32,18 +32,18 @@ export default function HomePage() {
     <main className="mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 bg-white shadow-sm md:grid-cols-[280px_1fr]">
       <aside className="border-b border-slate-200 bg-slate-950 p-5 text-white md:border-b-0 md:border-r">
         <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">Iteration 0</p>
-          <h1 className="mt-2 text-xl font-semibold">Banking Workspace</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">迭代 0</p>
+          <h1 className="mt-2 text-xl font-semibold">银行助理工作台</h1>
         </div>
         <button
           className="mb-5 w-full rounded-lg bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 hover:bg-cyan-300"
           onClick={createConversation}
         >
-          + New conversation
+          + 新建对话
         </button>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Recent</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">最近对话</p>
         <nav className="space-y-2">
-          {loading && <p className="text-sm text-slate-400">Loading…</p>}
+          {loading && <p className="text-sm text-slate-400">加载中…</p>}
           {conversations.map((conversation) => (
             <button
               key={conversation.conversation_id}
@@ -67,11 +67,10 @@ export default function HomePage() {
           <ConversationPanel conversationId={selectedId} />
         ) : (
           <div className="grid min-h-screen place-items-center p-8 text-center text-slate-500">
-            Create a conversation to verify the bootstrap message → task → event flow.
+            新建一个对话，开始验证消息 → 任务 → 事件的启动流程。
           </div>
         )}
       </section>
     </main>
   );
 }
-

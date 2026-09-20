@@ -17,6 +17,5 @@ class PolicyService:
         del context
         return PolicyResult(
             decision=PolicyDecision.DENY,
-            reason=f"Capability is not allowed in bootstrap iteration: {capability_id}",
+            reason=f"启动迭代不允许使用此能力：{capability_id}",
         )
-
