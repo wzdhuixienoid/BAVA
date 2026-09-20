@@ -1,2 +1,1 @@
-"""Future context assembly boundary."""
-
+"""Minimal, explicit LLM context assembly boundary."""

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
 from banking_api.application.task_service import TaskNotFoundError, TaskService
+from banking_api.domain.event import Event
 from banking_api.domain.task import Task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -27,5 +28,15 @@ async def get_task(
 ) -> Task:
     try:
         return await TaskService(session).get(task_id, user_id=principal.user_id)
+    except TaskNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="未找到该任务") from exc
+
+
+@router.get("/{task_id}/events", response_model=list[Event])
+async def get_task_events(
+    task_id: UUID, session: SessionDependency, principal: PrincipalDependency
+) -> list[Event]:
+    try:
+        return await TaskService(session).list_events(task_id, user_id=principal.user_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=404, detail="未找到该任务") from exc

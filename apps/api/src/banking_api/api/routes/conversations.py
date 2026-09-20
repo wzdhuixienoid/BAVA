@@ -3,10 +3,10 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from banking_api.api.dependencies import (
-    BootstrapRuntimeDependency,
     EventBusDependency,
     PrincipalDependency,
     SessionDependency,
+    TaskRunnerDependency,
 )
 from banking_api.application.conversation_service import (
     ConversationNotFoundError,
@@ -66,7 +66,7 @@ async def post_message(
     session: SessionDependency,
     principal: PrincipalDependency,
     bus: EventBusDependency,
-    runtime: BootstrapRuntimeDependency,
+    runner: TaskRunnerDependency,
 ) -> MessageAccepted:
     try:
         accepted = await ConversationService(session, bus).accept_message(
@@ -76,5 +76,5 @@ async def post_message(
         )
     except ConversationNotFoundError as exc:
         raise HTTPException(status_code=404, detail="未找到该对话") from exc
-    background_tasks.add_task(runtime.run, accepted.task_id)
+    background_tasks.add_task(runner.run, accepted.task_id)
     return accepted

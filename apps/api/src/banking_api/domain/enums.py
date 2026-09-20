@@ -56,4 +56,4 @@ class RiskLevel(StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
-
+    R1_PRIVATE_READ = "R1_PRIVATE_READ"

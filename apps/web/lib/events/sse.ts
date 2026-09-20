@@ -1,10 +1,11 @@
 import { API_BASE_URL } from "@/lib/api/client";
 
-export const bootstrapEventTypes = [
+export const eventTypes = [
   "conversation.message.created",
   "conversation.message.completed",
   "task.created",
   "task.started",
+  "task.progress",
   "task.completed",
   "task.failed",
 ] as const;
@@ -19,11 +20,10 @@ export function subscribeToConversation(
   );
   source.onopen = () => onConnectionChange(true);
   source.onerror = () => onConnectionChange(false);
-  bootstrapEventTypes.forEach((type) => source.addEventListener(type, onEvent));
+  eventTypes.forEach((type) => source.addEventListener(type, onEvent));
   return () => {
-    bootstrapEventTypes.forEach((type) => source.removeEventListener(type, onEvent));
+    eventTypes.forEach((type) => source.removeEventListener(type, onEvent));
     source.close();
     onConnectionChange(false);
   };
 }
-

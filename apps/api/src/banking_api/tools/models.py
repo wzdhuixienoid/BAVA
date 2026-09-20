@@ -1,0 +1,85 @@
+from collections.abc import Awaitable, Callable
+from decimal import Decimal
+from enum import StrEnum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from banking_api.domain.enums import RiskLevel
+
+
+class ListAccountsInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class AccountSummary(BaseModel):
+    account_id: str
+    display_name: str
+    account_type: str
+    masked_number: str
+    currency: str
+    status: str
+
+
+class ListAccountsOutput(BaseModel):
+    accounts: list[AccountSummary]
+
+
+class GetBalanceInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    account_id: str = Field(min_length=1)
+
+
+class BalanceResult(BaseModel):
+    account_id: str
+    display_name: str
+    masked_number: str
+    currency: str
+    balance: Decimal
+
+
+ToolHandler = Callable[[BaseModel], BaseModel | Awaitable[BaseModel]]
+
+
+class ToolSpec(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+
+    capability_id: str
+    name: str
+    description: str
+    input_model: type[BaseModel]
+    output_model: type[BaseModel]
+    risk_level: RiskLevel
+    side_effect: bool
+    allowed_callers: frozenset[str]
+    handler: ToolHandler
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return self.input_model.model_json_schema()
+
+    @property
+    def output_schema(self) -> dict[str, Any]:
+        return self.output_model.model_json_schema()
+
+
+class ToolErrorCode(StrEnum):
+    TOOL_NOT_FOUND = "TOOL_NOT_FOUND"
+    TOOL_NOT_ALLOWED = "TOOL_NOT_ALLOWED"
+    TOOL_ARGUMENT_VALIDATION_FAILED = "TOOL_ARGUMENT_VALIDATION_FAILED"
+    TOOL_OUTPUT_VALIDATION_FAILED = "TOOL_OUTPUT_VALIDATION_FAILED"
+    TOOL_EXECUTION_FAILED = "TOOL_EXECUTION_FAILED"
+
+
+class ToolError(BaseModel):
+    code: ToolErrorCode
+    message: str
+    retryable: bool = False
+
+
+class ToolExecutionResult(BaseModel):
+    ok: bool
+    capability_id: str | None = None
+    output: dict[str, Any] | None = None
+    error: ToolError | None = None

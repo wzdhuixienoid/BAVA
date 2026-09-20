@@ -1,2 +1,1 @@
-"""Bootstrap event transport and publishing."""
-
+"""Manual agent execution, task running, and event transport."""

@@ -1,25 +1,45 @@
-from dataclasses import dataclass
+import json
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 
-@dataclass(frozen=True)
-class AccountSummary:
-    account_id: str
-    display_name: str
-    currency: str
-    balance: str
+class AccountNotFoundError(Exception):
+    pass
 
 
 class MockBankService:
-    """A minimal read-only bank backend stub, not a registered agent tool."""
+    """Read-only access to committed, entirely synthetic bank fixtures."""
 
-    _accounts = (
-        AccountSummary("account-6688", "工资卡 ****6688", "CNY", "12000.00"),
-        AccountSummary("account-1024", "储蓄卡 ****1024", "CNY", "50000.00"),
-    )
+    def __init__(self, data_dir: Path | None = None) -> None:
+        directory = data_dir or Path(__file__).with_name("data")
+        self._accounts: list[dict[str, Any]] = json.loads(
+            (directory / "accounts.json").read_text(encoding="utf-8")
+        )
 
-    def list_accounts(self) -> tuple[AccountSummary, ...]:
-        return self._accounts
+    def list_accounts(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "account_id": item["account_id"],
+                "display_name": item["display_name"],
+                "account_type": item["account_type"],
+                "masked_number": item["masked_number"],
+                "currency": item["currency"],
+                "status": item["status"],
+            }
+            for item in self._accounts
+        ]
 
-    def get_account_summary(self, account_id: str) -> AccountSummary | None:
-        return next((item for item in self._accounts if item.account_id == account_id), None)
-
+    def get_balance(self, account_id: str) -> dict[str, Any]:
+        account = next(
+            (item for item in self._accounts if item["account_id"] == account_id), None
+        )
+        if account is None:
+            raise AccountNotFoundError(f"Account not found: {account_id}")
+        return {
+            "account_id": account["account_id"],
+            "display_name": account["display_name"],
+            "masked_number": account["masked_number"],
+            "currency": account["currency"],
+            "balance": Decimal(account["balance"]),
+        }

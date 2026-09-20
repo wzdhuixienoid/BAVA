@@ -58,6 +58,7 @@ class TaskModel(Base):
     input_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     output_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     error_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    progress_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
@@ -83,4 +84,3 @@ class EventModel(Base):
     )
     data_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-

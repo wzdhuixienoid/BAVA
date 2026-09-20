@@ -1,0 +1,38 @@
+[
+  {
+    "account_id": "acc_salary",
+    "display_name": "工资卡",
+    "account_type": "DEBIT",
+    "masked_number": "****6688",
+    "currency": "CNY",
+    "status": "ACTIVE",
+    "balance": "23864.52"
+  },
+  {
+    "account_id": "acc_savings",
+    "display_name": "储蓄卡",
+    "account_type": "SAVINGS",
+    "masked_number": "****1024",
+    "currency": "CNY",
+    "status": "ACTIVE",
+    "balance": "78620.00"
+  },
+  {
+    "account_id": "acc_credit",
+    "display_name": "信用卡",
+    "account_type": "CREDIT",
+    "masked_number": "****9527",
+    "currency": "CNY",
+    "status": "ACTIVE",
+    "balance": "-4860.35"
+  },
+  {
+    "account_id": "acc_travel",
+    "display_name": "旅行卡",
+    "account_type": "DEBIT",
+    "masked_number": "****3366",
+    "currency": "CNY",
+    "status": "ACTIVE",
+    "balance": "12680.40"
+  }
+]

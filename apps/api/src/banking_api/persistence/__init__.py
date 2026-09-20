@@ -1,2 +1,1 @@
-"""SQLAlchemy persistence for durable bootstrap state."""
-
+"""SQLAlchemy persistence for durable application state."""

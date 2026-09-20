@@ -8,7 +8,7 @@ from banking_api.domain.event import Event
 
 
 class EventBus:
-    """Single-process bootstrap transport; durable truth remains in PostgreSQL."""
+    """Single-process realtime transport; durable truth remains in PostgreSQL."""
 
     def __init__(self) -> None:
         self._subscribers: dict[UUID, set[asyncio.Queue[Event]]] = defaultdict(set)
@@ -41,4 +41,3 @@ class EventBus:
 
 
 event_bus = EventBus()
-

@@ -57,10 +57,18 @@ class TaskRepository:
         *,
         output: dict[str, Any] | None = None,
         error: dict[str, Any] | None = None,
+        progress_message: str | None = None,
     ) -> TaskModel:
         task.status = status
         task.output_json = output
         task.error_json = error
+        task.progress_message = progress_message
+        task.version += 1
+        await self.session.flush()
+        return task
+
+    async def update_progress(self, task: TaskModel, message: str) -> TaskModel:
+        task.progress_message = message
         task.version += 1
         await self.session.flush()
         return task

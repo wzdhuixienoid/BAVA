@@ -19,6 +19,9 @@ class MessageRepository:
         await self.session.flush()
         return message
 
+    async def get(self, message_id: UUID) -> MessageModel | None:
+        return await self.session.get(MessageModel, message_id)
+
     async def list_for_conversation(self, conversation_id: UUID) -> list[MessageModel]:
         result = await self.session.execute(
             select(MessageModel)
@@ -26,4 +29,3 @@ class MessageRepository:
             .order_by(MessageModel.created_at, MessageModel.message_id)
         )
         return list(result.scalars())
-

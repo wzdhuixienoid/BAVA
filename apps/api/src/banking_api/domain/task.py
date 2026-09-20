@@ -17,7 +17,7 @@ class Task(BaseModel):
     input: dict[str, Any]
     output: dict[str, Any] | None
     error: dict[str, Any] | None
+    progress_message: str | None
     version: int
     created_at: datetime
     updated_at: datetime
-

@@ -1,2 +1,1 @@
-"""AI Banking Agent bootstrap API."""
-
+"""AI Banking Agent API."""

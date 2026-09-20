@@ -1,3 +1,3 @@
 # Agent
 
-该目录为后续规格预留。Iteration 0 不定义任何 Agent，`AgentRegistry` 保持为空。
+02.1 仅定义 `agent:minimal-banking`，它只允许账户列表和余额查询两个只读能力。

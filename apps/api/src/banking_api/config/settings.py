@@ -10,10 +10,15 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: list[str] = ["http://localhost:3000"]
-    bootstrap_delay_seconds: float = 0.15
+    llm_provider: str = "openai_compatible"
+    llm_base_url: str = ""
+    llm_api_key: str = ""
+    llm_model: str = ""
+    llm_timeout_seconds: float = 30
+    agent_max_steps: int = 6
+    agent_max_tool_calls: int = 4
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

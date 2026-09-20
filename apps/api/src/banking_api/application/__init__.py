@@ -1,2 +1,1 @@
-"""Application use cases and replaceable bootstrap runtime."""
-
+"""Application use cases for conversations and durable tasks."""

@@ -4,9 +4,19 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from banking_api.application.bootstrap_runtime import BootstrapRuntime
+from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.context.builder import ContextBuilder
+from banking_api.llm.fake_provider import FakeLLMProvider
+from banking_api.llm.models import LLMResponse
 from banking_api.main import create_app
+from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import Base, get_session
+from banking_api.policy.service import PolicyService
+from banking_api.registries.tool_registry import ToolRegistry
+from banking_api.runtime.agent_runtime import AgentRuntime
+from banking_api.runtime.task_runner import InProcessTaskRunner
+from banking_api.tools.banking import build_get_balance_tool, build_list_accounts_tool
+from banking_api.tools.executor import ToolExecutor
 
 
 @pytest.fixture
@@ -23,9 +33,25 @@ async def app(tmp_path):
             yield session
 
     application.dependency_overrides[get_session] = override_session
-    application.state.bootstrap_runtime = BootstrapRuntime(
-        factory, application.state.event_bus, delay_seconds=0
-    )
+    registry = ToolRegistry()
+    bank = MockBankService()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank))
+    def make_runner(responses, *, max_steps=6, max_tool_calls=4):
+        runtime = AgentRuntime(
+            provider=FakeLLMProvider(responses),
+            registry=registry,
+            executor=ToolExecutor(registry, PolicyService()),
+            context_builder=ContextBuilder(),
+            agent=MINIMAL_BANKING_AGENT,
+            max_steps=max_steps,
+            max_tool_calls=max_tool_calls,
+        )
+        return InProcessTaskRunner(factory, application.state.event_bus, runtime)
+
+    application.state.tool_registry = registry
+    application.state.task_runner = make_runner([LLMResponse(content="已收到你的消息。")])
+    application.state.test_make_runner = make_runner
     application.state.test_session_factory = factory
     yield application
     await engine.dispose()

@@ -1,10 +1,11 @@
 import type { components } from "@banking/api-client";
 import { TaskStatus } from "@/components/agent-ui/TaskStatus";
+import { TaskProgress } from "./TaskProgress";
 
 type Task = components["schemas"]["Task"];
 
 const taskTypeLabels: Record<string, string> = {
-  BOOTSTRAP_MESSAGE_PROCESSING: "启动消息处理",
+  MINIMAL_AGENT_RUN: "银行助手",
 };
 
 export function TaskItem({ task }: { task: Task }) {
@@ -19,6 +20,7 @@ export function TaskItem({ task }: { task: Task }) {
         </div>
         <TaskStatus status={task.status} />
       </div>
+      <TaskProgress message={task.progress_message} />
       <p className="mt-2 break-all font-mono text-[10px] text-slate-500">
         任务 ID：{task.task_id}
       </p>

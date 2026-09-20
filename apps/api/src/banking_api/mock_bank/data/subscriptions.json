@@ -1,0 +1,47 @@
+[
+  {
+    "subscription_id": "sub_video",
+    "merchant": "星幕视频",
+    "monthly_amount": "28.00",
+    "currency": "CNY",
+    "billing_day": 8,
+    "status": "ACTIVE",
+    "last_used_at": "2026-09-18T12:00:00Z"
+  },
+  {
+    "subscription_id": "sub_music",
+    "merchant": "海浪音乐",
+    "monthly_amount": "15.00",
+    "currency": "CNY",
+    "billing_day": 12,
+    "status": "ACTIVE",
+    "last_used_at": "2026-09-19T08:00:00Z"
+  },
+  {
+    "subscription_id": "sub_cloud",
+    "merchant": "云笺存储",
+    "monthly_amount": "18.00",
+    "currency": "CNY",
+    "billing_day": 16,
+    "status": "ACTIVE",
+    "last_used_at": "2025-11-03T10:00:00Z"
+  },
+  {
+    "subscription_id": "sub_design",
+    "merchant": "像素设计",
+    "monthly_amount": "88.00",
+    "currency": "CNY",
+    "billing_day": 20,
+    "status": "ACTIVE",
+    "last_used_at": "2026-06-12T09:00:00Z"
+  },
+  {
+    "subscription_id": "sub_fitness",
+    "merchant": "活力健身",
+    "monthly_amount": "128.00",
+    "currency": "CNY",
+    "billing_day": 3,
+    "status": "CANCELLED",
+    "last_used_at": "2026-03-20T18:00:00Z"
+  }
+]

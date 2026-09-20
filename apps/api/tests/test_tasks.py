@@ -3,6 +3,7 @@ from uuid import UUID
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.task_service import TaskService
 from banking_api.domain.enums import TaskStatus
+from banking_api.llm.provider import LLMProviderError
 
 
 async def test_runtime_transitions_task_to_completed(client) -> None:
@@ -32,7 +33,8 @@ async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
             content="Fail safely",
         )
 
-    await app.state.bootstrap_runtime.run(accepted.task_id, fail=True)
+    runner = app.state.test_make_runner([LLMProviderError("provider unavailable")])
+    await runner.run(accepted.task_id)
 
     async with factory() as session:
         task = await TaskService(session).get(
@@ -41,6 +43,26 @@ async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
         assert task.status is TaskStatus.FAILED
         assert task.version == 3
         assert task.error == {
-            "type": "RuntimeError",
-            "message": "启动运行时受控处理失败",
+            "category": "EXTERNAL",
+            "code": "LLM_PROVIDER_ERROR",
+            "message": "LLM provider request failed",
+            "retryable": True,
         }
+
+
+async def test_task_developer_trace_is_authorized_and_sanitized(client) -> None:
+    created = await client.post("/api/v1/conversations", json={"title": "Trace"})
+    conversation_id = created.json()["conversation_id"]
+    accepted = await client.post(
+        f"/api/v1/conversations/{conversation_id}/messages", json={"content": "Hello"}
+    )
+
+    response = await client.get(f"/api/v1/tasks/{accepted.json()['task_id']}/events")
+
+    assert response.status_code == 200
+    event_types = [event["event_type"] for event in response.json()]
+    assert "llm.request.started" in event_types
+    assert "agent.run.completed" in event_types
+    serialized = str([event["data"] for event in response.json()]).lower()
+    assert "prompt_dump" not in serialized
+    assert "api_key" not in serialized

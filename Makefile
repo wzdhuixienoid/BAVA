@@ -1,4 +1,4 @@
-.PHONY: up migrate api web test lint typecheck build api-generate
+.PHONY: up migrate api web test lint typecheck build api-generate agent-smoke postgres-test
 
 up:
 	docker compose up --build
@@ -28,3 +28,8 @@ build:
 api-generate:
 	pnpm api:generate
 
+agent-smoke:
+	cd apps/api && uv run python ../../scripts/smoke_agent.py
+
+postgres-test:
+	cd apps/api && uv run pytest -m postgres

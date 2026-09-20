@@ -1,8 +1,7 @@
-from typing import Any
-
 from pydantic import BaseModel
 
-from banking_api.domain.enums import PolicyDecision
+from banking_api.domain.enums import PolicyDecision, RiskLevel
+from banking_api.tools.models import ToolSpec
 
 
 class PolicyResult(BaseModel):
@@ -11,11 +10,32 @@ class PolicyResult(BaseModel):
 
 
 class PolicyService:
-    """Iteration 0 defaults unknown capabilities to DENY."""
+    """Iteration 02.1 allow rule; every unmatched request is denied."""
 
-    def evaluate(self, capability_id: str, context: dict[str, Any] | None = None) -> PolicyResult:
-        del context
+    def evaluate(
+        self,
+        *,
+        spec: ToolSpec | None,
+        caller: str,
+        authenticated: bool,
+        agent_allowlist: frozenset[str],
+    ) -> PolicyResult:
+        allowed = (
+            authenticated
+            and spec is not None
+            and caller in spec.allowed_callers
+            and spec.capability_id in agent_allowlist
+            and spec.risk_level is RiskLevel.R1_PRIVATE_READ
+            and not spec.side_effect
+        )
+        if allowed:
+            return PolicyResult(
+                decision=PolicyDecision.ALLOW, reason="read-only capability allowed"
+            )
         return PolicyResult(
             decision=PolicyDecision.DENY,
-            reason=f"启动迭代不允许使用此能力：{capability_id}",
+            reason=(
+                "default deny: caller, authentication, registration, risk, "
+                "or allowlist mismatch"
+            ),
         )
