@@ -5,21 +5,33 @@ Date: `2026-09-20`
 
 实现先完成全部 Fake/Runtime/PostgreSQL 工作，再使用用户配置执行真实 DeepSeek、prompt-injection/hallucination smoke 和 Browser E2E。以下 Trace 均为 sanitized metadata，不含 API Key、完整 Prompt、Chain-of-Thought 或完整 Tool Result。
 
+配套文档：[Repository Tree v0.2](repository-tree-v0.2.md)、[Test Results v0.2](test-results-v0.2.md)、[Testing Guide v0.2](testing-guide-v0.2.md)。
+
 ## 1. Files created / modified
 
-主要新增：
+新增：
 
 - `banking_api/llm/`：内部模型、Protocol、Fake Provider、OpenAI-compatible adapter
 - `banking_api/agents/minimal_banking_agent.py`
 - `banking_api/tools/`：Pydantic schema、两个 banking tools、executor
 - `banking_api/runtime/agent_runtime.py`、`task_runner.py`
 - `banking_api/mock_bank/data/*.json`
-- migration `0002_agent_task_progress.py`
-- dataset generator/validator、real smoke script
-- Fake runtime、provider、dataset、SQLite E2E、PostgreSQL integration tests
-- Frontend `TaskProgress` 与重新生成的 OpenAPI TypeScript schema
+- `migrations/versions/0002_agent_task_progress.py`
+- `scripts/generate_mock_data.py`、`validate_mock_data.py`、`smoke_agent.py`
+- `test_agent_runtime.py`、`test_agent_task_e2e.py`、`test_llm_provider.py`、`test_mock_data.py`、`test_postgres_integration.py`、`test_tool_executor.py`
+- `apps/web/features/tasks/TaskProgress.tsx`
+- v0.2 Implementation Report、Repository Tree、Test Results 和 Testing Guide
 
-主要修改：Settings、ContextBuilder、ToolRegistry、PolicyService、MockBankService、Message API、Task/Event API、Task persistence、App composition、SSE event list、Docker/Makefile/README。旧 `BootstrapRuntime` 已移除。工作区原有的 `AI Banking Agent v0.1` 删除状态属于用户既有变更，本轮未操作。
+修改：
+
+- `.env.example`、`docker-compose.yml`、`Makefile`、`README.md`
+- `pyproject.toml`、`uv.lock`、Settings 和 App composition
+- ContextBuilder、ToolRegistry、PolicyService、MockBankService
+- Message API、Task/Event API、Task persistence 和 Event transport
+- 现有 Conversation/Task/Event/API tests 与 test fixtures
+- Frontend Task item、SSE event list、页面文案与 OpenAPI TypeScript schema
+
+移除：`application/bootstrap_runtime.py`。v0.1 文档作为历史快照保留；当前文件明细见 [Repository Tree v0.2](repository-tree-v0.2.md)。
 
 ## 2. Synthetic Dataset summary
 
@@ -38,7 +50,7 @@ Date: `2026-09-20`
 
 ## 4. OpenAICompatibleProvider implementation
 
-使用轻量 `httpx` 调用 `{LLM_BASE_URL}/chat/completions`，在 adapter 内完成内部模型和 OpenAI-compatible JSON 的双向映射。`base_url`、API Key、model、timeout 全由 Settings 注入；其他模块不知道具体厂商。HTTP、协议和 response mapping failure 统一转换为 `LLMProviderError`。
+使用轻量 `httpx` 调用 `{LLM_BASE_URL}/chat/completions`，在 adapter 内完成内部模型和 OpenAI-compatible JSON 的双向映射。`base_url`、API Key、model、timeout 全由 Settings 注入；其他模块不知道具体厂商。Provider 自建 client 使用 `trust_env=false`，连接目标只由显式 base URL 决定。HTTP、client 初始化、协议和 response mapping failure 统一转换为 `LLMProviderError`。
 
 ## 5. Actual provider configuration used for smoke test
 

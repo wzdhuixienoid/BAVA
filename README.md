@@ -1,8 +1,13 @@
 # AI Banking Agent
 
-当前版本实现 `02.1 Minimal Agent Runtime Specification v0.2` 的真实 LLM 调用之前部分：Provider-neutral LLM 边界、确定性 Fake Provider、手写 Agent Loop、两个只读银行 Tool、Synthetic Banking Dataset、Policy、持久化 Task/Event、SSE 和前端任务进度。
+当前版本已完成 `02.1 Minimal Agent Runtime Specification v0.2`：Provider-neutral LLM 边界、Fake/Real Provider、手写 Agent Loop、两个只读银行 Tool、Synthetic Banking Dataset、Policy、持久化 Task/Event、SSE 和前端任务进度。真实 DeepSeek function calling、安全/幻觉 smoke 与 Browser E2E 均已验证。
 
-历史架构基线仍见 [Bootstrap Architecture Baseline v0.1](docs/architecture-baseline-v0.1.md)。本轮交付记录见 [Implementation Report v0.2](docs/implementation-report-v0.2.md)，体验与底层观察步骤见 [Testing Guide v0.2](docs/testing-guide-v0.2.md)。
+历史架构基线仍见 [Bootstrap Architecture Baseline v0.1](docs/architecture-baseline-v0.1.md)。v0.2 交付文档：
+
+- [Implementation Report v0.2](docs/implementation-report-v0.2.md)
+- [Repository Tree v0.2](docs/repository-tree-v0.2.md)
+- [Test Results v0.2](docs/test-results-v0.2.md)
+- [Testing Guide v0.2](docs/testing-guide-v0.2.md)
 
 ## Runtime 链路
 

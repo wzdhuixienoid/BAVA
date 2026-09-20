@@ -145,7 +145,6 @@ banking-agent/
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
-├── AI Banking Agent v0.1
 ├── Makefile
 ├── README.md
 ├── docker-compose.yml
