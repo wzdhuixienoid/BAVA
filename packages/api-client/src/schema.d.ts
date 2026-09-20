@@ -154,7 +154,7 @@ export interface components {
         ConversationCreate: {
             /**
              * Title
-             * @default New conversation
+             * @default 新对话
              */
             title: string;
         };

@@ -4,6 +4,12 @@ Iteration 0 是面向未来 Banking Agent 的应用骨架。它不使用 LLM 或
 
 冻结的设计说明位于：[架构基线 v0.1](docs/architecture-baseline-v0.1.md) 和 [Codex Bootstrap 规格 v0.1](docs/codex-bootstrap-v0.1.md)。
 
+交付与验收记录：
+
+- [Implementation Report v0.1](docs/implementation-report-v0.1.md)
+- [Repository Tree v0.1](docs/repository-tree-v0.1.md)
+- [Test Results v0.1](docs/test-results-v0.1.md)
+
 ## 系统架构
 
 ```text
