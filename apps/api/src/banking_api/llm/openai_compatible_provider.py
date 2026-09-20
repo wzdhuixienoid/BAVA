@@ -54,8 +54,13 @@ class OpenAICompatibleProvider:
             payload["tool_choice"] = "auto"
 
         owns_client = self._client is None
-        client = self._client or httpx.AsyncClient(timeout=self.timeout_seconds)
+        client = self._client
         try:
+            if client is None:
+                client = httpx.AsyncClient(
+                    timeout=self.timeout_seconds,
+                    trust_env=False,
+                )
             response = await client.post(
                 f"{self.base_url}/chat/completions",
                 headers={
@@ -66,10 +71,10 @@ class OpenAICompatibleProvider:
             )
             response.raise_for_status()
             return self._response_from_wire(response.json())
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+        except (httpx.HTTPError, ImportError, KeyError, IndexError, TypeError, ValueError) as exc:
             raise LLMProviderError("OpenAI-compatible provider request failed") from exc
         finally:
-            if owns_client:
+            if owns_client and client is not None:
                 await client.aclose()
 
     @staticmethod

@@ -13,7 +13,7 @@ export function MessageList({ messages }: { messages: Message[] }) {
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-6">
       {messages.length === 0 && (
         <div className="m-auto max-w-md text-center text-sm text-slate-500">
-          发送一条消息。确定性的启动运行时会在不使用大模型的情况下回复你。
+          试试询问“我有哪些账户？”或“我的工资卡余额是多少？”。
         </div>
       )}
       {messages.map((message) => {

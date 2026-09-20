@@ -2,7 +2,7 @@
 
 当前版本实现 `02.1 Minimal Agent Runtime Specification v0.2` 的真实 LLM 调用之前部分：Provider-neutral LLM 边界、确定性 Fake Provider、手写 Agent Loop、两个只读银行 Tool、Synthetic Banking Dataset、Policy、持久化 Task/Event、SSE 和前端任务进度。
 
-历史架构基线仍见 [Bootstrap Architecture Baseline v0.1](docs/architecture-baseline-v0.1.md)。本轮交付记录见 [Implementation Report v0.2](docs/implementation-report-v0.2.md)。
+历史架构基线仍见 [Bootstrap Architecture Baseline v0.1](docs/architecture-baseline-v0.1.md)。本轮交付记录见 [Implementation Report v0.2](docs/implementation-report-v0.2.md)，体验与底层观察步骤见 [Testing Guide v0.2](docs/testing-guide-v0.2.md)。
 
 ## Runtime 链路
 
@@ -113,7 +113,7 @@ pnpm web:typecheck
 pnpm web:build
 ```
 
-配置真实 Provider 后，显式运行 smoke（不会输出 API Key）：
+真实 DeepSeek function-calling 已完成验证。显式重跑 smoke（不会输出 API Key）：
 
 ```bash
 make agent-smoke
@@ -137,7 +137,7 @@ GET /api/v1/tasks/{task_id}/events
 
 ## 当前边界
 
-- 真实 DeepSeek smoke 尚未执行，等待用户写入 `LLM_*` 配置。
+- OpenAI-compatible adapter 的自建 HTTP client 不继承系统代理变量；连接目标完全由 `LLM_BASE_URL` 决定。
 - Authentication 仍是固定开发身份。
 - Task 在 API 进程内异步运行，进程退出后暂不恢复未完成任务。
 - SSE 暂未实现 `Last-Event-ID` replay，前端通过资源 API 恢复状态。

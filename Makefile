@@ -29,7 +29,7 @@ api-generate:
 	pnpm api:generate
 
 agent-smoke:
-	cd apps/api && uv run python ../../scripts/smoke_agent.py
+	uv run --project apps/api python scripts/smoke_agent.py
 
 postgres-test:
 	cd apps/api && uv run pytest -m postgres

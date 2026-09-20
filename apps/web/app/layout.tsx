@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI 银行助理 — 启动骨架",
-  description: "AI 银行助理应用骨架",
+  title: "AI 银行助理 — Minimal Agent Runtime",
+  description: "支持账户列表与余额查询的只读 AI 银行助理",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
