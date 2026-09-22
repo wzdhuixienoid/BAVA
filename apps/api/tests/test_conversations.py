@@ -26,4 +26,6 @@ async def test_message_is_persisted_and_creates_task(client) -> None:
     assert loaded.json()["messages"][1]["content"] == "已收到你的消息。"
     tasks = await client.get(f"/api/v1/tasks?conversation_id={conversation_id}")
     assert len(tasks.json()) == 1
-    assert tasks.json()[0]["task_type"] == "MINIMAL_AGENT_RUN"
+    assert tasks.json()[0]["task_type"] == "BANKING_REQUEST"
+    assert tasks.json()[0]["executor_type"] == "AGENT"
+    assert tasks.json()[0]["executor_id"] == "agent:minimal-banking"

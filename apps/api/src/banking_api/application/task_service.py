@@ -21,6 +21,8 @@ def to_task(model) -> Task:  # type: ignore[no-untyped-def]
         conversation_id=model.conversation_id,
         task_type=model.task_type,
         runtime_backend=model.runtime_backend,
+        executor_type=model.executor_type,
+        executor_id=model.executor_id,
         status=model.status,
         input=model.input_json,
         output=model.output_json,

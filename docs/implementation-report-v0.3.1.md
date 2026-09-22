@@ -37,7 +37,7 @@ Status: `IMPLEMENTED AND VERIFIED`
 
 Spending 只包含 `status=POSTED`、`direction=DEBIT`、`category != TRANSFER` 的交易。房租、餐饮、通勤、水电通信、订阅、购物、旅行等均计入。内部转账 debit 不计入 Spending。
 
-Income 为有效 `CREDIT`；按当前规格的字面定义，没有额外排除 `TRANSFER` credit，因此 7 月 `total_income=28800.00`。
+v0.3.2 语义修正：Income 为有效 `CREDIT` 且 `category != TRANSFER`，因此 7 月 `total_income=23800.00`。这条修正取代本报告初版对 Transfer Credit 的处理。
 
 ## 4. Transaction status rules
 
@@ -64,7 +64,7 @@ Income 为有效 `CREDIT`；按当前规格的字面定义，没有额外排除 
 
 | Period | Income | Spending | Income tx | Spending tx |
 |---|---:|---:|---:|---:|
-| 2026-07 | 28800.00 | 9333.20 | 2 | 33 |
+| 2026-07 | 23800.00 | 9333.20 | 1 | 33 |
 | 2026-08 | 23800.00 | 16547.30 | 1 | 45 |
 
 8 月 breakdown：HOUSING `6200.00`，SHOPPING `4345.00`，TRAVEL `4260.00`，FOOD `1005.30`，UTILITIES `269.00`，SUBSCRIPTION `149.00`，ENTERTAINMENT `136.00`，TRANSPORT `128.00`，OTHER `55.00`。
@@ -111,5 +111,5 @@ TRAVEL:   0    -> 4260.00; absolute +4260.00; percentage null
 
 ## 13. Architecture questions
 
-- 未来版本需明确 total income 是否也应默认排除 internal `TRANSFER` credit；v0.3.1 严格按当前规格，只对 Spending 排除 TRANSFER。
+- v0.3.2 已明确 total income 排除 internal `TRANSFER` credit。
 - 真实多币种业务需先定义 FX source、valuation timestamp 和 rounding policy，本轮明确 fail closed。

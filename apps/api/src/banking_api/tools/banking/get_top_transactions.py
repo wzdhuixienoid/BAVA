@@ -1,7 +1,7 @@
+from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
 from banking_api.domain.enums import RiskLevel
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.financial.models import TopTransactions, TopTransactionsInput
-from banking_api.tools.banking.get_spending_summary import FINANCIAL_ANALYSIS_AGENT_ID
 from banking_api.tools.models import ToolSpec
 
 
@@ -16,7 +16,9 @@ def build_get_top_transactions_tool(analytics: FinancialAnalyticsService) -> Too
     return ToolSpec(
         capability_id="transaction.top_transactions",
         name="get_top_transactions",
-        description="Return a bounded deterministic ranking of monthly spending transactions.",
+        description=(
+            "返回指定自然月金额最高的消费交易，结果按金额确定性排序，Top N 最多 20 条。"
+        ),
         input_model=TopTransactionsInput,
         output_model=TopTransactions,
         risk_level=RiskLevel.R1_PRIVATE_READ,

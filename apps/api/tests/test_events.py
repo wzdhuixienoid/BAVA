@@ -25,6 +25,7 @@ async def test_task_events_are_durable_and_sequenced(client, app) -> None:
         "task.created",
         "task.started",
         "task.progress",
+        "request.routed",
         "agent.run.started",
         "llm.request.started",
         "llm.request.completed",

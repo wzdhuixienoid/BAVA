@@ -70,8 +70,11 @@ def test_july_to_august_comparison_matches_committed_golden_exactly() -> None:
 
 
 def test_golden_rules_pin_posted_status_and_transfer_exclusion() -> None:
-    rules = load_golden()["calculation_rules"]
+    golden = load_golden()
+    rules = golden["calculation_rules"]
 
+    assert golden["fixture_version"] == "0.3.2"
     assert rules["valid_transaction_statuses"] == ["POSTED"]
     assert rules["excluded_spending_categories"] == ["TRANSFER"]
+    assert rules["excluded_income_categories"] == ["TRANSFER"]
     assert rules["money_type"] == "Decimal"

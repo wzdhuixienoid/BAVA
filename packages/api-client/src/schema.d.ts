@@ -227,6 +227,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * ExecutorType
+         * @enum {string}
+         */
+        ExecutorType: "AGENT";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -301,6 +306,9 @@ export interface components {
             /** Task Type */
             task_type: string;
             runtime_backend: components["schemas"]["RuntimeBackend"];
+            executor_type: components["schemas"]["ExecutorType"] | null;
+            /** Executor Id */
+            executor_id: string | null;
             status: components["schemas"]["TaskStatus"];
             /** Input */
             input: {

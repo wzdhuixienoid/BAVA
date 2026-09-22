@@ -1,11 +1,15 @@
 {
-  "fixture_version": "0.3.1",
+  "fixture_version": "0.3.2",
   "calculation_rules": {
     "valid_transaction_statuses": [
       "POSTED"
     ],
     "spending_direction": "DEBIT",
     "excluded_spending_categories": [
+      "TRANSFER"
+    ],
+    "income_direction": "CREDIT",
+    "excluded_income_categories": [
       "TRANSFER"
     ],
     "money_type": "Decimal",
@@ -15,9 +19,9 @@
     "2026-07": {
       "summary": {
         "period": "2026-07",
-        "total_income": "28800.00",
+        "total_income": "23800.00",
         "total_spending": "9333.20",
-        "income_transaction_count": 2,
+        "income_transaction_count": 1,
         "spending_transaction_count": 33,
         "currency": "CNY"
       },

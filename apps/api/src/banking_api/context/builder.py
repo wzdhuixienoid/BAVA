@@ -1,4 +1,4 @@
-from banking_api.agents.minimal_banking_agent import AgentDefinition
+from banking_api.agents.models import AgentDefinition
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
 from banking_api.llm.models import LLMMessage, LLMRequest, LLMToolDefinition

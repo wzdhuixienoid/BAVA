@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from banking_api.domain.enums import RuntimeBackend, TaskStatus
+from banking_api.domain.enums import ExecutorType, RuntimeBackend, TaskStatus
 
 
 class Task(BaseModel):
@@ -14,6 +14,8 @@ class Task(BaseModel):
     conversation_id: UUID
     task_type: str
     runtime_backend: RuntimeBackend
+    executor_type: ExecutorType | None
+    executor_id: str | None
     status: TaskStatus
     input: dict[str, Any]
     output: dict[str, Any] | None

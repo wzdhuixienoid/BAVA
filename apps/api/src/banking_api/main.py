@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
@@ -15,7 +16,9 @@ from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import session_factory
 from banking_api.policy.service import PolicyService
+from banking_api.registries.agent_registry import AgentRegistry
 from banking_api.registries.tool_registry import ToolRegistry
+from banking_api.routing.request_router import RequestRouter
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.langgraph.checkpoint import LangGraphCheckpointManager
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
@@ -59,7 +62,6 @@ def create_app() -> FastAPI:
                     registry=registry,
                     executor=executor,
                     context_builder=ContextBuilder(),
-                    agent=MINIMAL_BANKING_AGENT,
                     checkpointer=checkpointer,
                     max_steps=settings.agent_max_steps,
                     max_tool_calls=settings.agent_max_tool_calls,
@@ -76,7 +78,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.3.1",
+        version="0.3.2",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -104,6 +106,10 @@ def create_app() -> FastAPI:
     registry.register(build_compare_spending_periods_tool(analytics))
     registry.register(build_get_top_transactions_tool(analytics))
     executor = ToolExecutor(registry, PolicyService())
+    agent_registry = AgentRegistry()
+    agent_registry.register(MINIMAL_BANKING_AGENT)
+    agent_registry.register(FINANCIAL_ANALYSIS_AGENT)
+    router = RequestRouter(provider)
     manual_runtime = ManualAgentRuntime(
         provider=provider,
         registry=registry,
@@ -116,12 +122,16 @@ def create_app() -> FastAPI:
     runtime_factory.register(RuntimeBackend.MANUAL, manual_runtime)
     application.state.event_bus = bus
     application.state.tool_registry = registry
+    application.state.agent_registry = agent_registry
+    application.state.request_router = router
     application.state.runtime_factory = runtime_factory
     application.state.task_runner = InProcessTaskRunner(
         session_factory,
         bus,
         runtime_factory,
         default_backend=settings.agent_runtime,
+        router=router,
+        agent_registry=agent_registry,
     )
     application.include_router(health_router)
     application.include_router(api_router)

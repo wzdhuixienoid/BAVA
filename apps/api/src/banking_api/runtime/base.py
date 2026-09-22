@@ -4,10 +4,22 @@ from enum import StrEnum
 from typing import Any, Protocol
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict, Field
+
+from banking_api.agents.models import AgentDefinition
 from banking_api.domain.message import Message
 from banking_api.llm.models import LLMMessage
 
 RuntimeEventSink = Callable[[str, dict[str, Any]], Awaitable[None]]
+
+
+class SuccessfulToolResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    capability_id: str
+    tool_name: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    output: dict[str, Any] = Field(default_factory=dict)
 
 
 class AgentRunStatus(StrEnum):
@@ -23,6 +35,7 @@ class AgentRunState:
     step_count: int = 0
     tool_call_count: int = 0
     runtime_messages: list[LLMMessage] = field(default_factory=list)
+    successful_tool_results: list[SuccessfulToolResult] = field(default_factory=list)
     status: AgentRunStatus = AgentRunStatus.RUNNING
 
 
@@ -33,6 +46,7 @@ class AgentRunRequest:
     current_task: str
     conversation_messages: list[Message]
     authenticated: bool
+    agent: AgentDefinition | None = None
     caller: str | None = None
     event_sink: RuntimeEventSink | None = None
 

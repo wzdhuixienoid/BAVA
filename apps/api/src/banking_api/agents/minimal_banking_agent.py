@@ -1,12 +1,4 @@
-from dataclasses import dataclass
-
-
-@dataclass(frozen=True)
-class AgentDefinition:
-    agent_id: str
-    instructions: str
-    allowed_capabilities: frozenset[str]
-
+from banking_api.agents.models import AgentDefinition
 
 MINIMAL_BANKING_AGENT = AgentDefinition(
     agent_id="agent:minimal-banking",

@@ -4,7 +4,7 @@ from typing import Any, Literal, cast
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
-from banking_api.agents.minimal_banking_agent import AgentDefinition
+from banking_api.agents.models import AgentDefinition
 from banking_api.context.builder import ContextBuilder
 from banking_api.llm.models import LLMMessage, LLMToolCall
 from banking_api.llm.provider import LLMProvider, LLMProviderError
@@ -15,6 +15,7 @@ from banking_api.runtime.base import (
     AgentRunState,
     AgentRunStatus,
     AgentRuntimeError,
+    SuccessfulToolResult,
     ignore_runtime_event,
 )
 from banking_api.runtime.langgraph.state import BankingAgentGraphState
@@ -34,7 +35,7 @@ class LangGraphAgentRuntime:
         registry: ToolRegistry,
         executor: ToolExecutor,
         context_builder: ContextBuilder,
-        agent: AgentDefinition,
+        agent: AgentDefinition | None = None,
         checkpointer: BaseCheckpointSaver,
         max_steps: int = 6,
         max_tool_calls: int = 4,
@@ -70,15 +71,20 @@ class LangGraphAgentRuntime:
         interrupt_after_tool: bool,
     ) -> BankingAgentGraphState:
         sink = request.event_sink or ignore_runtime_event
+        agent = self._resolve_agent(request)
         await sink(
             "agent.run.started",
             {
-                "agent_id": self.agent.agent_id,
+                "agent_id": agent.agent_id,
                 "max_steps": self.max_steps,
                 "max_tool_calls": self.max_tool_calls,
             },
         )
-        graph = self._build_graph(request, interrupt_after_tool=interrupt_after_tool)
+        graph = self._build_graph(
+            request,
+            agent=agent,
+            interrupt_after_tool=interrupt_after_tool,
+        )
         config = {"configurable": {"thread_id": str(request.task_id)}}
         initial: BankingAgentGraphState | None
         if resume:
@@ -87,20 +93,28 @@ class LangGraphAgentRuntime:
             initial = {
                 "task_id": str(request.task_id),
                 "conversation_id": str(request.conversation_id),
+                "agent_id": agent.agent_id,
                 "runtime_messages": [],
                 "step_count": 0,
                 "tool_call_count": 0,
                 "pending_tool_calls": [],
+                "successful_tool_results": [],
                 "final_answer": None,
                 "error": None,
             }
         result = await graph.ainvoke(initial, config=config)
         return cast(BankingAgentGraphState, result)
 
-    def _build_graph(self, request: AgentRunRequest, *, interrupt_after_tool: bool):
+    def _build_graph(
+        self,
+        request: AgentRunRequest,
+        *,
+        agent: AgentDefinition,
+        interrupt_after_tool: bool,
+    ):
         sink = request.event_sink or ignore_runtime_event
-        allowed_tools = self.registry.resolve(self.agent.allowed_capabilities)
-        effective_caller = request.caller or self.agent.agent_id
+        allowed_tools = self.registry.resolve(agent.allowed_capabilities)
+        effective_caller = request.caller or agent.agent_id
 
         async def llm_node(state: BankingAgentGraphState) -> dict[str, Any]:
             if state["step_count"] >= self.max_steps:
@@ -114,7 +128,7 @@ class LangGraphAgentRuntime:
                 LLMMessage.model_validate(item) for item in state["runtime_messages"]
             ]
             llm_request = self.context_builder.build(
-                agent=self.agent,
+                agent=agent,
                 current_task=request.current_task,
                 conversation_messages=request.conversation_messages,
                 runtime_messages=runtime_messages,
@@ -181,6 +195,7 @@ class LangGraphAgentRuntime:
         async def tool_node(state: BankingAgentGraphState) -> dict[str, Any]:
             messages = list(state["runtime_messages"])
             tool_call_count = state["tool_call_count"]
+            successful_tool_results = list(state["successful_tool_results"])
             for raw_call in state["pending_tool_calls"]:
                 call = LLMToolCall.model_validate(raw_call)
                 if tool_call_count >= self.max_tool_calls:
@@ -209,7 +224,7 @@ class LangGraphAgentRuntime:
                     arguments=call.arguments,
                     caller=effective_caller,
                     authenticated=request.authenticated,
-                    agent_allowlist=self.agent.allowed_capabilities,
+                    agent_allowlist=agent.allowed_capabilities,
                 )
                 metadata: dict[str, Any] = {
                     "tool_name": call.name,
@@ -222,6 +237,22 @@ class LangGraphAgentRuntime:
                     if isinstance(accounts, list):
                         metadata["item_count"] = len(accounts)
                     await sink("tool.call.completed", metadata)
+                    spec = self.registry.get_by_name(call.name)
+                    sanitized_arguments = (
+                        spec.input_model.model_validate(call.arguments).model_dump(
+                            mode="json", exclude_none=True
+                        )
+                        if spec is not None
+                        else {}
+                    )
+                    successful_tool_results.append(
+                        SuccessfulToolResult(
+                            capability_id=result.capability_id or "",
+                            tool_name=call.name,
+                            arguments=sanitized_arguments,
+                            output=dict(result.output or {}),
+                        ).model_dump(mode="json")
+                    )
                 else:
                     metadata["error_code"] = (
                         result.error.code.value if result.error is not None else None
@@ -252,6 +283,7 @@ class LangGraphAgentRuntime:
                 "runtime_messages": messages,
                 "tool_call_count": tool_call_count,
                 "pending_tool_calls": [],
+                "successful_tool_results": successful_tool_results,
             }
 
         def after_llm(
@@ -275,7 +307,7 @@ class LangGraphAgentRuntime:
         return builder.compile(
             checkpointer=self.checkpointer,
             interrupt_after=["tool"] if interrupt_after_tool else None,
-            name="minimal-banking-agent",
+            name="banking-specialist-agent",
         )
 
     async def _finish(
@@ -289,6 +321,10 @@ class LangGraphAgentRuntime:
             tool_call_count=graph_state["tool_call_count"],
             runtime_messages=[
                 LLMMessage.model_validate(item) for item in graph_state["runtime_messages"]
+            ],
+            successful_tool_results=[
+                SuccessfulToolResult.model_validate(item)
+                for item in graph_state["successful_tool_results"]
             ],
         )
         if graph_state["error"] is not None:
@@ -320,6 +356,15 @@ class LangGraphAgentRuntime:
             {"steps": state.step_count, "tool_calls": state.tool_call_count},
         )
         return AgentRunResult(answer=graph_state["final_answer"], state=state)
+
+    def _resolve_agent(self, request: AgentRunRequest) -> AgentDefinition:
+        agent = request.agent or self.agent
+        if agent is None:
+            raise AgentRuntimeError(
+                "AGENT_NOT_SELECTED",
+                "LangGraph runtime requires an AgentDefinition",
+            )
+        return agent
 
     @staticmethod
     def _error(

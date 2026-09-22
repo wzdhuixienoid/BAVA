@@ -69,8 +69,20 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             )
         ).scalar()
-        assert revision == "0003"
+        executor_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'tasks' "
+                        "AND column_name IN ('executor_type', 'executor_id')"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0004"
         assert progress_column == "progress_message"
+        assert executor_columns == {"executor_type", "executor_id"}
         conversation = await ConversationService(session, bus).create(
             user_id="postgres-test-user", title="PostgreSQL Agent E2E"
         )
@@ -132,13 +144,15 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             ).scalars()
         )
 
-    assert task.task_type == "MINIMAL_AGENT_RUN"
+    assert task.task_type == "BANKING_REQUEST"
     assert task.runtime_backend is RuntimeBackend.MANUAL
+    assert task.executor_id == "agent:minimal-banking"
     assert task.status is TaskStatus.COMPLETED
-    assert task.version == 7
+    assert task.version == 8
     assert isinstance(task.input, dict)
     assert task.output == {
-        "message_id": str(detail.messages[-1].message_id),
+        "agent_id": "agent:minimal-banking",
+        "assistant_message_id": str(detail.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
     }

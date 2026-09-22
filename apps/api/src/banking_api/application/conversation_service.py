@@ -11,7 +11,7 @@ from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
 
-MINIMAL_AGENT_TASK_TYPE = "MINIMAL_AGENT_RUN"
+BANKING_REQUEST_TASK_TYPE = "BANKING_REQUEST"
 
 
 class ConversationNotFoundError(Exception):
@@ -72,7 +72,7 @@ class ConversationService:
         )
         task = await self.tasks.create(
             conversation_id=conversation_id,
-            task_type=MINIMAL_AGENT_TASK_TYPE,
+            task_type=BANKING_REQUEST_TASK_TYPE,
             input_data={"message_id": str(message.message_id), "request_id": str(request_id)},
             runtime_backend=self.runtime_backend,
         )

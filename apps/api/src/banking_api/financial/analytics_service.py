@@ -33,7 +33,11 @@ class FinancialAnalyticsService:
     ) -> SpendingSummary:
         transactions = self._period_transactions(month, account_ids)
         currency = self._single_currency(transactions)
-        income = [item for item in transactions if item["direction"] == "CREDIT"]
+        income = [
+            item
+            for item in transactions
+            if item["direction"] == "CREDIT" and item["category"] != TRANSFER_CATEGORY
+        ]
         spending = [item for item in transactions if self._is_spending(item)]
         return SpendingSummary(
             period=month,

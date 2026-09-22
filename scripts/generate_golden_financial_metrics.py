@@ -55,7 +55,11 @@ def decimal_string(value: Decimal) -> str:
 
 def monthly_metrics(rows: list[dict[str, Any]], month: str) -> dict[str, Any]:
     period = [item for item in rows if valid(item) and in_month(item, month)]
-    income = [item for item in period if item["direction"] == "CREDIT"]
+    income = [
+        item
+        for item in period
+        if item["direction"] == "CREDIT" and item["category"] != "TRANSFER"
+    ]
     spent = [item for item in period if spending(item)]
     total = sum((amount(item) for item in spent), ZERO)
     category_amounts: dict[str, Decimal] = defaultdict(lambda: ZERO)
@@ -172,11 +176,13 @@ def build_fixture() -> dict[str, Any]:
     july = monthly_metrics(rows, "2026-07")
     august = monthly_metrics(rows, "2026-08")
     return {
-        "fixture_version": "0.3.1",
+        "fixture_version": "0.3.2",
         "calculation_rules": {
             "valid_transaction_statuses": sorted(VALID_STATUSES),
             "spending_direction": "DEBIT",
             "excluded_spending_categories": ["TRANSFER"],
+            "income_direction": "CREDIT",
+            "excluded_income_categories": ["TRANSFER"],
             "money_type": "Decimal",
             "period_interval": "left-closed, right-open calendar month",
         },

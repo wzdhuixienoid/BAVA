@@ -73,9 +73,9 @@ def test_monthly_summary_separates_income_and_spending_and_excludes_transfer(
 ) -> None:
     result = analytics.spending_summary("2026-07")
 
-    assert result.total_income == Decimal("28800.00")
+    assert result.total_income == Decimal("23800.00")
     assert result.total_spending == Decimal("9333.20")
-    assert result.income_transaction_count == 2
+    assert result.income_transaction_count == 1
     assert result.spending_transaction_count == 33
     assert result.currency == "CNY"
     raw_debits = [

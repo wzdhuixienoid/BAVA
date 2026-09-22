@@ -63,3 +63,7 @@ class RiskLevel(StrEnum):
 class RuntimeBackend(StrEnum):
     MANUAL = "manual"
     LANGGRAPH = "langgraph"
+
+
+class ExecutorType(StrEnum):
+    AGENT = "AGENT"

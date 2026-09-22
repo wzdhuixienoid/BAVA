@@ -17,7 +17,9 @@ async def test_runtime_transitions_task_to_completed(client) -> None:
     task = await client.get(f"/api/v1/tasks/{task_id}")
     assert task.status_code == 200
     assert task.json()["status"] == "COMPLETED"
-    assert task.json()["version"] == 3
+    assert task.json()["version"] == 4
+    assert task.json()["executor_type"] == "AGENT"
+    assert task.json()["executor_id"] == "agent:minimal-banking"
 
 
 async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
@@ -41,7 +43,7 @@ async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
             UUID(str(accepted.task_id)), user_id="dev-user-001"
         )
         assert task.status is TaskStatus.FAILED
-        assert task.version == 3
+        assert task.version == 4
         assert task.error == {
             "category": "EXTERNAL",
             "code": "LLM_PROVIDER_ERROR",

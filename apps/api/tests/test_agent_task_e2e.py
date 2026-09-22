@@ -62,11 +62,13 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
 
     assert task.status is TaskStatus.COMPLETED
     assert task.output == {
-        "message_id": str(loaded.messages[-1].message_id),
+        "agent_id": "agent:minimal-banking",
+        "assistant_message_id": str(loaded.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
     }
-    assert task.version == 7
+    assert task.version == 8
+    assert task.executor_id == "agent:minimal-banking"
     assert loaded.messages[-1].content == "工资卡余额为 23,864.52 元。"
     assert [event.event_type for event in event_rows].count("tool.call.completed") == 2
     assert all("23864.52" not in str(event.data_json) for event in event_rows)

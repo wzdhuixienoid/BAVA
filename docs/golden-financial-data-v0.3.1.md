@@ -1,6 +1,6 @@
 # Golden Financial Data v0.3.1
 
-Status: `COMMITTED FIXTURE`
+Status: `SUPERSEDED BY v0.3.2 INCOME SEMANTIC CORRECTION`
 
 本文档记录 `mock_bank/data/golden_financial_metrics.json` 的人工可审阅摘要。Fixture 由一次性独立 reference script `scripts/generate_golden_financial_metrics.py` 生成后固定提交；production tests 只读取固定 fixture 并与 `FinancialAnalyticsService` 的实际计算结果精确比较，不在测试期间重新生成 expected values。
 
@@ -8,7 +8,7 @@ Status: `COMMITTED FIXTURE`
 
 - Period 是 `YYYY-MM` 自然月，区间左闭右开。
 - 有效 status 只有 `POSTED`。
-- Income 是有效 `CREDIT`。因此 7 月收入包含 `23800.00` 工资和 `5000.00` 账户间转入。
+- v0.3.2 起 Income 是有效 `CREDIT` 且 `category != TRANSFER`；内部转入不解释为收入。
 - Spending 是有效 `DEBIT` 且 `category != TRANSFER`。
 - 全部金额使用 `Decimal`，不使用 `float`。
 - 当前 Golden 数据币种是 `CNY`，不做汇率换算。
@@ -18,7 +18,7 @@ Status: `COMMITTED FIXTURE`
 
 | Period | Total income | Total spending | Income count | Spending count |
 |---|---:|---:|---:|---:|
-| 2026-07 | 28800.00 | 9333.20 | 2 | 33 |
+| 2026-07 | 23800.00 | 9333.20 | 1 | 33 |
 | 2026-08 | 23800.00 | 16547.30 | 1 | 45 |
 
 7 月 raw posted debit 总额是 `14333.20`，其中 `5000.00` 是账户间 `TRANSFER`；Golden Spending 为 `9333.20`，明确验证内部转账未计入消费。

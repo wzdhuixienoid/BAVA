@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from banking_api.domain.enums import RuntimeBackend, TaskStatus
+from banking_api.domain.enums import ExecutorType, RuntimeBackend, TaskStatus
 from banking_api.persistence.models import ConversationModel, TaskModel
 
 
@@ -83,6 +83,19 @@ class TaskRepository:
 
     async def update_progress(self, task: TaskModel, message: str) -> TaskModel:
         task.progress_message = message
+        task.version += 1
+        await self.session.flush()
+        return task
+
+    async def assign_executor(
+        self,
+        task: TaskModel,
+        *,
+        executor_type: ExecutorType,
+        executor_id: str,
+    ) -> TaskModel:
+        task.executor_type = executor_type
+        task.executor_id = executor_id
         task.version += 1
         await self.session.flush()
         return task
