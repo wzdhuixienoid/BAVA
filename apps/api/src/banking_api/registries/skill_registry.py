@@ -1,15 +1,17 @@
-from typing import Any
+from banking_api.skills.models import SkillDefinition
 
 
 class SkillRegistry:
     def __init__(self) -> None:
-        self._items: dict[str, Any] = {}
+        self._items: dict[str, SkillDefinition] = {}
 
-    def register(self, skill_id: str, skill: Any) -> None:
-        if skill_id in self._items:
-            raise ValueError(f"Skill already registered: {skill_id}")
-        self._items[skill_id] = skill
+    def register(self, skill: SkillDefinition) -> None:
+        if skill.skill_id in self._items:
+            raise ValueError(f"Skill already registered: {skill.skill_id}")
+        self._items[skill.skill_id] = skill
 
-    def get(self, skill_id: str) -> Any | None:
+    def get(self, skill_id: str) -> SkillDefinition | None:
         return self._items.get(skill_id)
 
+    def all(self) -> tuple[SkillDefinition, ...]:
+        return tuple(self._items.values())

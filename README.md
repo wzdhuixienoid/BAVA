@@ -2,16 +2,21 @@
 
 注意：产品主要面向的是中文用户，description 和 前端页面以中文为主。
 
-当前版本已完成 `03.2 FinancialAnalysisAgent & Routing v0.3.2`。产品 Runtime 为 `LangGraphAgentRuntime`，`ManualAgentRuntime` 仅保留为 reference，本轮未修改。RequestRouter 先将用户请求分类为账户/余额、消费分析或不支持，再选择最小银行 Agent 或 FinancialAnalysisAgent。金融数字仍全部由 `Decimal` 确定性工具计算，LLM 只选择数据并组织解释。
+当前版本已完成 `03.3 MonthlySpendingReportSkill v0.3.3`。在 v0.3.2 的 RequestRouter、FinancialAnalysisAgent 和确定性 Financial Tools 之上，新增第一个正式 Skill：它只消费 `FinancialAnalysisSnapshot`，由 Python 构建精确数值核心与展示字段，LLM 只生成不含数字且可验证 evidence refs 的文字洞察。产品聊天流程仍停留在 v0.3.2，不会自动调用 Skill。
 
 当前交付文档：
+
+- [Implementation Report v0.3.3](docs/implementation-report-v0.3.3.md)
+- [Repository Tree v0.3.3](docs/repository-tree-v0.3.3.md)
+- [Test Results v0.3.3](docs/test-results-v0.3.3.md)
+- [Golden Monthly Report v0.3.3](docs/golden-monthly-report-v0.3.3.md)
+
+历史文档：
 
 - [Implementation Report v0.3.2](docs/implementation-report-v0.3.2.md)
 - [Repository Tree v0.3.2](docs/repository-tree-v0.3.2.md)
 - [Test Results v0.3.2](docs/test-results-v0.3.2.md)
 - [Golden Financial Data v0.3.2](docs/golden-financial-data-v0.3.2.md)
-
-历史文档：
 
 - [Implementation Report v0.3.1](docs/implementation-report-v0.3.1.md)
 - [Repository Tree v0.3.1](docs/repository-tree-v0.3.1.md)
@@ -69,6 +74,20 @@ LangGraph 只替换 Agent loop 的 state/routing/checkpoint orchestration，不�
 > Financial Agents should receive deterministic summaries by default, not full transaction history.
 
 四个 Tool 只返回聚合结果或 `1..20` 条 Top N，不向 LLM 暴露整月 raw transaction history。
+
+## Monthly spending report boundary
+
+`skill:monthly-spending-report` version `1` 是当前唯一注册的 Skill，执行路径为：
+
+```text
+FinancialAnalysisSnapshot
+    → deterministic report core + ReportFormatter
+    → LLM headline / insights (tools=[])
+    → Pydantic + evidence + numeric-leak validation
+    → MonthlySpendingReport
+```
+
+Skill 不接受 raw transactions、Conversation history 或自然语言交易列表，也不调用任何 Tool。金额、占比、环比、排序和展示四舍五入均由 Python 处理，原始 `Decimal` 值在报告中保留。缺少 comparison 或 Top N 时会显式标记 `PARTIAL`；缺少 summary、category 或必要 tool evidence 时 fail closed。
 
 ## 配置
 
@@ -154,6 +173,14 @@ LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/ba
 
 该脚本覆盖账户列表、8 月全账户消费分析和工资卡过滤分析；只输出脱敏路由、Tool evidence 摘要和用户回答，不输出 API Key 或 Chain-of-Thought。
 
+v0.3.3 MonthlySpendingReportSkill 真实 Provider smoke：
+
+```bash
+uv run --project apps/api python scripts/smoke_monthly_report_skill.py
+```
+
+该脚本使用 committed Golden Snapshot，验证 deterministic core 全等、narrative grounding、无 Tool Call 与无数字泄漏。
+
 前端验证：
 
 ```bash
@@ -174,4 +201,4 @@ Trace 显示 `runtime_backend`、`checkpoint_enabled`、LLM step 和脱敏 Tool 
 
 `02.2 realtime event transport currently assumes a single API process.`
 
-当前不实现 Retry/Resume Task API、Human-in-the-loop、Skill、Report、Chart、raw transaction search、Memory、RAG、MCP、Redis、Celery、Agent-to-Agent 调用、Planner 或任何写操作。
+当前不实现 Skill 自动聊天接入、Reports 数据库/API/UI、Chart、PDF、raw transaction search、anomaly detection、Memory、RAG、MCP、Planner、Agent-to-Agent 调用或任何写操作。

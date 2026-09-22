@@ -17,6 +17,7 @@ from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import session_factory
 from banking_api.policy.service import PolicyService
 from banking_api.registries.agent_registry import AgentRegistry
+from banking_api.registries.skill_registry import SkillRegistry
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.routing.request_router import RequestRouter
 from banking_api.runtime.event_bus import EventBus
@@ -26,6 +27,7 @@ from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
+from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import (
     build_compare_spending_periods_tool,
     build_get_balance_tool,
@@ -78,7 +80,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.3.2",
+        version="0.3.3",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -109,6 +111,8 @@ def create_app() -> FastAPI:
     agent_registry = AgentRegistry()
     agent_registry.register(MINIMAL_BANKING_AGENT)
     agent_registry.register(FINANCIAL_ANALYSIS_AGENT)
+    skill_registry = SkillRegistry()
+    skill_registry.register(MonthlySpendingReportSkill.definition)
     router = RequestRouter(provider)
     manual_runtime = ManualAgentRuntime(
         provider=provider,
@@ -123,6 +127,7 @@ def create_app() -> FastAPI:
     application.state.event_bus = bus
     application.state.tool_registry = registry
     application.state.agent_registry = agent_registry
+    application.state.skill_registry = skill_registry
     application.state.request_router = router
     application.state.runtime_factory = runtime_factory
     application.state.task_runner = InProcessTaskRunner(
