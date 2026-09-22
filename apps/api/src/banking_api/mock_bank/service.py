@@ -16,6 +16,9 @@ class MockBankService:
         self._accounts: list[dict[str, Any]] = json.loads(
             (directory / "accounts.json").read_text(encoding="utf-8")
         )
+        self._transactions: list[dict[str, Any]] = json.loads(
+            (directory / "transactions.json").read_text(encoding="utf-8")
+        )
 
     def list_accounts(self) -> list[dict[str, Any]]:
         return [
@@ -43,3 +46,7 @@ class MockBankService:
             "currency": account["currency"],
             "balance": Decimal(account["balance"]),
         }
+
+    def list_transactions(self) -> list[dict[str, Any]]:
+        """Return copies of synthetic transactions for internal domain services."""
+        return [dict(item) for item in self._transactions]

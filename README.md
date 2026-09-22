@@ -1,8 +1,15 @@
 # AI Banking Agent
 
-当前版本已完成 `02.2 LangGraph Refactor & Runtime Hardening v0.2.2`。系统同时保留 `ManualAgentRuntime` 和直接基于 `StateGraph` 的 `LangGraphAgentRuntime`，两者共用 Provider、ContextBuilder、Tool Registry、Policy 和 ToolExecutor。业务能力仍只有账户列表和余额查询。
+当前版本已完成 `03.1 Financial Data & Deterministic Analytics v0.3.1`。产品 Runtime 仍为 `LangGraphAgentRuntime`，`ManualAgentRuntime` 仅保留为 reference，本轮未修改。在现有账户列表和余额查询之外，新增了四个基于提交到仓库的 Synthetic Transactions 的确定性财务分析能力。
 
-交付文档：
+当前交付文档：
+
+- [Implementation Report v0.3.1](docs/implementation-report-v0.3.1.md)
+- [Repository Tree v0.3.1](docs/repository-tree-v0.3.1.md)
+- [Test Results v0.3.1](docs/test-results-v0.3.1.md)
+- [Golden Financial Data v0.3.1](docs/golden-financial-data-v0.3.1.md)
+
+历史文档：
 
 - [Implementation Report v0.2.2](docs/implementation-report-v0.2.2.md)
 - [Repository Tree v0.2.2](docs/repository-tree-v0.2.2.md)
@@ -21,12 +28,14 @@
                     \            /
                      LLMProvider
                            │
-                     ToolExecutor
+                      ToolRegistry
                            │
                      PolicyService
                            │
-                      ToolRegistry
-                           │
+                     ToolExecutor
+                      /        \
+       account handlers    FinancialAnalyticsService
+                \             /
                     MockBankService
 
 LangGraph only: PostgreSQL Checkpointer (thread_id = task_id)
@@ -35,12 +44,29 @@ Domain DB: Conversation / Message / Task / Event
 
 LangGraph 只替换 Agent loop 的 state/routing/checkpoint orchestration，不替换 `LLMProvider`、工具权限、Domain Task、Conversation、Event/Audit 或 MockBankService。Checkpoint 表由 LangGraph 包的 `setup()` 管理；Application tables 由 Alembic 管理。
 
-当前 Registry 仍仅注册：
+当前 Registry 注册：
 
 - `account.list` / `list_accounts`
 - `account.get_balance` / `get_balance`
 
-两者都是 `R1_PRIVATE_READ`、无副作用，且只允许 `agent:minimal-banking`。不存在转账、交易查询、收款人或订阅 Tool。
+两者都是 `R1_PRIVATE_READ`、无副作用，且只允许 `agent:minimal-banking`。不存在转账写操作、raw transaction search、收款人或订阅 Tool。
+
+财务分析 Capability 为：
+
+- `transaction.spending_summary` / `get_spending_summary`
+- `transaction.category_breakdown` / `get_category_breakdown`
+- `transaction.compare_periods` / `compare_spending_periods`
+- `transaction.top_transactions` / `get_top_transactions`
+
+它们同样是 `R1_PRIVATE_READ`、无副作用，但只允许未在本轮实现的 `agent:financial-analysis`。`agent:minimal-banking` 的 capability allowlist 没有扩大，因此看不到且无法调用这四个 Tool。本轮没有 `transaction.search`。
+
+## Financial analytics boundary
+
+金额、分类汇总、环比和排名均由 Python `Decimal` 确定性计算。有效交易 status 显式固定为 `POSTED`；Spending 仅包含已入账 `DEBIT`，并排除 `TRANSFER`。月份使用 `YYYY-MM` 自然月的左闭右开区间。不做汇率换算，同次聚合出现多币种会返回 `MIXED_CURRENCY_UNSUPPORTED`。
+
+> Financial Agents should receive deterministic summaries by default, not full transaction history.
+
+四个 Tool 只返回聚合结果或 `1..20` 条 Top N，不向 LLM 暴露整月 raw transaction history。
 
 ## 配置
 
@@ -135,4 +161,4 @@ Trace 显示 `runtime_backend`、`checkpoint_enabled`、LLM step 和脱敏 Tool 
 
 `02.2 realtime event transport currently assumes a single API process.`
 
-当前不实现 Retry/Resume Task API、Human-in-the-loop、FinancialAnalysisAgent、Transaction Tool、Memory、RAG、MCP、Redis、Celery、Multi-Agent 或任何写操作。
+当前不实现 Retry/Resume Task API、Human-in-the-loop、FinancialAnalysisAgent、raw transaction search、Memory、RAG、MCP、Redis、Celery、Multi-Agent 或任何写操作。

@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.2.2"
-description = "AI Banking Agent dual manual and LangGraph runtime API"
+version = "0.3.1"
+description = "AI Banking Agent with deterministic financial analytics"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

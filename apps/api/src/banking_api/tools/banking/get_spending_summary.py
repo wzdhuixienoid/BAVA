@@ -1,0 +1,23 @@
+from banking_api.domain.enums import RiskLevel
+from banking_api.financial.analytics_service import FinancialAnalyticsService
+from banking_api.financial.models import FinancialPeriodInput, SpendingSummary
+from banking_api.tools.models import ToolSpec
+
+FINANCIAL_ANALYSIS_AGENT_ID = "agent:financial-analysis"
+
+
+def build_get_spending_summary_tool(analytics: FinancialAnalyticsService) -> ToolSpec:
+    def handler(arguments: FinancialPeriodInput) -> SpendingSummary:
+        return analytics.spending_summary(arguments.month, arguments.account_ids)
+
+    return ToolSpec(
+        capability_id="transaction.spending_summary",
+        name="get_spending_summary",
+        description="Calculate deterministic income and spending totals for one calendar month.",
+        input_model=FinancialPeriodInput,
+        output_model=SpendingSummary,
+        risk_level=RiskLevel.R1_PRIVATE_READ,
+        side_effect=False,
+        allowed_callers=frozenset({FINANCIAL_ANALYSIS_AGENT_ID}),
+        handler=handler,
+    )

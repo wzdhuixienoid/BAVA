@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.domain.enums import RiskLevel
+from banking_api.financial.errors import FinancialErrorCode
 
 
 class ListAccountsInput(BaseModel):
@@ -78,13 +79,15 @@ class ToolErrorDisposition(StrEnum):
 
 
 class ToolError(BaseModel):
-    code: ToolErrorCode
+    code: ToolErrorCode | FinancialErrorCode
     message: str
     retryable: bool = False
 
     @property
     def disposition(self) -> ToolErrorDisposition:
-        if self.code is ToolErrorCode.TOOL_ARGUMENT_VALIDATION_FAILED:
+        if self.code is ToolErrorCode.TOOL_ARGUMENT_VALIDATION_FAILED or isinstance(
+            self.code, FinancialErrorCode
+        ):
             return ToolErrorDisposition.RECOVERABLE
         return ToolErrorDisposition.FATAL
 

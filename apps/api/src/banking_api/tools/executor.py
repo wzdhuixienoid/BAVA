@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from banking_api.domain.enums import PolicyDecision
+from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.tools.models import ToolError, ToolErrorCode, ToolExecutionResult
@@ -50,6 +51,12 @@ class ToolExecutor:
             raw_output = spec.handler(validated_input)
             if inspect.isawaitable(raw_output):
                 raw_output = await raw_output
+        except FinancialDomainError as exc:
+            return self._error(
+                exc.code,
+                exc.message,
+                capability_id=spec.capability_id,
+            )
         except Exception:
             return self._error(
                 ToolErrorCode.TOOL_EXECUTION_FAILED,
@@ -73,7 +80,7 @@ class ToolExecutor:
 
     @staticmethod
     def _error(
-        code: ToolErrorCode,
+        code: ToolErrorCode | FinancialErrorCode,
         message: str,
         *,
         retryable: bool = False,

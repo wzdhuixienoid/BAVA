@@ -10,6 +10,7 @@ from banking_api.api.routes.health import router as health_router
 from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
+from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import session_factory
@@ -22,7 +23,14 @@ from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
-from banking_api.tools.banking import build_get_balance_tool, build_list_accounts_tool
+from banking_api.tools.banking import (
+    build_compare_spending_periods_tool,
+    build_get_balance_tool,
+    build_get_category_breakdown_tool,
+    build_get_spending_summary_tool,
+    build_get_top_transactions_tool,
+    build_list_accounts_tool,
+)
 from banking_api.tools.executor import ToolExecutor
 
 
@@ -68,7 +76,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.2.2",
+        version="0.3.1",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -87,9 +95,14 @@ def create_app() -> FastAPI:
         timeout_seconds=settings.llm_timeout_seconds,
     )
     bank = MockBankService()
+    analytics = FinancialAnalyticsService(bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))
+    registry.register(build_get_spending_summary_tool(analytics))
+    registry.register(build_get_category_breakdown_tool(analytics))
+    registry.register(build_compare_spending_periods_tool(analytics))
+    registry.register(build_get_top_transactions_tool(analytics))
     executor = ToolExecutor(registry, PolicyService())
     manual_runtime = ManualAgentRuntime(
         provider=provider,
