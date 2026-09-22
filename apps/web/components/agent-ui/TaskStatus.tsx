@@ -30,7 +30,7 @@ export function TaskStatus({ status }: { status: TaskStatusValue }) {
   return (
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors[status]}`}
-      title={status}
+      title={`任务状态：${labels[status]}`}
     >
       {labels[status]}
     </span>

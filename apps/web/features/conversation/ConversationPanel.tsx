@@ -55,7 +55,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
           <p className="mt-1 font-mono text-[10px] text-slate-400">对话 ID：{conversationId}</p>
         </div>
         <span className={`text-xs font-medium ${connected ? "text-emerald-600" : "text-amber-600"}`}>
-          {connected ? "● SSE 已连接" : "○ SSE 重连中"}
+          {connected ? "● 实时连接正常" : "○ 正在恢复实时连接"}
         </span>
       </header>
       {error ? (

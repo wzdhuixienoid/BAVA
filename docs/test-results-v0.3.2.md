@@ -17,7 +17,7 @@
 | OpenAPI generation | PASS | executor fields generated into API client |
 | Frontend ESLint | PASS | exit 0 |
 | Frontend TypeScript | PASS | `tsc --noEmit`, exit 0 |
-| Frontend production build | PASS | `/` 3.42 kB, First Load JS 105 kB |
+| Frontend production build | PASS | `/` 3.47 kB, First Load JS 105 kB；Task 类型、状态与连接文案使用中文展示 |
 | Docker Compose | PASS | API/Web built; migration 0004; PostgreSQL healthy |
 | API health | PASS | `{"status":"ok"}` |
 | Real DeepSeek routing smoke | PASS | Minimal + Financial + account-specific Financial |

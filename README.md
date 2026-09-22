@@ -1,5 +1,7 @@
 # AI Banking Agent
 
+注意：产品主要面向的是中文用户，description 和 前端页面以中文为主。
+
 当前版本已完成 `03.2 FinancialAnalysisAgent & Routing v0.3.2`。产品 Runtime 为 `LangGraphAgentRuntime`，`ManualAgentRuntime` 仅保留为 reference，本轮未修改。RequestRouter 先将用户请求分类为账户/余额、消费分析或不支持，再选择最小银行 Agent 或 FinancialAnalysisAgent。金融数字仍全部由 `Decimal` 确定性工具计算，LLM 只选择数据并组织解释。
 
 当前交付文档：

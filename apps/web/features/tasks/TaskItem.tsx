@@ -5,7 +5,8 @@ import { TaskProgress } from "./TaskProgress";
 type Task = components["schemas"]["Task"];
 
 const taskTypeLabels: Record<string, string> = {
-  MINIMAL_AGENT_RUN: "银行助手",
+  BANKING_REQUEST: "银行服务请求",
+  MINIMAL_AGENT_RUN: "银行账户请求",
 };
 
 export function TaskItem({ task }: { task: Task }) {
@@ -14,9 +15,8 @@ export function TaskItem({ task }: { task: Task }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-slate-800">
-            {taskTypeLabels[task.task_type] ?? task.task_type}
+            {taskTypeLabels[task.task_type] ?? "银行服务任务"}
           </p>
-          <p className="mt-1 break-all font-mono text-[9px] text-slate-400">{task.task_type}</p>
         </div>
         <TaskStatus status={task.status} />
       </div>
