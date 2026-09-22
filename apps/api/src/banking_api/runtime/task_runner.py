@@ -4,12 +4,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.application.conversation_service import to_message
-from banking_api.domain.enums import MessageRole, TaskStatus
+from banking_api.domain.enums import MessageRole, RuntimeBackend, TaskStatus
 from banking_api.persistence.repositories.messages import MessageRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
-from banking_api.runtime.agent_runtime import AgentRuntime, AgentRuntimeError
+from banking_api.runtime.base import AgentRunRequest, AgentRuntimeError
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
+from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 
 
 class InProcessTaskRunner:
@@ -19,11 +20,13 @@ class InProcessTaskRunner:
         self,
         session_factory: async_sessionmaker[AsyncSession],
         bus: EventBus,
-        runtime: AgentRuntime,
+        runtime_factory: AgentRuntimeFactory,
+        default_backend: RuntimeBackend = RuntimeBackend.MANUAL,
     ) -> None:
         self.session_factory = session_factory
         self.bus = bus
-        self.runtime = runtime
+        self.runtime_factory = runtime_factory
+        self.default_backend = default_backend
 
     async def run(self, task_id: UUID) -> None:
         async with self.session_factory() as session:
@@ -43,6 +46,7 @@ class InProcessTaskRunner:
             ]
             current_task = current_message.content
             conversation_id = task.conversation_id
+            runtime_backend = task.runtime_backend
             await tasks.transition(
                 task,
                 TaskStatus.RUNNING,
@@ -52,7 +56,12 @@ class InProcessTaskRunner:
                 event_type="task.started",
                 conversation_id=conversation_id,
                 task_id=task_id,
-                data={"status": task.status.value, "version": task.version},
+                data={
+                    "status": task.status.value,
+                    "version": task.version,
+                    "runtime_backend": runtime_backend.value,
+                    "checkpoint_enabled": runtime_backend is RuntimeBackend.LANGGRAPH,
+                },
             )
             progress = await publisher.persist(
                 event_type="task.progress",
@@ -72,13 +81,16 @@ class InProcessTaskRunner:
             )
 
         try:
-            result = await self.runtime.run(
-                task_id=task_id,
-                conversation_id=conversation_id,
-                current_task=current_task,
-                conversation_messages=conversation_messages,
-                authenticated=True,
-                event_sink=event_sink,
+            runtime = self.runtime_factory.get(runtime_backend)
+            result = await runtime.run(
+                AgentRunRequest(
+                    task_id=task_id,
+                    conversation_id=conversation_id,
+                    current_task=current_task,
+                    conversation_messages=conversation_messages,
+                    authenticated=True,
+                    event_sink=event_sink,
+                )
             )
             async with self.session_factory() as session:
                 tasks = TaskRepository(session)
@@ -105,7 +117,12 @@ class InProcessTaskRunner:
                     event_type="task.completed",
                     conversation_id=conversation_id,
                     task_id=task_id,
-                    data={"status": task.status.value, "version": task.version},
+                    data={
+                        "status": task.status.value,
+                        "version": task.version,
+                        "runtime_backend": task.runtime_backend.value,
+                        "checkpoint_enabled": runtime_backend is RuntimeBackend.LANGGRAPH,
+                    },
                 )
                 message_completed = await publisher.persist(
                     event_type="conversation.message.completed",
@@ -190,6 +207,8 @@ class InProcessTaskRunner:
                     "status": task.status.value,
                     "version": task.version,
                     "code": error["code"],
+                    "runtime_backend": task.runtime_backend.value,
+                    "checkpoint_enabled": task.runtime_backend is RuntimeBackend.LANGGRAPH,
                 },
             )
             await session.commit()

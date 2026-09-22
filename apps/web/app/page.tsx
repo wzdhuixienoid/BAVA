@@ -33,7 +33,7 @@ export default function HomePage() {
       <aside className="border-b border-slate-200 bg-slate-950 p-5 text-white md:border-b-0 md:border-r">
         <div className="mb-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            Minimal Agent Runtime v0.2
+            Agent Runtime v0.2.2
           </p>
           <h1 className="mt-2 text-xl font-semibold">银行助理工作台</h1>
         </div>

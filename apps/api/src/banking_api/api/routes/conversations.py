@@ -69,7 +69,9 @@ async def post_message(
     runner: TaskRunnerDependency,
 ) -> MessageAccepted:
     try:
-        accepted = await ConversationService(session, bus).accept_message(
+        accepted = await ConversationService(
+            session, bus, runtime_backend=runner.default_backend
+        ).accept_message(
             conversation_id=conversation_id,
             user_id=principal.user_id,
             content=body.content,

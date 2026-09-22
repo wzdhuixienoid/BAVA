@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from banking_api.domain.enums import TaskStatus
+from banking_api.domain.enums import RuntimeBackend, TaskStatus
 from banking_api.persistence.models import ConversationModel, TaskModel
 
 
@@ -13,11 +13,17 @@ class TaskRepository:
         self.session = session
 
     async def create(
-        self, *, conversation_id: UUID, task_type: str, input_data: dict[str, Any]
+        self,
+        *,
+        conversation_id: UUID,
+        task_type: str,
+        input_data: dict[str, Any],
+        runtime_backend: RuntimeBackend = RuntimeBackend.MANUAL,
     ) -> TaskModel:
         task = TaskModel(
             conversation_id=conversation_id,
             task_type=task_type,
+            runtime_backend=runtime_backend,
             status=TaskStatus.PENDING,
             input_json=input_data,
             version=1,
@@ -25,6 +31,14 @@ class TaskRepository:
         self.session.add(task)
         await self.session.flush()
         return task
+
+    async def list_stale(self) -> list[TaskModel]:
+        result = await self.session.execute(
+            select(TaskModel).where(
+                TaskModel.status.in_([TaskStatus.PENDING, TaskStatus.RUNNING])
+            )
+        )
+        return list(result.scalars())
 
     async def get(self, task_id: UUID) -> TaskModel | None:
         return await self.session.get(TaskModel, task_id)

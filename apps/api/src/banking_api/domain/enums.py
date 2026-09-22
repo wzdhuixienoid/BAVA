@@ -10,6 +10,7 @@ class MessageRole(StrEnum):
 class TaskStatus(StrEnum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
+    INTERRUPTED = "INTERRUPTED"
     WAITING_USER = "WAITING_USER"
     WAITING_EXTERNAL = "WAITING_EXTERNAL"
     COMPLETED = "COMPLETED"
@@ -57,3 +58,8 @@ class RiskLevel(StrEnum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     R1_PRIVATE_READ = "R1_PRIVATE_READ"
+
+
+class RuntimeBackend(StrEnum):
+    MANUAL = "manual"
+    LANGGRAPH = "langgraph"

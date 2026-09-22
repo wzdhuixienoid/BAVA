@@ -281,6 +281,11 @@ export interface components {
          * @enum {string}
          */
         MessageRole: "USER" | "ASSISTANT" | "SYSTEM_NOTICE";
+        /**
+         * RuntimeBackend
+         * @enum {string}
+         */
+        RuntimeBackend: "manual" | "langgraph";
         /** Task */
         Task: {
             /**
@@ -295,6 +300,7 @@ export interface components {
             conversation_id: string;
             /** Task Type */
             task_type: string;
+            runtime_backend: components["schemas"]["RuntimeBackend"];
             status: components["schemas"]["TaskStatus"];
             /** Input */
             input: {
@@ -327,7 +333,7 @@ export interface components {
          * TaskStatus
          * @enum {string}
          */
-        TaskStatus: "PENDING" | "RUNNING" | "WAITING_USER" | "WAITING_EXTERNAL" | "COMPLETED" | "FAILED" | "CANCELLED" | "SKIPPED";
+        TaskStatus: "PENDING" | "RUNNING" | "INTERRUPTED" | "WAITING_USER" | "WAITING_EXTERNAL" | "COMPLETED" | "FAILED" | "CANCELLED" | "SKIPPED";
         /** ValidationError */
         ValidationError: {
             /** Location */

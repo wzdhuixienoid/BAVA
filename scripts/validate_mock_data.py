@@ -48,9 +48,7 @@ def validate() -> dict[str, int]:
     for row in subscriptions:
         assert Decimal(str(row["monthly_amount"])) >= 0
 
-    serialized = json.dumps(
-        accounts + transactions + payees + subscriptions, ensure_ascii=False
-    )
+    serialized = json.dumps(accounts + transactions + payees + subscriptions, ensure_ascii=False)
     assert not FULL_CARD_PATTERN.search(serialized), "dataset contains a full card-like number"
     assert all(str(row["masked_number"]).startswith("****") for row in accounts)
     assert all(str(row["masked_account"]).startswith("****") for row in payees)

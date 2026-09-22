@@ -5,6 +5,7 @@ type TaskStatusValue = components["schemas"]["TaskStatus"];
 const colors: Record<TaskStatusValue, string> = {
   PENDING: "bg-amber-100 text-amber-800",
   RUNNING: "bg-blue-100 text-blue-800",
+  INTERRUPTED: "bg-orange-100 text-orange-800",
   WAITING_USER: "bg-purple-100 text-purple-800",
   WAITING_EXTERNAL: "bg-purple-100 text-purple-800",
   COMPLETED: "bg-emerald-100 text-emerald-800",
@@ -16,6 +17,7 @@ const colors: Record<TaskStatusValue, string> = {
 const labels: Record<TaskStatusValue, string> = {
   PENDING: "待处理",
   RUNNING: "处理中",
+  INTERRUPTED: "已中断",
   WAITING_USER: "等待用户",
   WAITING_EXTERNAL: "等待外部系统",
   COMPLETED: "已完成",

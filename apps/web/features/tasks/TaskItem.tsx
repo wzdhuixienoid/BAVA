@@ -20,7 +20,13 @@ export function TaskItem({ task }: { task: Task }) {
         </div>
         <TaskStatus status={task.status} />
       </div>
-      <TaskProgress message={task.progress_message} />
+      <TaskProgress
+        message={
+          task.status === "INTERRUPTED"
+            ? "任务因运行服务中断而暂停，请稍后重试。"
+            : task.progress_message
+        }
+      />
       <p className="mt-2 break-all font-mono text-[10px] text-slate-500">
         任务 ID：{task.task_id}
       </p>

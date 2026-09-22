@@ -2,6 +2,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from banking_api.domain.enums import RuntimeBackend
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -17,6 +19,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 30
     agent_max_steps: int = 6
     agent_max_tool_calls: int = 4
+    agent_runtime: RuntimeBackend = RuntimeBackend.LANGGRAPH
+    langgraph_checkpoint_database_url: str = ""
+    langgraph_strict_msgpack: bool = True
 
 
 @lru_cache

@@ -10,7 +10,7 @@ class PolicyResult(BaseModel):
 
 
 class PolicyService:
-    """Iteration 02.1 allow rule; every unmatched request is denied."""
+    """Read-only minimal-agent allow rule; every unmatched request is denied."""
 
     def evaluate(
         self,

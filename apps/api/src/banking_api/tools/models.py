@@ -72,10 +72,21 @@ class ToolErrorCode(StrEnum):
     TOOL_EXECUTION_FAILED = "TOOL_EXECUTION_FAILED"
 
 
+class ToolErrorDisposition(StrEnum):
+    RECOVERABLE = "RECOVERABLE"
+    FATAL = "FATAL"
+
+
 class ToolError(BaseModel):
     code: ToolErrorCode
     message: str
     retryable: bool = False
+
+    @property
+    def disposition(self) -> ToolErrorDisposition:
+        if self.code is ToolErrorCode.TOOL_ARGUMENT_VALIDATION_FAILED:
+            return ToolErrorDisposition.RECOVERABLE
+        return ToolErrorDisposition.FATAL
 
 
 class ToolExecutionResult(BaseModel):

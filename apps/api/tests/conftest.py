@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.context.builder import ContextBuilder
+from banking_api.domain.enums import RuntimeBackend
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse
 from banking_api.main import create_app
@@ -14,6 +15,7 @@ from banking_api.persistence.database import Base, get_session
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.runtime.agent_runtime import AgentRuntime
+from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.tools.banking import build_get_balance_tool, build_list_accounts_tool
 from banking_api.tools.executor import ToolExecutor
@@ -47,7 +49,14 @@ async def app(tmp_path):
             max_steps=max_steps,
             max_tool_calls=max_tool_calls,
         )
-        return InProcessTaskRunner(factory, application.state.event_bus, runtime)
+        runtime_factory = AgentRuntimeFactory()
+        runtime_factory.register(RuntimeBackend.MANUAL, runtime)
+        return InProcessTaskRunner(
+            factory,
+            application.state.event_bus,
+            runtime_factory,
+            default_backend=RuntimeBackend.MANUAL,
+        )
 
     application.state.tool_registry = registry
     application.state.task_runner = make_runner([LLMResponse(content="已收到你的消息。")])

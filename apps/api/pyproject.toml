@@ -1,13 +1,16 @@
 [project]
 name = "banking-api"
-version = "0.2.0"
-description = "AI Banking Agent minimal runtime API"
+version = "0.2.2"
+description = "AI Banking Agent dual manual and LangGraph runtime API"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",
   "asyncpg>=0.30,<1",
   "fastapi>=0.116,<1",
   "httpx>=0.28,<1",
+  "langgraph>=1,<2",
+  "langgraph-checkpoint-postgres>=3,<4",
+  "psycopg[binary]>=3.3,<4",
   "pydantic-settings>=2.10,<3",
   "sqlalchemy[asyncio]>=2.0.41,<3",
   "uvicorn[standard]>=0.35,<1",

@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -25,11 +26,27 @@ class OpenAICompatibleProvider:
         timeout_seconds: float = 30,
         client: httpx.AsyncClient | None = None,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = self._normalize_api_root(base_url)
         self.api_key = api_key
         self.model = model
         self.timeout_seconds = timeout_seconds
         self._client = client
+
+    @staticmethod
+    def _normalize_api_root(base_url: str) -> str:
+        normalized = base_url.strip().rstrip("/")
+        if not normalized:
+            return ""
+        parsed = urlsplit(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("LLM_BASE_URL must be an absolute HTTP(S) API root")
+        if parsed.query or parsed.fragment:
+            raise ValueError("LLM_BASE_URL must not contain a query string or fragment")
+        if parsed.path.lower().endswith("/chat/completions"):
+            raise ValueError(
+                "LLM_BASE_URL must be the API root, not the /chat/completions endpoint"
+            )
+        return normalized
 
     async def generate(self, request: LLMRequest) -> LLMResponse:
         if not self.base_url or not self.api_key or not self.model:

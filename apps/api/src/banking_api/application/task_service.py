@@ -20,6 +20,7 @@ def to_task(model) -> Task:  # type: ignore[no-untyped-def]
         task_id=model.task_id,
         conversation_id=model.conversation_id,
         task_type=model.task_type,
+        runtime_backend=model.runtime_backend,
         status=model.status,
         input=model.input_json,
         output=model.output_json,

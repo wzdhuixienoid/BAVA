@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.domain.conversation import Conversation, ConversationDetail
-from banking_api.domain.enums import MessageRole
+from banking_api.domain.enums import MessageRole, RuntimeBackend
 from banking_api.domain.message import Message, MessageAccepted
 from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.messages import MessageRepository
@@ -27,12 +27,18 @@ def to_message(model) -> Message:  # type: ignore[no-untyped-def]
 
 
 class ConversationService:
-    def __init__(self, session: AsyncSession, bus: EventBus) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        bus: EventBus,
+        runtime_backend: RuntimeBackend = RuntimeBackend.MANUAL,
+    ) -> None:
         self.session = session
         self.conversations = ConversationRepository(session)
         self.messages = MessageRepository(session)
         self.tasks = TaskRepository(session)
         self.publisher = EventPublisher(session, bus)
+        self.runtime_backend = runtime_backend
 
     async def create(self, *, user_id: str, title: str) -> Conversation:
         model = await self.conversations.create(user_id=user_id, title=title)
@@ -68,6 +74,7 @@ class ConversationService:
             conversation_id=conversation_id,
             task_type=MINIMAL_AGENT_TASK_TYPE,
             input_data={"message_id": str(message.message_id), "request_id": str(request_id)},
+            runtime_backend=self.runtime_backend,
         )
         message_event = await self.publisher.persist(
             event_type="conversation.message.created",
@@ -79,7 +86,11 @@ class ConversationService:
             event_type="task.created",
             conversation_id=conversation_id,
             task_id=task.task_id,
-            data={"status": task.status.value, "version": task.version},
+            data={
+                "status": task.status.value,
+                "version": task.version,
+                "runtime_backend": task.runtime_backend.value,
+            },
         )
         await self.session.commit()
         await self.publisher.publish_persisted(message_event, task_event)

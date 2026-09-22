@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from banking_api.domain.enums import MessageRole, TaskStatus
+from banking_api.domain.enums import MessageRole, RuntimeBackend, TaskStatus
 from banking_api.persistence.database import Base
 
 
@@ -54,6 +54,9 @@ class TaskModel(Base):
         Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
     task_type: Mapped[str] = mapped_column(String(255))
+    runtime_backend: Mapped[RuntimeBackend] = mapped_column(
+        Enum(RuntimeBackend, name="runtime_backend"), default=RuntimeBackend.MANUAL
+    )
     status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus, name="task_status"), index=True)
     input_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     output_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)

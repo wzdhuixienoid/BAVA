@@ -6,9 +6,7 @@ from pathlib import Path
 from random import Random
 
 SEED = 20260920
-DATA_DIR = (
-    Path(__file__).parents[1] / "apps/api/src/banking_api/mock_bank/data"
-)
+DATA_DIR = Path(__file__).parents[1] / "apps/api/src/banking_api/mock_bank/data"
 
 
 def write(name: str, rows: list[dict[str, object]]) -> None:
@@ -144,7 +142,9 @@ def build_transactions() -> list[dict[str, object]]:
                 category="UTILITIES",
             )
 
-    for offset, amount in enumerate(("188.00", "329.00", "516.00", "268.00", "899.00", "145.00", "4200.00", "236.00")):
+    for offset, amount in enumerate(
+        ("188.00", "329.00", "516.00", "268.00", "899.00", "145.00", "4200.00", "236.00")
+    ):
         add(
             account_id="acc_credit",
             day=start + timedelta(days=8 + offset * 12),
@@ -184,7 +184,11 @@ def build_transactions() -> list[dict[str, object]]:
             category="ENTERTAINMENT",
         )
 
-    for day, amount in ((date(2026, 6, 22), "86.00"), (date(2026, 7, 19), "320.00"), (date(2026, 9, 11), "1580.00")):
+    for day, amount in (
+        (date(2026, 6, 22), "86.00"),
+        (date(2026, 7, 19), "320.00"),
+        (date(2026, 9, 11), "1580.00"),
+    ):
         add(
             account_id="acc_salary",
             day=day,
@@ -231,32 +235,140 @@ def main() -> None:
     write(
         "accounts.json",
         [
-            {"account_id": "acc_salary", "display_name": "工资卡", "account_type": "DEBIT", "masked_number": "****6688", "currency": "CNY", "status": "ACTIVE", "balance": "23864.52"},
-            {"account_id": "acc_savings", "display_name": "储蓄卡", "account_type": "SAVINGS", "masked_number": "****1024", "currency": "CNY", "status": "ACTIVE", "balance": "78620.00"},
-            {"account_id": "acc_credit", "display_name": "信用卡", "account_type": "CREDIT", "masked_number": "****9527", "currency": "CNY", "status": "ACTIVE", "balance": "-4860.35"},
-            {"account_id": "acc_travel", "display_name": "旅行卡", "account_type": "DEBIT", "masked_number": "****3366", "currency": "CNY", "status": "ACTIVE", "balance": "12680.40"},
+            {
+                "account_id": "acc_salary",
+                "display_name": "工资卡",
+                "account_type": "DEBIT",
+                "masked_number": "****6688",
+                "currency": "CNY",
+                "status": "ACTIVE",
+                "balance": "23864.52",
+            },
+            {
+                "account_id": "acc_savings",
+                "display_name": "储蓄卡",
+                "account_type": "SAVINGS",
+                "masked_number": "****1024",
+                "currency": "CNY",
+                "status": "ACTIVE",
+                "balance": "78620.00",
+            },
+            {
+                "account_id": "acc_credit",
+                "display_name": "信用卡",
+                "account_type": "CREDIT",
+                "masked_number": "****9527",
+                "currency": "CNY",
+                "status": "ACTIVE",
+                "balance": "-4860.35",
+            },
+            {
+                "account_id": "acc_travel",
+                "display_name": "旅行卡",
+                "account_type": "DEBIT",
+                "masked_number": "****3366",
+                "currency": "CNY",
+                "status": "ACTIVE",
+                "balance": "12680.40",
+            },
         ],
     )
     write("transactions.json", build_transactions())
     write(
         "payees.json",
         [
-            {"payee_id": "payee_001", "display_name": "张三", "bank_name": "星河银行（虚构）", "masked_account": "****2231", "phone_alias": "手机尾号 1001"},
-            {"payee_id": "payee_002", "display_name": "张三", "bank_name": "蓝海银行（虚构）", "masked_account": "****9102", "phone_alias": "手机尾号 1002"},
-            {"payee_id": "payee_003", "display_name": "李小雨", "bank_name": "星河银行（虚构）", "masked_account": "****4815", "phone_alias": "手机尾号 1003"},
-            {"payee_id": "payee_004", "display_name": "王海", "bank_name": "森林银行（虚构）", "masked_account": "****7716", "phone_alias": "手机尾号 1004"},
-            {"payee_id": "payee_005", "display_name": "青禾物业", "bank_name": "蓝海银行（虚构）", "masked_account": "****3308", "phone_alias": "服务号尾号 2001"},
-            {"payee_id": "payee_006", "display_name": "陈晨", "bank_name": "远山银行（虚构）", "masked_account": "****6054", "phone_alias": "手机尾号 1006"},
+            {
+                "payee_id": "payee_001",
+                "display_name": "张三",
+                "bank_name": "星河银行（虚构）",
+                "masked_account": "****2231",
+                "phone_alias": "手机尾号 1001",
+            },
+            {
+                "payee_id": "payee_002",
+                "display_name": "张三",
+                "bank_name": "蓝海银行（虚构）",
+                "masked_account": "****9102",
+                "phone_alias": "手机尾号 1002",
+            },
+            {
+                "payee_id": "payee_003",
+                "display_name": "李小雨",
+                "bank_name": "星河银行（虚构）",
+                "masked_account": "****4815",
+                "phone_alias": "手机尾号 1003",
+            },
+            {
+                "payee_id": "payee_004",
+                "display_name": "王海",
+                "bank_name": "森林银行（虚构）",
+                "masked_account": "****7716",
+                "phone_alias": "手机尾号 1004",
+            },
+            {
+                "payee_id": "payee_005",
+                "display_name": "青禾物业",
+                "bank_name": "蓝海银行（虚构）",
+                "masked_account": "****3308",
+                "phone_alias": "服务号尾号 2001",
+            },
+            {
+                "payee_id": "payee_006",
+                "display_name": "陈晨",
+                "bank_name": "远山银行（虚构）",
+                "masked_account": "****6054",
+                "phone_alias": "手机尾号 1006",
+            },
         ],
     )
     write(
         "subscriptions.json",
         [
-            {"subscription_id": "sub_video", "merchant": "星幕视频", "monthly_amount": "28.00", "currency": "CNY", "billing_day": 8, "status": "ACTIVE", "last_used_at": "2026-09-18T12:00:00Z"},
-            {"subscription_id": "sub_music", "merchant": "海浪音乐", "monthly_amount": "15.00", "currency": "CNY", "billing_day": 12, "status": "ACTIVE", "last_used_at": "2026-09-19T08:00:00Z"},
-            {"subscription_id": "sub_cloud", "merchant": "云笺存储", "monthly_amount": "18.00", "currency": "CNY", "billing_day": 16, "status": "ACTIVE", "last_used_at": "2025-11-03T10:00:00Z"},
-            {"subscription_id": "sub_design", "merchant": "像素设计", "monthly_amount": "88.00", "currency": "CNY", "billing_day": 20, "status": "ACTIVE", "last_used_at": "2026-06-12T09:00:00Z"},
-            {"subscription_id": "sub_fitness", "merchant": "活力健身", "monthly_amount": "128.00", "currency": "CNY", "billing_day": 3, "status": "CANCELLED", "last_used_at": "2026-03-20T18:00:00Z"},
+            {
+                "subscription_id": "sub_video",
+                "merchant": "星幕视频",
+                "monthly_amount": "28.00",
+                "currency": "CNY",
+                "billing_day": 8,
+                "status": "ACTIVE",
+                "last_used_at": "2026-09-18T12:00:00Z",
+            },
+            {
+                "subscription_id": "sub_music",
+                "merchant": "海浪音乐",
+                "monthly_amount": "15.00",
+                "currency": "CNY",
+                "billing_day": 12,
+                "status": "ACTIVE",
+                "last_used_at": "2026-09-19T08:00:00Z",
+            },
+            {
+                "subscription_id": "sub_cloud",
+                "merchant": "云笺存储",
+                "monthly_amount": "18.00",
+                "currency": "CNY",
+                "billing_day": 16,
+                "status": "ACTIVE",
+                "last_used_at": "2025-11-03T10:00:00Z",
+            },
+            {
+                "subscription_id": "sub_design",
+                "merchant": "像素设计",
+                "monthly_amount": "88.00",
+                "currency": "CNY",
+                "billing_day": 20,
+                "status": "ACTIVE",
+                "last_used_at": "2026-06-12T09:00:00Z",
+            },
+            {
+                "subscription_id": "sub_fitness",
+                "merchant": "活力健身",
+                "monthly_amount": "128.00",
+                "currency": "CNY",
+                "billing_day": 3,
+                "status": "CANCELLED",
+                "last_used_at": "2026-03-20T18:00:00Z",
+            },
         ],
     )
 

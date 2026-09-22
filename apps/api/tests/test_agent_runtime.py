@@ -13,7 +13,11 @@ from banking_api.llm.provider import LLMProviderError
 from banking_api.mock_bank.service import MockBankService
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
-from banking_api.runtime.agent_runtime import AgentRuntime, AgentRuntimeError
+from banking_api.runtime.agent_runtime import (
+    AgentRunRequest,
+    AgentRuntime,
+    AgentRuntimeError,
+)
 from banking_api.tools.banking import build_get_balance_tool, build_list_accounts_tool
 from banking_api.tools.executor import ToolExecutor
 
@@ -61,13 +65,15 @@ async def run_runtime(
 
     message = user_message(content)
     result = await runtime.run(
-        task_id=uuid4(),
-        conversation_id=message.conversation_id,
-        current_task=content,
-        conversation_messages=[message],
-        authenticated=True,
-        caller=caller,
-        event_sink=sink,
+        AgentRunRequest(
+            task_id=uuid4(),
+            conversation_id=message.conversation_id,
+            current_task=content,
+            conversation_messages=[message],
+            authenticated=True,
+            caller=caller,
+            event_sink=sink,
+        )
     )
     return result, events
 
@@ -152,19 +158,21 @@ async def test_list_accounts_get_balance_then_final_answer() -> None:
         ),
     ],
 )
-async def test_tool_errors_are_fail_closed_and_returned_to_llm(
+async def test_tool_error_disposition_is_enforced(
     call: LLMToolCall, caller: str | None, expected_code: str
 ) -> None:
     runtime, provider = build_runtime(
         [LLMResponse(tool_calls=[call]), LLMResponse(content="无法执行该请求。")]
     )
 
-    result, events = await run_runtime(runtime, caller=caller)
-
-    assert result.answer == "无法执行该请求。"
-    assert expected_code in provider.requests[1].messages[-1].content
-    failure = [data for name, data in events if name == "tool.call.failed"]
-    assert failure[0]["error_code"] == expected_code
+    if expected_code == "TOOL_ARGUMENT_VALIDATION_FAILED":
+        result, _ = await run_runtime(runtime, caller=caller)
+        assert result.answer == "无法执行该请求。"
+        assert expected_code in provider.requests[1].messages[-1].content
+    else:
+        with pytest.raises(AgentRuntimeError) as caught:
+            await run_runtime(runtime, caller=caller)
+        assert caught.value.code == expected_code
 
 
 async def test_provider_failure_has_external_retryable_semantics() -> None:
