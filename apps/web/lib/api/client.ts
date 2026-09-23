@@ -5,6 +5,8 @@ type ConversationCreate = components["schemas"]["ConversationCreate"];
 type ConversationDetail = components["schemas"]["ConversationDetail"];
 type MessageAccepted = components["schemas"]["MessageAccepted"];
 type Task = components["schemas"]["Task"];
+type ReportListItem = components["schemas"]["ReportListItem"];
+type ReportResponse = components["schemas"]["ReportResponse"];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -37,4 +39,12 @@ export const api = {
     }),
   listTasks: (conversationId: string) =>
     request<Task[]>(`/api/v1/tasks?conversation_id=${encodeURIComponent(conversationId)}`),
+  getTask: (taskId: string) => request<Task>(`/api/v1/tasks/${taskId}`),
+  listReports: (conversationId?: string, limit = 20, offset = 0) => {
+    const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (conversationId) query.set("conversation_id", conversationId);
+    return request<ReportListItem[]>(`/api/v1/reports?${query.toString()}`);
+  },
+  getReport: (reportId: string) =>
+    request<ReportResponse>(`/api/v1/reports/${encodeURIComponent(reportId)}`),
 };

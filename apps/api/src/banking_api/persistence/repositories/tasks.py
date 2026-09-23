@@ -4,7 +4,12 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from banking_api.domain.enums import ExecutorType, RuntimeBackend, TaskStatus
+from banking_api.domain.enums import (
+    ExecutorType,
+    RequestedOutput,
+    RuntimeBackend,
+    TaskStatus,
+)
 from banking_api.persistence.models import ConversationModel, TaskModel
 
 
@@ -94,6 +99,21 @@ class TaskRepository:
         executor_type: ExecutorType,
         executor_id: str,
     ) -> TaskModel:
+        task.executor_type = executor_type
+        task.executor_id = executor_id
+        task.version += 1
+        await self.session.flush()
+        return task
+
+    async def assign_route(
+        self,
+        task: TaskModel,
+        *,
+        requested_output: RequestedOutput,
+        executor_type: ExecutorType | None,
+        executor_id: str | None,
+    ) -> TaskModel:
+        task.requested_output = requested_output
         task.executor_type = executor_type
         task.executor_id = executor_id
         task.version += 1

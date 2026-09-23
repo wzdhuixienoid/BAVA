@@ -2,14 +2,19 @@ import type { components } from "@banking/api-client";
 import { TaskItem } from "./TaskItem";
 
 type Task = components["schemas"]["Task"];
+type ReportListItem = components["schemas"]["ReportListItem"];
 
-export function TaskPanel({ tasks }: { tasks: Task[] }) {
+export function TaskPanel({ tasks, reports }: { tasks: Task[]; reports: ReportListItem[] }) {
+  const reportsByTask = new Map(reports.map((report) => [report.source_task_id, report]));
+
   return (
     <aside className="border-t border-slate-200 bg-slate-50 p-4 lg:border-l lg:border-t-0">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-600">任务</h2>
       <div className="space-y-2">
         {tasks.length === 0 && <p className="text-sm text-slate-400">暂无任务。</p>}
-        {tasks.map((task) => <TaskItem key={task.task_id} task={task} />)}
+        {tasks.map((task) => (
+          <TaskItem key={task.task_id} task={task} report={reportsByTask.get(task.task_id)} />
+        ))}
       </div>
     </aside>
   );

@@ -8,6 +8,7 @@ export const eventTypes = [
   "task.progress",
   "task.completed",
   "task.failed",
+  "report.generated",
 ] as const;
 
 export function subscribeToConversation(

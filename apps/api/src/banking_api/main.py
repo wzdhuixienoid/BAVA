@@ -27,6 +27,7 @@ from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
+from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import (
     build_compare_spending_periods_tool,
@@ -80,7 +81,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.3.3",
+        version="0.3.4",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -137,6 +138,8 @@ def create_app() -> FastAPI:
         default_backend=settings.agent_runtime,
         router=router,
         agent_registry=agent_registry,
+        skill_registry=skill_registry,
+        skill_executor=SkillExecutor(provider),
     )
     application.include_router(health_router)
     application.include_router(api_router)

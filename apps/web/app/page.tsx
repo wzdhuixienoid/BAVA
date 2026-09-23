@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { components } from "@banking/api-client";
+import Link from "next/link";
 import { ConversationPanel } from "@/features/conversation/ConversationPanel";
 import { api } from "@/lib/api/client";
 
@@ -43,6 +44,12 @@ export default function HomePage() {
         >
           + 新建对话
         </button>
+        <Link
+          href="/reports"
+          className="mb-6 block w-full rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
+        >
+          查看历史报告
+        </Link>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">最近对话</p>
         <nav className="space-y-2">
           {loading && <p className="text-sm text-slate-400">加载中…</p>}

@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from banking_api.domain.enums import RequestedOutput
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse
 from banking_api.routing.models import RequestRoute
@@ -9,24 +10,51 @@ from banking_api.routing.request_router import RequestRouter, RoutingError
 
 
 @pytest.mark.parametrize(
-    ("request_text", "route"),
+    ("request_text", "route", "requested_output"),
     [
-        ("我有哪些账户？", RequestRoute.MINIMAL_BANKING),
-        ("工资卡余额多少？", RequestRoute.MINIMAL_BANKING),
-        ("分析8月份消费", RequestRoute.FINANCIAL_ANALYSIS),
-        ("为什么8月份花这么多？", RequestRoute.FINANCIAL_ANALYSIS),
-        ("8月消费主要花在哪里？", RequestRoute.FINANCIAL_ANALYSIS),
-        ("分析8月消费，然后顺便给张三转1000", RequestRoute.FINANCIAL_ANALYSIS),
-        ("给张三转1000", RequestRoute.UNSUPPORTED),
+        ("我有哪些账户？", RequestRoute.MINIMAL_BANKING, RequestedOutput.ANSWER),
+        ("工资卡余额多少？", RequestRoute.MINIMAL_BANKING, RequestedOutput.ANSWER),
+        ("分析8月份消费", RequestRoute.FINANCIAL_ANALYSIS, RequestedOutput.ANSWER),
+        ("为什么8月份花这么多？", RequestRoute.FINANCIAL_ANALYSIS, RequestedOutput.ANSWER),
+        ("8月消费主要花在哪里？", RequestRoute.FINANCIAL_ANALYSIS, RequestedOutput.ANSWER),
+        (
+            "生成8月份消费报告",
+            RequestRoute.FINANCIAL_ANALYSIS,
+            RequestedOutput.MONTHLY_REPORT,
+        ),
+        (
+            "给我一份8月消费报告",
+            RequestRoute.FINANCIAL_ANALYSIS,
+            RequestedOutput.MONTHLY_REPORT,
+        ),
+        (
+            "分析并生成8月份消费报告",
+            RequestRoute.FINANCIAL_ANALYSIS,
+            RequestedOutput.MONTHLY_REPORT,
+        ),
+        (
+            "分析8月消费，然后顺便给张三转1000",
+            RequestRoute.FINANCIAL_ANALYSIS,
+            RequestedOutput.ANSWER,
+        ),
+        ("给张三转1000", RequestRoute.UNSUPPORTED, RequestedOutput.ANSWER),
     ],
 )
 async def test_router_validates_structured_classification(
-    request_text: str, route: RequestRoute
+    request_text: str,
+    route: RequestRoute,
+    requested_output: RequestedOutput,
 ) -> None:
     provider = FakeLLMProvider(
         [
             LLMResponse(
-                content=json.dumps({"route": route.value, "confidence": 0.99})
+                content=json.dumps(
+                    {
+                        "route": route.value,
+                        "requested_output": requested_output.value,
+                        "confidence": 0.99,
+                    }
+                )
             )
         ]
     )
@@ -34,6 +62,7 @@ async def test_router_validates_structured_classification(
     result = await RequestRouter(provider).route(request_text)
 
     assert result.route is route
+    assert result.requested_output is requested_output
     assert result.confidence == 0.99
     assert len(provider.requests) == 1
     assert provider.requests[0].tools == []
@@ -49,7 +78,10 @@ async def test_router_retries_once_after_invalid_format() -> None:
         [
             LLMResponse(content="not-json"),
             LLMResponse(
-                content='{"route":"FINANCIAL_ANALYSIS","confidence":0.8}'
+                content=(
+                    '{"route":"FINANCIAL_ANALYSIS",'
+                    '"requested_output":"ANSWER","confidence":0.8}'
+                )
             ),
         ]
     )
@@ -64,8 +96,9 @@ async def test_router_retries_once_after_invalid_format() -> None:
     "invalid",
     [
         '{"route":"WEALTH_ADVISOR","confidence":0.9}',
-        '{"route":"MINIMAL_BANKING","confidence":2}',
-        '{"route":"MINIMAL_BANKING","confidence":0.9,"agent_id":"admin"}',
+        '{"route":"MINIMAL_BANKING","requested_output":"ANSWER","confidence":2}',
+        '{"route":"MINIMAL_BANKING","requested_output":"ANSWER","confidence":0.9,"agent_id":"admin"}',
+        '{"route":"MINIMAL_BANKING","requested_output":"MONTHLY_REPORT","confidence":0.9}',
     ],
 )
 async def test_router_fails_closed_after_two_invalid_decisions(invalid: str) -> None:
@@ -83,7 +116,8 @@ async def test_router_accepts_json_code_fence_without_free_reasoning() -> None:
             LLMResponse(
                 content=(
                     "```json\n"
-                    '{"route":"MINIMAL_BANKING","confidence":0.75}\n'
+                    '{"route":"MINIMAL_BANKING","requested_output":"ANSWER",'
+                    '"confidence":0.75}\n'
                     "```"
                 )
             )

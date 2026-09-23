@@ -2,16 +2,20 @@
 
 注意：产品主要面向的是中文用户，description 和 前端页面以中文为主。
 
-当前版本已完成 `03.3 MonthlySpendingReportSkill v0.3.3`。在 v0.3.2 的 RequestRouter、FinancialAnalysisAgent 和确定性 Financial Tools 之上，新增第一个正式 Skill：它只消费 `FinancialAnalysisSnapshot`，由 Python 构建精确数值核心与展示字段，LLM 只生成不含数字且可验证 evidence refs 的文字洞察。产品聊天流程仍停留在 v0.3.2，不会自动调用 Skill。
+当前版本已完成 `03.4 Report Artifact + Structured UI v0.3.4`。用户可以在同一个 `BANKING_REQUEST` 中请求月度消费报告：FinancialAnalysisAgent 只通过确定性 Financial Tools 生成 Snapshot，已注册的 MonthlySpendingReportSkill 构建报告，后端持久化不可变 Report Artifact，前端通过 Reports API 展示结构化报告并支持刷新恢复。
 
 当前交付文档：
+
+- [Implementation Report v0.3.4](docs/implementation-report-v0.3.4.md)
+- [Repository Tree v0.3.4](docs/repository-tree-v0.3.4.md)
+- [Test Results v0.3.4](docs/test-results-v0.3.4.md)
+
+历史文档：
 
 - [Implementation Report v0.3.3](docs/implementation-report-v0.3.3.md)
 - [Repository Tree v0.3.3](docs/repository-tree-v0.3.3.md)
 - [Test Results v0.3.3](docs/test-results-v0.3.3.md)
 - [Golden Monthly Report v0.3.3](docs/golden-monthly-report-v0.3.3.md)
-
-历史文档：
 
 - [Implementation Report v0.3.2](docs/implementation-report-v0.3.2.md)
 - [Repository Tree v0.3.2](docs/repository-tree-v0.3.2.md)
@@ -46,7 +50,7 @@ User Message → RequestRouter → AgentRegistry
                                   MockBankService
 
 LangGraph only: PostgreSQL Checkpointer (thread_id = task_id)
-Domain DB: Conversation / Message / Task(executor_type/executor_id/output) / Event
+Domain DB: Conversation / Message / Task(requested_output/executor/output) / Report / Event
 ```
 
 LangGraph 只替换 Agent loop 的 state/routing/checkpoint orchestration，不替换 `LLMProvider`、工具权限、Domain Task、Conversation、Event/Audit 或 MockBankService。Checkpoint 表由 LangGraph 包的 `setup()` 管理；Application tables 由 Alembic 管理。
@@ -88,6 +92,20 @@ FinancialAnalysisSnapshot
 ```
 
 Skill 不接受 raw transactions、Conversation history 或自然语言交易列表，也不调用任何 Tool。金额、占比、环比、排序和展示四舍五入均由 Python 处理，原始 `Decimal` 值在报告中保留。缺少 comparison 或 Top N 时会显式标记 `PARTIAL`；缺少 summary、category 或必要 tool evidence 时 fail closed。
+
+报告请求的产品路径为：
+
+```text
+RequestRouter(FINANCIAL_ANALYSIS / MONTHLY_REPORT)
+    → FinancialAnalysisAgent
+    → FinancialAnalysisSnapshot
+    → SkillRegistry / SkillExecutor
+    → immutable Report
+    → GET /api/v1/reports[/report_id]
+    → structured Reports UI
+```
+
+Report 使用 `source_task_id + report_type + report_version` 强幂等，保存 Skill 执行当时的完整内容、Skill 版本和 canonical Snapshot SHA-256。API 只支持按当前用户 GET 列表/详情，不提供 POST、PATCH、PUT 或 DELETE。所有精确 `Decimal` 以 JSON string 暴露；前端直接使用 Backend `*_display` 字段，不重新计算或四舍五入。
 
 ## 配置
 
@@ -181,6 +199,16 @@ uv run --project apps/api python scripts/smoke_monthly_report_skill.py
 
 该脚本使用 committed Golden Snapshot，验证 deterministic core 全等、narrative grounding、无 Tool Call 与无数字泄漏。
 
+v0.3.4 完整 Report 产品链路真实 Provider smoke：
+
+```bash
+DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking \
+LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/banking \
+  uv run --project apps/api python scripts/smoke_report_product.py
+```
+
+该脚本验证 `FINANCIAL_ANALYSIS / MONTHLY_REPORT` 路由、四个确定性 Financial Tool、Skill Registry、Report 持久化、Reports GET API、Golden core 全等和单一用户确认消息。
+
 前端验证：
 
 ```bash
@@ -201,4 +229,4 @@ Trace 显示 `runtime_backend`、`checkpoint_enabled`、LLM step 和脱敏 Tool 
 
 `02.2 realtime event transport currently assumes a single API process.`
 
-当前不实现 Skill 自动聊天接入、Reports 数据库/API/UI、Chart、PDF、raw transaction search、anomaly detection、Memory、RAG、MCP、Planner、Agent-to-Agent 调用或任何写操作。
+当前不实现 Chart、PDF/Excel/邮件导出、定时报告、Report 编辑/删除、raw transaction search、anomaly detection、Memory、RAG、MCP、Planner、Agent-to-Agent 调用或任何写操作。

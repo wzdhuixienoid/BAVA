@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.3.3"
-description = "支持确定性财务分析与月度消费报告 Skill 的 AI 银行助手"
+version = "0.3.4"
+description = "支持持久化月度消费报告与结构化展示的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

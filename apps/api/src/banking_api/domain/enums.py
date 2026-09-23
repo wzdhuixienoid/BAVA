@@ -67,3 +67,12 @@ class RuntimeBackend(StrEnum):
 
 class ExecutorType(StrEnum):
     AGENT = "AGENT"
+
+
+class RequestedOutput(StrEnum):
+    ANSWER = "ANSWER"
+    MONTHLY_REPORT = "MONTHLY_REPORT"
+
+
+class ReportType(StrEnum):
+    MONTHLY_SPENDING = "MONTHLY_SPENDING"

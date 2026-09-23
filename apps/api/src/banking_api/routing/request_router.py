@@ -7,13 +7,18 @@ from banking_api.llm.provider import LLMProvider, LLMProviderError
 from banking_api.routing.models import RouteDecision
 
 ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对象，格式为：
-{"route":"MINIMAL_BANKING|FINANCIAL_ANALYSIS|UNSUPPORTED","confidence":0.0}
+{"route":"MINIMAL_BANKING|FINANCIAL_ANALYSIS|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT","confidence":0.0}
 
 路由规则：
-- 账户列表、余额查询 -> MINIMAL_BANKING
-- 消费分析、月份支出、消费分类、花费原因、环比变化、最大消费 -> FINANCIAL_ANALYSIS
-- 同时包含消费分析和不支持的写操作 -> FINANCIAL_ANALYSIS，只处理可支持的分析部分
-- 转账、投资、理财购买、卡片写操作或当前系统不支持的业务 -> UNSUPPORTED
+- 账户列表、余额查询 -> MINIMAL_BANKING / ANSWER
+- 消费分析、月份支出、消费分类、花费原因、环比变化、最大消费 -> FINANCIAL_ANALYSIS / ANSWER
+- 生成、制作、给我一份月度消费报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
+- 同时要求消费分析和生成报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
+- 报告请求同时包含不支持的写操作 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT，只完成可支持的报告
+- 普通分析同时包含不支持的写操作 -> FINANCIAL_ANALYSIS / ANSWER，只处理可支持的分析部分
+- 转账、投资、理财购买、卡片写操作或当前系统不支持的业务 -> UNSUPPORTED / ANSWER
+
+MINIMAL_BANKING 和 UNSUPPORTED 的 requested_output 必须是 ANSWER。
 
 不要输出解释、Markdown 或推理过程。
 """.strip()

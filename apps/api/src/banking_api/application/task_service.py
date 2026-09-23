@@ -23,6 +23,7 @@ def to_task(model) -> Task:  # type: ignore[no-untyped-def]
         runtime_backend=model.runtime_backend,
         executor_type=model.executor_type,
         executor_id=model.executor_id,
+        requested_output=model.requested_output,
         status=model.status,
         input=model.input_json,
         output=model.output_json,

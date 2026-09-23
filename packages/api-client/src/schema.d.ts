@@ -141,6 +141,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reports */
+        get: operations["list_reports_api_v1_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Report */
+        get: operations["get_report_api_v1_reports__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -199,6 +233,11 @@ export interface components {
             /** Messages */
             messages: components["schemas"]["Message"][];
         };
+        /**
+         * DataQualityStatus
+         * @enum {string}
+         */
+        DataQualityStatus: "COMPLETE" | "PARTIAL";
         /** Event */
         Event: {
             /**
@@ -286,6 +325,211 @@ export interface components {
          * @enum {string}
          */
         MessageRole: "USER" | "ASSISTANT" | "SYSTEM_NOTICE";
+        /** MonthlySpendingReport */
+        MonthlySpendingReport: {
+            /**
+             * Report Version
+             * @default 1
+             */
+            report_version: number;
+            /** Period */
+            period: string;
+            scope: components["schemas"]["ReportScope"];
+            overview: components["schemas"]["ReportOverview"];
+            period_comparison: components["schemas"]["ReportPeriodComparison"] | null;
+            /** Category Breakdown */
+            category_breakdown: components["schemas"]["ReportCategory"][];
+            /** Top Transactions */
+            top_transactions: components["schemas"]["ReportTopTransaction"][];
+            data_quality: components["schemas"]["ReportDataQuality"];
+            /** Headline */
+            headline: string;
+            /** Insights */
+            insights: components["schemas"]["ReportInsight"][];
+        };
+        /** ReportCategory */
+        ReportCategory: {
+            /** Category */
+            category: string;
+            /** Amount */
+            amount: string;
+            /** Amount Display */
+            amount_display: string;
+            /** Transaction Count */
+            transaction_count: number;
+            /** Share */
+            share: string;
+            /** Share Display */
+            share_display: string;
+            /** Previous Amount */
+            previous_amount?: string | null;
+            /** Previous Amount Display */
+            previous_amount_display?: string | null;
+            /** Absolute Change */
+            absolute_change?: string | null;
+            /** Absolute Change Display */
+            absolute_change_display?: string | null;
+            /** Percentage Change */
+            percentage_change?: string | null;
+            /** Percentage Change Display */
+            percentage_change_display?: string | null;
+        };
+        /** ReportDataQuality */
+        ReportDataQuality: {
+            status: components["schemas"]["DataQualityStatus"];
+            /** Notes */
+            notes?: string[];
+        };
+        /** ReportInsight */
+        ReportInsight: {
+            type: components["schemas"]["ReportInsightType"];
+            /** Title */
+            title: string;
+            /** Narrative */
+            narrative: string;
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /**
+         * ReportInsightType
+         * @enum {string}
+         */
+        ReportInsightType: "STRUCTURE" | "CHANGE" | "TRANSACTION" | "DATA_QUALITY";
+        /** ReportListItem */
+        ReportListItem: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            report_type: components["schemas"]["ReportType"];
+            /** Period */
+            period: string;
+            /** Headline */
+            headline: string;
+            /** Total Spending Display */
+            total_spending_display: string;
+            scope: components["schemas"]["ReportScope"];
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Source Task Id
+             * Format: uuid
+             */
+            source_task_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ReportOverview */
+        ReportOverview: {
+            /** Total Income */
+            total_income: string;
+            /** Total Income Display */
+            total_income_display: string;
+            /** Total Spending */
+            total_spending: string;
+            /** Total Spending Display */
+            total_spending_display: string;
+            /** Transaction Count */
+            transaction_count: number;
+            /** Currency */
+            currency: string;
+        };
+        /** ReportPeriodComparison */
+        ReportPeriodComparison: {
+            /** Previous Period */
+            previous_period: string;
+            /** Previous Spending */
+            previous_spending: string;
+            /** Previous Spending Display */
+            previous_spending_display: string;
+            /** Absolute Change */
+            absolute_change: string;
+            /** Absolute Change Display */
+            absolute_change_display: string;
+            /** Percentage Change */
+            percentage_change: string | null;
+            /** Percentage Change Display */
+            percentage_change_display: string;
+        };
+        /** ReportResponse */
+        ReportResponse: {
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            report_type: components["schemas"]["ReportType"];
+            /** Report Version */
+            report_version: number;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Source Task Id
+             * Format: uuid
+             */
+            source_task_id: string;
+            /** Skill Id */
+            skill_id: string;
+            /** Skill Version */
+            skill_version: number;
+            /** Period */
+            period: string;
+            /** Source Snapshot Hash */
+            source_snapshot_hash: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            content: components["schemas"]["MonthlySpendingReport"];
+        };
+        /** ReportScope */
+        ReportScope: {
+            /** Account Ids */
+            account_ids: string[];
+        };
+        /** ReportTopTransaction */
+        ReportTopTransaction: {
+            /** Transaction Id */
+            transaction_id: string;
+            /** Merchant */
+            merchant: string;
+            /** Description */
+            description: string;
+            /** Category */
+            category: string;
+            /** Amount */
+            amount: string;
+            /** Amount Display */
+            amount_display: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Account Id */
+            account_id: string;
+        };
+        /**
+         * ReportType
+         * @enum {string}
+         */
+        ReportType: "MONTHLY_SPENDING";
+        /**
+         * RequestedOutput
+         * @enum {string}
+         */
+        RequestedOutput: "ANSWER" | "MONTHLY_REPORT";
         /**
          * RuntimeBackend
          * @enum {string}
@@ -309,6 +553,7 @@ export interface components {
             executor_type: components["schemas"]["ExecutorType"] | null;
             /** Executor Id */
             executor_id: string | null;
+            requested_output: components["schemas"]["RequestedOutput"] | null;
             status: components["schemas"]["TaskStatus"];
             /** Input */
             input: {
@@ -616,6 +861,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_reports_api_v1_reports_get: {
+        parameters: {
+            query?: {
+                conversation_id?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_report_api_v1_reports__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResponse"];
                 };
             };
             /** @description Validation Error */

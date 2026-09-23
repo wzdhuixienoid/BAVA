@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -8,10 +9,13 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.application.conversation_service import ConversationService
+from banking_api.application.report_service import ReportService
 from banking_api.application.task_service import TaskService
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole, RuntimeBackend, TaskStatus
 from banking_api.domain.message import Message
+from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot, ToolEvidence
+from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse, LLMToolCall
 from banking_api.mock_bank.service import MockBankService
@@ -30,6 +34,8 @@ from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
+from banking_api.skill_runtime.executor import SkillExecutor
+from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import build_get_balance_tool, build_list_accounts_tool
 from banking_api.tools.executor import ToolExecutor
 
@@ -80,9 +86,42 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0004"
+        requested_output_column = (
+            await session.execute(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'tasks' AND column_name = 'requested_output'"
+                )
+            )
+        ).scalar()
+        report_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'reports'"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0005"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
+        assert requested_output_column == "requested_output"
+        assert {
+            "id",
+            "user_id",
+            "conversation_id",
+            "source_task_id",
+            "report_type",
+            "report_version",
+            "skill_id",
+            "skill_version",
+            "period",
+            "content_json",
+            "source_snapshot_hash",
+            "created_at",
+        }.issubset(report_columns)
         conversation = await ConversationService(session, bus).create(
             user_id="postgres-test-user", title="PostgreSQL Agent E2E"
         )
@@ -155,12 +194,108 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
         "assistant_message_id": str(detail.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
+        "requested_output": "ANSWER",
     }
     assert detail.messages[-1].content == "工资卡余额为 23,864.52 元。"
     assert [event.sequence for event in events] == sorted(event.sequence for event in events)
     assert [event.event_type for event in events].count("tool.call.completed") == 2
     assert events[-2].event_type == "task.completed"
     assert events[-1].event_type == "conversation.message.completed"
+
+
+async def test_postgres_report_artifact_round_trip(postgres_factory) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    async with factory() as session:
+        service = ConversationService(
+            session,
+            bus,
+            runtime_backend=RuntimeBackend.LANGGRAPH,
+        )
+        conversation = await service.create(
+            user_id="postgres-test-user",
+            title="PostgreSQL Report",
+        )
+        accepted = await service.accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id="postgres-test-user",
+            content="生成2026年8月消费报告",
+        )
+
+    analytics = FinancialAnalyticsService(MockBankService())
+    snapshot = FinancialAnalysisSnapshot(
+        period="2026-08",
+        account_ids=[],
+        spending_summary=analytics.spending_summary("2026-08"),
+        category_breakdown=analytics.category_breakdown("2026-08"),
+        period_comparison=analytics.compare_periods("2026-08"),
+        top_transactions=analytics.top_transactions("2026-08", 5),
+        tool_evidence=[
+            ToolEvidence(
+                capability_id="transaction.spending_summary",
+                input={"month": "2026-08"},
+            ),
+            ToolEvidence(
+                capability_id="transaction.category_breakdown",
+                input={"month": "2026-08"},
+            ),
+            ToolEvidence(
+                capability_id="transaction.compare_periods",
+                input={"month": "2026-08"},
+            ),
+            ToolEvidence(
+                capability_id="transaction.top_transactions",
+                input={"month": "2026-08", "limit": 5},
+            ),
+        ],
+    )
+    narrative = LLMResponse(
+        content=json.dumps(
+            {
+                "headline": "本月支出上升且结构集中",
+                "insights": [
+                    {
+                        "type": "STRUCTURE",
+                        "title": "住房是最主要的支出类别",
+                        "narrative": "消费结构主要由住房、购物和旅行构成。",
+                        "evidence_refs": ["category_breakdown.HOUSING.share"],
+                    },
+                    {
+                        "type": "CHANGE",
+                        "title": "旅行和购物是主要增量来源",
+                        "narrative": "本月支出明显上升，旅行和购物的变化最突出。",
+                        "evidence_refs": [
+                            "category_breakdown.TRAVEL.absolute_change",
+                            "category_breakdown.SHOPPING.absolute_change",
+                        ],
+                    },
+                ],
+            },
+            ensure_ascii=False,
+        )
+    )
+    report = await SkillExecutor(FakeLLMProvider([narrative])).execute(snapshot)
+
+    async with factory() as session:
+        service = ReportService(session)
+        created = await service.create_report(
+            user_id="postgres-test-user",
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            report=report,
+            snapshot=snapshot,
+            skill=MonthlySpendingReportSkill.definition,
+        )
+        await session.commit()
+    async with factory() as session:
+        loaded = await ReportService(session).get_report_for_user(
+            created.report_id,
+            user_id="postgres-test-user",
+        )
+
+    assert loaded.content.overview.total_spending_display == "¥16,547.30"
+    assert str(loaded.content.overview.total_spending) == "16547.30"
+    assert loaded.source_snapshot_hash == created.source_snapshot_hash
 
 
 class CountingBankService(MockBankService):

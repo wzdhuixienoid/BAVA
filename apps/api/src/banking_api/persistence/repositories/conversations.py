@@ -25,6 +25,9 @@ class ConversationRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get(self, conversation_id: UUID) -> ConversationModel | None:
+        return await self.session.get(ConversationModel, conversation_id)
+
     async def list_for_user(self, user_id: str) -> list[ConversationModel]:
         result = await self.session.execute(
             select(ConversationModel)
@@ -32,4 +35,3 @@ class ConversationRepository:
             .order_by(ConversationModel.updated_at.desc())
         )
         return list(result.scalars())
-

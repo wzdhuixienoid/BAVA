@@ -10,21 +10,25 @@ import { TaskPanel } from "@/features/tasks/TaskPanel";
 
 type ConversationDetail = components["schemas"]["ConversationDetail"];
 type Task = components["schemas"]["Task"];
+type ReportListItem = components["schemas"]["ReportListItem"];
 
 export function ConversationPanel({ conversationId }: { conversationId: string }) {
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [reports, setReports] = useState<ReportListItem[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [nextConversation, nextTasks] = await Promise.all([
+      const [nextConversation, nextTasks, nextReports] = await Promise.all([
         api.getConversation(conversationId),
         api.listTasks(conversationId),
+        api.listReports(conversationId),
       ]);
       setConversation(nextConversation);
       setTasks(nextTasks);
+      setReports(nextReports);
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法加载服务器状态");
@@ -34,6 +38,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
   useEffect(() => {
     setConversation(null);
     setTasks([]);
+    setReports([]);
     void refresh();
     return subscribeToConversation(
       conversationId,
@@ -66,7 +71,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
             <MessageList messages={conversation?.messages ?? []} />
             <MessageComposer onSend={send} />
           </section>
-          <TaskPanel tasks={tasks} />
+          <TaskPanel tasks={tasks} reports={reports} />
         </div>
       )}
     </div>

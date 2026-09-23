@@ -66,6 +66,7 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
         "assistant_message_id": str(loaded.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
+        "requested_output": "ANSWER",
     }
     assert task.version == 8
     assert task.executor_id == "agent:minimal-banking"

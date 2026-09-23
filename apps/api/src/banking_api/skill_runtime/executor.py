@@ -13,6 +13,7 @@ from banking_api.financial.report_models import (
 )
 from banking_api.llm.models import LLMMessage, LLMRequest
 from banking_api.llm.provider import LLMProvider, LLMProviderError
+from banking_api.skills.models import SkillDefinition
 from banking_api.skills.monthly_spending_report import (
     MONTHLY_SPENDING_REPORT_INSTRUCTIONS,
     MonthlySpendingReportSkill,
@@ -106,17 +107,32 @@ class SkillExecutor:
                 request.messages.append(
                     LLMMessage(
                         role="user",
-                        content=(
-                            "上一份 JSON 未通过验证。请仅按原 schema 输出修正后的 JSON；"
-                            "headline、title、narrative 不得含任何阿拉伯或中文数字，"
-                            "evidence_refs 只能从允许列表选择。"
-                        ),
+                        content=self._build_correction_message(core),
                     )
                 )
         raise SkillExecutionError(
             SkillErrorCode.REPORT_NARRATIVE_VALIDATION_FAILED,
             "Narrative failed structured grounding validation",
         )
+
+    async def execute_registered(
+        self,
+        definition: SkillDefinition,
+        snapshot: FinancialAnalysisSnapshot,
+    ) -> MonthlySpendingReport:
+        expected = self.skill.definition
+        if (
+            definition.skill_id != expected.skill_id
+            or definition.version != expected.version
+            or definition.input_schema is not expected.input_schema
+            or definition.output_schema is not expected.output_schema
+            or definition.allowed_tools
+        ):
+            raise SkillExecutionError(
+                SkillErrorCode.REPORT_INPUT_INCOMPLETE,
+                "Registered skill definition does not match the executable skill",
+            )
+        return await self.execute(snapshot)
 
     def _build_request(self, core: MonthlySpendingReportCore) -> LLMRequest:
         evidence_refs = sorted(self._valid_evidence_refs(core))
@@ -149,6 +165,44 @@ class SkillExecutor:
             ],
             tools=[],
         )
+
+    @classmethod
+    def _build_correction_message(cls, core: MonthlySpendingReportCore) -> str:
+        allowed_refs = sorted(cls._valid_evidence_refs(core))
+        change_ref = (
+            "period_comparison.absolute_change"
+            if core.period_comparison is not None
+            else "data_quality.status"
+        )
+        correction = {
+            "instruction": "上一份输出未通过确定性验证，请完全重写并且只输出 JSON。",
+            "hard_rules": [
+                "headline、title、narrative 均不得含数字。",
+                "禁止字符：0123456789０１２３４５６７８９零〇一二三四五六七八九十百千万亿两。",
+                "insights 数量为两到五条。",
+                "evidence_refs 必须逐字从 allowed_evidence_refs 复制。",
+                "不得输出 Markdown、解释或未知类别。",
+            ],
+            "allowed_evidence_refs": allowed_refs,
+            "valid_shape_example": {
+                "headline": "本月消费结构与变化概览",
+                "insights": [
+                    {
+                        "type": "STRUCTURE",
+                        "title": "主要支出类别较为集中",
+                        "narrative": "消费支出主要集中在排名靠前的类别。",
+                        "evidence_refs": ["overview.total_spending"],
+                    },
+                    {
+                        "type": "CHANGE",
+                        "title": "整体支出变化值得关注",
+                        "narrative": "期间对比显示整体支出发生明显变化。",
+                        "evidence_refs": [change_ref],
+                    },
+                ],
+            },
+        }
+        return json.dumps(correction, ensure_ascii=False)
 
     @classmethod
     def _validate_narrative(
