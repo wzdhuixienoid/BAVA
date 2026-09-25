@@ -16,15 +16,19 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from banking_api.domain.approval import ApprovalType
 from banking_api.domain.enums import (
+    ApprovalStatus,
     ExecutorType,
     MessageRole,
+    ReauthenticationStatus,
     ReportType,
     RequestedOutput,
     RuntimeBackend,
     TaskStatus,
     WorkflowStatus,
 )
+from banking_api.domain.reauthentication import ReauthenticationMethod
 from banking_api.domain.workflow import WorkflowType
 from banking_api.persistence.database import Base
 
@@ -79,6 +83,53 @@ class WorkflowModel(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+
+
+class ApprovalModel(Base):
+    __tablename__ = "approvals"
+    __table_args__ = (Index("ix_approvals_workflow_created_at", "workflow_id", "created_at"),)
+
+    approval_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    workflow_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("workflows.id", ondelete="CASCADE"), index=True
+    )
+    approval_type: Mapped[ApprovalType] = mapped_column(Enum(ApprovalType, name="approval_type"))
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    payload_hash: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[ApprovalStatus] = mapped_column(
+        Enum(ApprovalStatus, name="approval_status"), index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ReauthenticationModel(Base):
+    __tablename__ = "reauthentications"
+    __table_args__ = (Index("ix_reauth_workflow_created_at", "workflow_id", "created_at"),)
+
+    reauth_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    workflow_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("workflows.id", ondelete="CASCADE"), index=True
+    )
+    approval_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("approvals.id", ondelete="CASCADE"), index=True
+    )
+    method: Mapped[ReauthenticationMethod] = mapped_column(
+        Enum(ReauthenticationMethod, name="reauthentication_method")
+    )
+    status: Mapped[ReauthenticationStatus] = mapped_column(
+        Enum(ReauthenticationStatus, name="reauthentication_status"), index=True
+    )
+    provider_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class MessageModel(Base):

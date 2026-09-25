@@ -1,19 +1,37 @@
 from datetime import datetime
+from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.domain.enums import ApprovalStatus
 
 
+class ApprovalType(StrEnum):
+    TRANSFER = "TRANSFER"
+
+
 class Approval(BaseModel):
-    """Concept boundary only; hashing and approval execution are intentionally absent."""
+    """Single transfer-payload approval. Consumption is reserved for 04.3."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     approval_id: UUID
+    user_id: str
     workflow_id: UUID
+    approval_type: ApprovalType
+    payload: dict[str, Any] = Field(validation_alias="payload_json")
     payload_hash: str
     status: ApprovalStatus
-    created_at: datetime
     expires_at: datetime
     approved_at: datetime | None = None
+    invalidated_at: datetime | None = None
+    consumed_at: datetime | None = None
+    created_at: datetime
 
+
+class ApprovalSummary(BaseModel):
+    approval_id: UUID
+    status: ApprovalStatus
+    expires_at: datetime

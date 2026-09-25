@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
@@ -88,6 +89,15 @@ class TransferReviewPayload(BaseModel):
         return format(value, "f")
 
 
+class TransferAuthorizationSnapshot(BaseModel):
+    approval_id: UUID
+    approval_payload_hash: str
+    approval_expires_at: datetime
+    reauth_id: UUID | None = None
+    reauth_verified_at: datetime | None = None
+    reauth_expires_at: datetime | None = None
+
+
 class TransferWorkflowState(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -95,6 +105,9 @@ class TransferWorkflowState(BaseModel):
     required_input: TransferRequiredInput | None = None
     validation: TransferValidationResult | None = None
     review_payload: TransferReviewPayload | None = None
+    authorization: TransferAuthorizationSnapshot | None = None
+    payee_options: list[dict[str, Any]] = Field(default_factory=list, max_length=10)
+    source_account_options: list[dict[str, Any]] = Field(default_factory=list, max_length=10)
 
 
 class SelectPayeeAction(BaseModel):
@@ -121,6 +134,25 @@ class SetAmountAction(BaseModel):
     @field_serializer("amount")
     def serialize_amount(self, value: Decimal) -> str:
         return format(value, "f")
+
+
+class SetRecipientQueryAction(BaseModel):
+    recipient_query: str = Field(min_length=1, max_length=100)
+    expected_version: int = Field(ge=1)
+
+
+class ApproveTransferAction(BaseModel):
+    expected_version: int = Field(ge=1)
+
+
+class StartReauthenticationAction(BaseModel):
+    expected_version: int = Field(ge=1)
+
+
+class VerifyReauthenticationAction(BaseModel):
+    reauth_id: UUID
+    verification_code: str = Field(min_length=1, max_length=128)
+    expected_version: int = Field(ge=1)
 
 
 class CancelWorkflowAction(BaseModel):

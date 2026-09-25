@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     agent_runtime: RuntimeBackend = RuntimeBackend.LANGGRAPH
     langgraph_checkpoint_database_url: str = ""
     langgraph_strict_msgpack: bool = True
+    transfer_approval_ttl_seconds: int = 600
+    transfer_reauth_ttl_seconds: int = 300
+    transfer_reauth_max_attempts: int = 3
+    mock_reauth_code: str = "246810"
 
 
 @lru_cache

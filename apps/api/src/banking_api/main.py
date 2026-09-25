@@ -84,7 +84,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.4.1",
+        version="0.4.2",
         lifespan=lifespan,
     )
     application.add_middleware(

@@ -65,6 +65,51 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ amount, expected_version: expectedVersion }),
     }),
+  setRecipientQuery: (
+    workflowId: string,
+    recipientQuery: string,
+    expectedVersion: number,
+  ) =>
+    request<Workflow>(
+      `/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/set-recipient-query`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          recipient_query: recipientQuery,
+          expected_version: expectedVersion,
+        }),
+      },
+    ),
+  approveTransfer: (workflowId: string, expectedVersion: number) =>
+    request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/approve`, {
+      method: "POST",
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }),
+  startTransferReauthentication: (workflowId: string, expectedVersion: number) =>
+    request<Workflow>(
+      `/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/start-reauth`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expected_version: expectedVersion }),
+      },
+    ),
+  verifyTransferReauthentication: (
+    workflowId: string,
+    reauthId: string,
+    verificationCode: string,
+    expectedVersion: number,
+  ) =>
+    request<Workflow>(
+      `/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/verify-reauth`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          reauth_id: reauthId,
+          verification_code: verificationCode,
+          expected_version: expectedVersion,
+        }),
+      },
+    ),
   cancelWorkflow: (workflowId: string, expectedVersion: number) =>
     request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/cancel`, {
       method: "POST",

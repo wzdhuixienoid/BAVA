@@ -17,10 +17,14 @@ from banking_api.application.workflow_service import (
 )
 from banking_api.domain.workflow import Workflow
 from banking_api.workflows.transfer.models import (
+    ApproveTransferAction,
     CancelWorkflowAction,
     SelectPayeeAction,
     SelectSourceAccountAction,
     SetAmountAction,
+    SetRecipientQueryAction,
+    StartReauthenticationAction,
+    VerifyReauthenticationAction,
 )
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
@@ -79,7 +83,29 @@ async def select_payee(
 ) -> Workflow:
     try:
         return await _service(session, bus, engine).select_payee(
-            workflow_id, user_id=principal.user_id, payee_id=body.payee_id,
+            workflow_id,
+            user_id=principal.user_id,
+            payee_id=body.payee_id,
+            expected_version=body.expected_version,
+        )
+    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/set-recipient-query", response_model=Workflow)
+async def set_recipient_query(
+    workflow_id: UUID,
+    body: SetRecipientQueryAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        return await _service(session, bus, engine).set_recipient_query(
+            workflow_id,
+            user_id=principal.user_id,
+            recipient_query=body.recipient_query,
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
@@ -97,7 +123,9 @@ async def select_source_account(
 ) -> Workflow:
     try:
         return await _service(session, bus, engine).select_source_account(
-            workflow_id, user_id=principal.user_id, account_id=body.account_id,
+            workflow_id,
+            user_id=principal.user_id,
+            account_id=body.account_id,
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
@@ -115,7 +143,9 @@ async def set_amount(
 ) -> Workflow:
     try:
         return await _service(session, bus, engine).set_amount(
-            workflow_id, user_id=principal.user_id, amount=body.amount,
+            workflow_id,
+            user_id=principal.user_id,
+            amount=body.amount,
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
@@ -133,7 +163,67 @@ async def cancel_workflow(
 ) -> Workflow:
     try:
         return await _service(session, bus, engine).cancel(
-            workflow_id, user_id=principal.user_id,
+            workflow_id,
+            user_id=principal.user_id,
+            expected_version=body.expected_version,
+        )
+    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/approve", response_model=Workflow)
+async def approve_transfer(
+    workflow_id: UUID,
+    body: ApproveTransferAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        return await _service(session, bus, engine).approve(
+            workflow_id,
+            user_id=principal.user_id,
+            expected_version=body.expected_version,
+        )
+    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/start-reauth", response_model=Workflow)
+async def start_reauthentication(
+    workflow_id: UUID,
+    body: StartReauthenticationAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        return await _service(session, bus, engine).start_reauthentication(
+            workflow_id,
+            user_id=principal.user_id,
+            expected_version=body.expected_version,
+        )
+    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/verify-reauth", response_model=Workflow)
+async def verify_reauthentication(
+    workflow_id: UUID,
+    body: VerifyReauthenticationAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        return await _service(session, bus, engine).verify_reauthentication(
+            workflow_id,
+            user_id=principal.user_id,
+            reauth_id=body.reauth_id,
+            verification_code=body.verification_code,
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:

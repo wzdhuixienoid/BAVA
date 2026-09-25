@@ -5,7 +5,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from banking_api.domain.approval import ApprovalSummary
 from banking_api.domain.enums import WorkflowStatus
+from banking_api.domain.reauthentication import ReauthenticationSummary
 
 
 class WorkflowType(StrEnum):
@@ -25,5 +27,7 @@ class Workflow(BaseModel):
     status: WorkflowStatus
     version: int
     state: dict[str, Any]
+    approval_summary: ApprovalSummary | None = None
+    reauth_summary: ReauthenticationSummary | None = None
     created_at: datetime
     updated_at: datetime

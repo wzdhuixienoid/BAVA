@@ -195,7 +195,7 @@ GET  /api/v1/reports
 GET  /api/v1/reports/{report_id}
 GET  /api/v1/workflows/{workflow_id}
 GET  /api/v1/workflows?conversation_id=...
-POST /api/v1/workflows/{workflow_id}/actions/{select-payee|select-source-account|set-amount|cancel}
+POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|approve|start-reauth|verify-reauth|cancel}
 ```
 
 ```text
@@ -204,7 +204,9 @@ POST /api/v1/workflows/{workflow_id}/actions/{select-payee|select-source-account
 /reports/{reportId}  Structured monthly report
 ```
 
-SSE 用于实时通知；Task 和 Report API 始终是页面刷新恢复的 authoritative source。
+SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。
+
+`READY_FOR_COMMIT` 只表示当前 Transfer Payload 通过草稿校验、精确 payload 审批与 step-up 身份验证，完全不代表资金已转出。04.3 真正提交前仍必须重新验证 Approval、Reauthentication、payload hash、policy、payee、source account、balance 和 currency。
 
 ## 项目结构
 
@@ -221,6 +223,9 @@ docs/                     版本交付、测试结果与设计记录
 - [Implementation Report v0.4.1](docs/implementation-report-v0.4.1.md)
 - [Repository Tree v0.4.1](docs/repository-tree-v0.4.1.md)
 - [Test Results v0.4.1](docs/test-results-v0.4.1.md)
+- [Implementation Report v0.4.2](docs/implementation-report-v0.4.2.md)
+- [Repository Tree v0.4.2](docs/repository-tree-v0.4.2.md)
+- [Test Results v0.4.2](docs/test-results-v0.4.2.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 

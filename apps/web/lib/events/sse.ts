@@ -13,8 +13,19 @@ export const eventTypes = [
   "workflow.updated",
   "workflow.waiting_for_input",
   "workflow.ready_for_review",
+  "workflow.reauth_required",
+  "workflow.ready_for_commit",
   "workflow.failed",
   "workflow.cancelled",
+  "approval.created",
+  "approval.approved",
+  "approval.invalidated",
+  "approval.expired",
+  "reauth.challenge.created",
+  "reauth.verified",
+  "reauth.failed",
+  "reauth.expired",
+  "reauth.invalidated",
 ] as const;
 
 export function subscribeToConversation(

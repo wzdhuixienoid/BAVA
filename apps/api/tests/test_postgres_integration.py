@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
@@ -17,14 +18,20 @@ from banking_api.application.workflow_service import (
     WorkflowVersionConflictError,
 )
 from banking_api.context.builder import ContextBuilder
-from banking_api.domain.enums import MessageRole, RuntimeBackend, TaskStatus
+from banking_api.domain.enums import (
+    ApprovalStatus,
+    MessageRole,
+    ReauthenticationStatus,
+    RuntimeBackend,
+    TaskStatus,
+)
 from banking_api.domain.message import Message
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot, ToolEvidence
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse, LLMToolCall
 from banking_api.mock_bank.service import MockBankService
-from banking_api.persistence.models import EventModel
+from banking_api.persistence.models import ApprovalModel, EventModel, ReauthenticationModel
 from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
@@ -125,7 +132,27 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0006"
+        approval_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'approvals'"
+                    )
+                )
+            ).scalars()
+        )
+        reauth_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'reauthentications'"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0007"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -155,6 +182,33 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "created_at",
             "updated_at",
         }.issubset(workflow_columns)
+        assert {
+            "id",
+            "user_id",
+            "workflow_id",
+            "approval_type",
+            "payload_json",
+            "payload_hash",
+            "status",
+            "expires_at",
+            "approved_at",
+            "invalidated_at",
+            "consumed_at",
+            "created_at",
+        }.issubset(approval_columns)
+        assert {
+            "id",
+            "user_id",
+            "workflow_id",
+            "approval_id",
+            "method",
+            "status",
+            "provider_reference",
+            "expires_at",
+            "verified_at",
+            "attempt_count",
+            "created_at",
+        }.issubset(reauth_columns)
         conversation = await ConversationService(session, bus).create(
             user_id="postgres-test-user", title="PostgreSQL Agent E2E"
         )
@@ -247,6 +301,11 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
     registry.register(build_get_balance_tool(bank))
     registry.register(build_search_payees_tool(bank))
     engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+    balances_before = {
+        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
+        for item in bank.list_accounts()
+    }
+    transactions_before = bank.list_transactions()
 
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
@@ -297,6 +356,51 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
     assert ready.version == 4
 
     async with factory() as session:
+        approved = await WorkflowService(session, bus, engine).approve(
+            ready.workflow_id,
+            user_id="postgres-transfer-user",
+            expected_version=ready.version,
+        )
+    assert approved.status.value == "REAUTH_REQUIRED"
+    assert approved.version == 5
+    assert approved.approval_summary is not None
+    assert approved.approval_summary.status is ApprovalStatus.APPROVED
+
+    async with factory() as session:
+        with pytest.raises(WorkflowVersionConflictError):
+            await WorkflowService(session, bus, engine).approve(
+                ready.workflow_id,
+                user_id="postgres-transfer-user",
+                expected_version=ready.version,
+            )
+    async with factory() as session:
+        challenged = await WorkflowService(
+            session, bus, engine
+        ).start_reauthentication(
+            ready.workflow_id,
+            user_id="postgres-transfer-user",
+            expected_version=approved.version,
+        )
+    assert challenged.version == 6
+    assert challenged.reauth_summary is not None
+    assert challenged.reauth_summary.status is ReauthenticationStatus.PENDING
+
+    async with factory() as session:
+        authorized = await WorkflowService(
+            session, bus, engine
+        ).verify_reauthentication(
+            ready.workflow_id,
+            user_id="postgres-transfer-user",
+            reauth_id=challenged.reauth_summary.reauth_id,
+            verification_code="246810",
+            expected_version=challenged.version,
+        )
+    assert authorized.status.value == "READY_FOR_COMMIT"
+    assert authorized.version == 7
+    assert authorized.reauth_summary is not None
+    assert authorized.reauth_summary.status is ReauthenticationStatus.VERIFIED
+
+    async with factory() as session:
         recovered = await WorkflowService(session, bus, engine).get(
             ready.workflow_id, user_id="postgres-transfer-user"
         )
@@ -314,14 +418,57 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
                 )
             ).scalars()
         )
+        persisted_approval = (
+            await session.execute(
+                select(ApprovalModel).where(
+                    ApprovalModel.workflow_id == ready.workflow_id
+                )
+            )
+        ).scalar_one()
+        persisted_reauth = (
+            await session.execute(
+                select(ReauthenticationModel).where(
+                    ReauthenticationModel.workflow_id == ready.workflow_id
+                )
+            )
+        ).scalar_one()
     assert recovered.state["review_payload"]["amount"] == "2000.00"
+    assert recovered.status.value == "READY_FOR_COMMIT"
+    assert recovered.approval_summary is not None
+    assert recovered.reauth_summary is not None
+    assert persisted_approval.payload_json["amount"] == "2000.00"
+    assert len(persisted_approval.payload_hash) == 64
+    assert persisted_approval.consumed_at is None
+    assert persisted_reauth.approval_id == persisted_approval.approval_id
     assert [event.event_type for event in workflow_events] == [
         "workflow.created",
         "workflow.waiting_for_input",
         "workflow.waiting_for_input",
         "workflow.ready_for_review",
+        "workflow.reauth_required",
+        "workflow.updated",
+        "workflow.ready_for_commit",
     ]
     assert all("state_json" not in event.data_json for event in workflow_events)
+    assert balances_before == {
+        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
+        for item in bank.list_accounts()
+    }
+    assert bank.list_transactions() == transactions_before
+
+    async with factory() as session:
+        mutated = await WorkflowService(session, bus, engine).set_amount(
+            ready.workflow_id,
+            user_id="postgres-transfer-user",
+            amount=Decimal("20000.00"),
+            expected_version=authorized.version,
+        )
+    assert mutated.status.value == "READY_FOR_REVIEW"
+    assert mutated.state["authorization"] is None
+    assert mutated.approval_summary is not None
+    assert mutated.approval_summary.status is ApprovalStatus.INVALIDATED
+    assert mutated.reauth_summary is not None
+    assert mutated.reauth_summary.status is ReauthenticationStatus.INVALIDATED
 
 
 async def test_postgres_report_artifact_round_trip(postgres_factory) -> None:

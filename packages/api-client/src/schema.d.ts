@@ -226,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/{workflow_id}/actions/set-recipient-query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Recipient Query */
+        post: operations["set_recipient_query_api_v1_workflows__workflow_id__actions_set_recipient_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workflows/{workflow_id}/actions/select-source-account": {
         parameters: {
             query?: never;
@@ -277,10 +294,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/{workflow_id}/actions/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Transfer */
+        post: operations["approve_transfer_api_v1_workflows__workflow_id__actions_approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{workflow_id}/actions/start-reauth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Reauthentication */
+        post: operations["start_reauthentication_api_v1_workflows__workflow_id__actions_start_reauth_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{workflow_id}/actions/verify-reauth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Reauthentication */
+        post: operations["verify_reauthentication_api_v1_workflows__workflow_id__actions_verify_reauth_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApprovalStatus
+         * @enum {string}
+         */
+        ApprovalStatus: "PENDING" | "APPROVED" | "EXPIRED" | "INVALIDATED";
+        /** ApprovalSummary */
+        ApprovalSummary: {
+            /**
+             * Approval Id
+             * Format: uuid
+             */
+            approval_id: string;
+            status: components["schemas"]["ApprovalStatus"];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** ApproveTransferAction */
+        ApproveTransferAction: {
+            /** Expected Version */
+            expected_version: number;
+        };
         /** CancelWorkflowAction */
         CancelWorkflowAction: {
             /** Expected Version */
@@ -453,6 +545,31 @@ export interface components {
             headline: string;
             /** Insights */
             insights: components["schemas"]["ReportInsight"][];
+        };
+        /**
+         * ReauthenticationMethod
+         * @enum {string}
+         */
+        ReauthenticationMethod: "MOCK_CODE";
+        /**
+         * ReauthenticationStatus
+         * @enum {string}
+         */
+        ReauthenticationStatus: "PENDING" | "VERIFIED" | "FAILED" | "EXPIRED" | "INVALIDATED";
+        /** ReauthenticationSummary */
+        ReauthenticationSummary: {
+            /**
+             * Reauth Id
+             * Format: uuid
+             */
+            reauth_id: string;
+            status: components["schemas"]["ReauthenticationStatus"];
+            method: components["schemas"]["ReauthenticationMethod"];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
         };
         /** ReportCategory */
         ReportCategory: {
@@ -663,6 +780,18 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** SetRecipientQueryAction */
+        SetRecipientQueryAction: {
+            /** Recipient Query */
+            recipient_query: string;
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** StartReauthenticationAction */
+        StartReauthenticationAction: {
+            /** Expected Version */
+            expected_version: number;
+        };
         /** Task */
         Task: {
             /**
@@ -728,6 +857,18 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** VerifyReauthenticationAction */
+        VerifyReauthenticationAction: {
+            /**
+             * Reauth Id
+             * Format: uuid
+             */
+            reauth_id: string;
+            /** Verification Code */
+            verification_code: string;
+            /** Expected Version */
+            expected_version: number;
+        };
         /**
          * Workflow
          * @description Authoritative, user-owned persistent workflow resource.
@@ -758,6 +899,8 @@ export interface components {
             state: {
                 [key: string]: unknown;
             };
+            approval_summary?: components["schemas"]["ApprovalSummary"] | null;
+            reauth_summary?: components["schemas"]["ReauthenticationSummary"] | null;
             /**
              * Created At
              * Format: date-time
@@ -773,7 +916,7 @@ export interface components {
          * WorkflowStatus
          * @enum {string}
          */
-        WorkflowStatus: "DRAFT" | "WAITING_FOR_INPUT" | "VALIDATING" | "READY_FOR_REVIEW" | "FAILED" | "CANCELLED";
+        WorkflowStatus: "DRAFT" | "WAITING_FOR_INPUT" | "VALIDATING" | "READY_FOR_REVIEW" | "REAUTH_REQUIRED" | "READY_FOR_COMMIT" | "FAILED" | "CANCELLED";
         /**
          * WorkflowType
          * @enum {string}
@@ -1214,6 +1357,41 @@ export interface operations {
             };
         };
     };
+    set_recipient_query_api_v1_workflows__workflow_id__actions_set_recipient_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRecipientQueryAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     select_source_account_api_v1_workflows__workflow_id__actions_select_source_account_post: {
         parameters: {
             query?: never;
@@ -1296,6 +1474,111 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CancelWorkflowAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_transfer_api_v1_workflows__workflow_id__actions_approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveTransferAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_reauthentication_api_v1_workflows__workflow_id__actions_start_reauth_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartReauthenticationAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_reauthentication_api_v1_workflows__workflow_id__actions_verify_reauth_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyReauthenticationAction"];
             };
         };
         responses: {

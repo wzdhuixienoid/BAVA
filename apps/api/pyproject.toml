@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.4.1"
-description = "支持持久化转账草稿工作流的只读 AI 银行助手"
+version = "0.4.2"
+description = "支持转账草稿、审批与重新认证的零资金写入 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

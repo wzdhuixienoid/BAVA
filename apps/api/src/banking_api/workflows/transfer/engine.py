@@ -59,6 +59,7 @@ class TransferWorkflowEngine:
             )
 
         payees = await self._search_payees(draft.recipient_query)
+        state.payee_options = payees
         if not payees:
             return self._failed(state, "PAYEE_NOT_FOUND", "未找到匹配的收款人。")
         selected_payee = next(
@@ -104,6 +105,13 @@ class TransferWorkflowEngine:
             )
 
         eligible = [item for item in accounts if self._eligible(item)]
+        source_options = []
+        for account in eligible[:10]:
+            option_balance = await self._get_balance(account["account_id"])
+            source_options.append(
+                {**account, "available_balance": option_balance["balance"]}
+            )
+        state.source_account_options = source_options
         if selected_account is None and draft.source_account_hint:
             normalized = normalize_hint(draft.source_account_hint)
             matches = [
@@ -117,13 +125,9 @@ class TransferWorkflowEngine:
                 draft.source_account_id = selected_account["account_id"]
 
         if selected_account is None:
-            options = []
-            for account in eligible[:10]:
-                balance = await self._get_balance(account["account_id"])
-                options.append({**account, "available_balance": balance["balance"]})
             state.required_input = TransferRequiredInput(
                 type=TransferRequiredInputType.SOURCE_ACCOUNT_SELECTION,
-                options=options,
+                options=source_options,
                 message="请选择付款账户。",
             )
             return WorkflowStatus.WAITING_FOR_INPUT, state
@@ -171,17 +175,33 @@ class TransferWorkflowEngine:
         return WorkflowStatus.READY_FOR_REVIEW, state
 
     async def validate_payee_action(
-        self, state: TransferWorkflowState, payee_id: str
+        self,
+        state: TransferWorkflowState,
+        payee_id: str,
+        *,
+        allow_outside_selection: bool = False,
     ) -> None:
         required = state.required_input
-        if required is None or required.type is not TransferRequiredInputType.PAYEE_SELECTION:
-            raise InvalidWorkflowActionError("Workflow is not waiting for payee selection")
-        if payee_id not in {str(item.get("payee_id")) for item in required.options}:
+        if not allow_outside_selection:
+            if required is None or required.type is not TransferRequiredInputType.PAYEE_SELECTION:
+                raise InvalidWorkflowActionError("Workflow is not waiting for payee selection")
+            candidates = required.options
+        else:
+            if not state.draft.recipient_query:
+                raise InvalidWorkflowActionError("Recipient query is missing")
+            candidates = await self._search_payees(state.draft.recipient_query)
+        if payee_id not in {str(item.get("payee_id")) for item in candidates}:
             raise InvalidWorkflowActionError("Payee is not one of the authoritative options")
 
-    async def validate_account_action(self, state: TransferWorkflowState, account_id: str) -> None:
+    async def validate_account_action(
+        self,
+        state: TransferWorkflowState,
+        account_id: str,
+        *,
+        allow_outside_selection: bool = False,
+    ) -> None:
         required = state.required_input
-        if (
+        if not allow_outside_selection and (
             required is None
             or required.type is not TransferRequiredInputType.SOURCE_ACCOUNT_SELECTION
         ):
