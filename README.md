@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费，并生成可持久化、可刷新恢复的结构化月度消费报告。
+面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及创建安全的转账草稿并校验到 `READY_FOR_REVIEW`。系统仍然没有任何移动资金的能力。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
 
@@ -11,6 +11,7 @@
 | 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
+| 转账草稿与初步校验 | `workflow:transfer` | 收款人/账户确定性解析 → `READY_FOR_REVIEW` |
 
 用户可以直接输入：
 
@@ -29,7 +30,7 @@
 ```text
 User Message
     → RequestRouter
-    → AgentRegistry
+    → AgentRegistry / TransferWorkflow
         ├─ MinimalBankingAgent
         └─ FinancialAnalysisAgent
     → LangGraphAgentRuntime
@@ -96,9 +97,10 @@ User Message
 - `agent:minimal-banking`：允许 `account.list`、`account.get_balance`。
 - `agent:financial-analysis`：允许 `account.list` 和四个 Financial Tools，不允许余额、转账、卡片或其他写能力。
 - `skill:monthly-spending-report`：`allowed_tools=[]`，只能消费 `FinancialAnalysisSnapshot`。
+- `workflow:transfer`：只允许 `payee.search`、`account.list`、`account.get_balance`，均为无副作用读能力。
 - Reports API 只有 GET list/detail，没有 POST、PUT、PATCH 或 DELETE。
 
-Router 只选择 Agent 和 requested output，不扩大权限。未知 Tool、越权调用和写操作请求均 fail closed。
+Router 只选择 Agent/Workflow 和 requested output，不扩大权限。未知 Tool、越权调用和写操作请求均 fail closed。
 
 ## 快速启动
 
@@ -191,6 +193,9 @@ GET  /api/v1/tasks/{task_id}
 GET  /api/v1/tasks/{task_id}/events
 GET  /api/v1/reports
 GET  /api/v1/reports/{report_id}
+GET  /api/v1/workflows/{workflow_id}
+GET  /api/v1/workflows?conversation_id=...
+POST /api/v1/workflows/{workflow_id}/actions/{select-payee|select-source-account|set-amount|cancel}
 ```
 
 ```text
@@ -213,9 +218,9 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.3.4](docs/implementation-report-v0.3.4.md)
-- [Repository Tree v0.3.4](docs/repository-tree-v0.3.4.md)
-- [Test Results v0.3.4](docs/test-results-v0.3.4.md)
+- [Implementation Report v0.4.1](docs/implementation-report-v0.4.1.md)
+- [Repository Tree v0.4.1](docs/repository-tree-v0.4.1.md)
+- [Test Results v0.4.1](docs/test-results-v0.4.1.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 

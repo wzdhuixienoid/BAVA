@@ -20,10 +20,10 @@ class TaskStatus(StrEnum):
 
 
 class WorkflowStatus(StrEnum):
-    CREATED = "CREATED"
-    RUNNING = "RUNNING"
-    WAITING = "WAITING"
-    COMPLETED = "COMPLETED"
+    DRAFT = "DRAFT"
+    WAITING_FOR_INPUT = "WAITING_FOR_INPUT"
+    VALIDATING = "VALIDATING"
+    READY_FOR_REVIEW = "READY_FOR_REVIEW"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
@@ -67,11 +67,13 @@ class RuntimeBackend(StrEnum):
 
 class ExecutorType(StrEnum):
     AGENT = "AGENT"
+    WORKFLOW = "WORKFLOW"
 
 
 class RequestedOutput(StrEnum):
     ANSWER = "ANSWER"
     MONTHLY_REPORT = "MONTHLY_REPORT"
+    WORKFLOW = "WORKFLOW"
 
 
 class ReportType(StrEnum):

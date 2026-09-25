@@ -34,10 +34,14 @@ from banking_api.routing.request_router import RequestRouter, RoutingError
         ),
         (
             "分析8月消费，然后顺便给张三转1000",
-            RequestRoute.FINANCIAL_ANALYSIS,
+            RequestRoute.UNSUPPORTED,
             RequestedOutput.ANSWER,
         ),
-        ("给张三转1000", RequestRoute.UNSUPPORTED, RequestedOutput.ANSWER),
+        (
+            "给张三转1000",
+            RequestRoute.TRANSFER_WORKFLOW,
+            RequestedOutput.WORKFLOW,
+        ),
     ],
 )
 async def test_router_validates_structured_classification(
@@ -99,6 +103,7 @@ async def test_router_retries_once_after_invalid_format() -> None:
         '{"route":"MINIMAL_BANKING","requested_output":"ANSWER","confidence":2}',
         '{"route":"MINIMAL_BANKING","requested_output":"ANSWER","confidence":0.9,"agent_id":"admin"}',
         '{"route":"MINIMAL_BANKING","requested_output":"MONTHLY_REPORT","confidence":0.9}',
+        '{"route":"TRANSFER_WORKFLOW","requested_output":"ANSWER","confidence":0.9}',
     ],
 )
 async def test_router_fails_closed_after_two_invalid_decisions(invalid: str) -> None:
@@ -126,3 +131,21 @@ async def test_router_accepts_json_code_fence_without_free_reasoning() -> None:
 
     result = await RequestRouter(provider).route("查询账户")
     assert result.route is RequestRoute.MINIMAL_BANKING
+
+
+async def test_mixed_transfer_intent_is_forced_unsupported_even_if_model_misroutes() -> None:
+    provider = FakeLLMProvider(
+        [
+            LLMResponse(
+                content=(
+                    '{"route":"FINANCIAL_ANALYSIS","requested_output":"ANSWER",'
+                    '"confidence":0.91}'
+                )
+            )
+        ]
+    )
+
+    result = await RequestRouter(provider).route("分析8月消费，然后给张三转账1000")
+
+    assert result.route is RequestRoute.UNSUPPORTED
+    assert result.requested_output is RequestedOutput.ANSWER

@@ -9,6 +9,12 @@ export const eventTypes = [
   "task.completed",
   "task.failed",
   "report.generated",
+  "workflow.created",
+  "workflow.updated",
+  "workflow.waiting_for_input",
+  "workflow.ready_for_review",
+  "workflow.failed",
+  "workflow.cancelled",
 ] as const;
 
 export function subscribeToConversation(

@@ -3,6 +3,7 @@ from banking_api.mock_bank.service import MockBankService
 from banking_api.tools.models import BalanceResult, GetBalanceInput, ToolSpec
 
 MINIMAL_BANKING_AGENT_ID = "agent:minimal-banking"
+TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 
 def build_get_balance_tool(bank: MockBankService) -> ToolSpec:
@@ -17,6 +18,6 @@ def build_get_balance_tool(bank: MockBankService) -> ToolSpec:
         output_model=BalanceResult,
         risk_level=RiskLevel.R1_PRIVATE_READ,
         side_effect=False,
-        allowed_callers=frozenset({MINIMAL_BANKING_AGENT_ID}),
+        allowed_callers=frozenset({MINIMAL_BANKING_AGENT_ID, TRANSFER_WORKFLOW_CALLER}),
         handler=handler,
     )

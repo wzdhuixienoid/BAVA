@@ -36,8 +36,11 @@ from banking_api.tools.banking import (
     build_get_spending_summary_tool,
     build_get_top_transactions_tool,
     build_list_accounts_tool,
+    build_search_payees_tool,
 )
 from banking_api.tools.executor import ToolExecutor
+from banking_api.workflows.transfer.engine import TransferWorkflowEngine
+from banking_api.workflows.transfer.intent_extractor import TransferIntentExtractor
 
 
 def create_app() -> FastAPI:
@@ -81,7 +84,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.3.4",
+        version="0.4.1",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -108,7 +111,9 @@ def create_app() -> FastAPI:
     registry.register(build_get_category_breakdown_tool(analytics))
     registry.register(build_compare_spending_periods_tool(analytics))
     registry.register(build_get_top_transactions_tool(analytics))
+    registry.register(build_search_payees_tool(bank))
     executor = ToolExecutor(registry, PolicyService())
+    transfer_engine = TransferWorkflowEngine(executor)
     agent_registry = AgentRegistry()
     agent_registry.register(MINIMAL_BANKING_AGENT)
     agent_registry.register(FINANCIAL_ANALYSIS_AGENT)
@@ -131,6 +136,7 @@ def create_app() -> FastAPI:
     application.state.skill_registry = skill_registry
     application.state.request_router = router
     application.state.runtime_factory = runtime_factory
+    application.state.transfer_workflow_engine = transfer_engine
     application.state.task_runner = InProcessTaskRunner(
         session_factory,
         bus,
@@ -140,6 +146,8 @@ def create_app() -> FastAPI:
         agent_registry=agent_registry,
         skill_registry=skill_registry,
         skill_executor=SkillExecutor(provider),
+        transfer_intent_extractor=TransferIntentExtractor(provider),
+        transfer_workflow_engine=transfer_engine,
     )
     application.include_router(health_router)
     application.include_router(api_router)

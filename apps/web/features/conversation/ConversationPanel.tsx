@@ -11,24 +11,37 @@ import { TaskPanel } from "@/features/tasks/TaskPanel";
 type ConversationDetail = components["schemas"]["ConversationDetail"];
 type Task = components["schemas"]["Task"];
 type ReportListItem = components["schemas"]["ReportListItem"];
+type Workflow = components["schemas"]["Workflow"];
 
 export function ConversationPanel({ conversationId }: { conversationId: string }) {
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<ReportListItem[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const refreshWorkflows = useCallback(async () => {
+    try {
+      setWorkflows(await api.listWorkflows(conversationId));
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "无法加载工作流状态");
+    }
+  }, [conversationId]);
+
   const refresh = useCallback(async () => {
     try {
-      const [nextConversation, nextTasks, nextReports] = await Promise.all([
+      const [nextConversation, nextTasks, nextReports, nextWorkflows] = await Promise.all([
         api.getConversation(conversationId),
         api.listTasks(conversationId),
         api.listReports(conversationId),
+        api.listWorkflows(conversationId),
       ]);
       setConversation(nextConversation);
       setTasks(nextTasks);
       setReports(nextReports);
+      setWorkflows(nextWorkflows);
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法加载服务器状态");
@@ -39,13 +52,20 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     setConversation(null);
     setTasks([]);
     setReports([]);
+    setWorkflows([]);
     void refresh();
     return subscribeToConversation(
       conversationId,
-      () => void refresh(),
+      (event) => {
+        if (event.type.startsWith("workflow.")) {
+          void refreshWorkflows();
+        } else {
+          void refresh();
+        }
+      },
       setConnected,
     );
-  }, [conversationId, refresh]);
+  }, [conversationId, refresh, refreshWorkflows]);
 
   async function send(content: string) {
     await api.postMessage(conversationId, content);
@@ -71,7 +91,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
             <MessageList messages={conversation?.messages ?? []} />
             <MessageComposer onSend={send} />
           </section>
-          <TaskPanel tasks={tasks} reports={reports} />
+          <TaskPanel tasks={tasks} reports={reports} workflows={workflows} onRefresh={refresh} />
         </div>
       )}
     </div>

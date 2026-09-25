@@ -110,9 +110,11 @@ def test_application_registers_two_agents_with_isolated_account_permissions() ->
     assert list_accounts is not None
     assert get_balance is not None
     assert list_accounts.allowed_callers == frozenset(
-        {"agent:minimal-banking", "agent:financial-analysis"}
+        {"agent:minimal-banking", "agent:financial-analysis", "workflow:transfer"}
     )
-    assert get_balance.allowed_callers == frozenset({"agent:minimal-banking"})
+    assert get_balance.allowed_callers == frozenset(
+        {"agent:minimal-banking", "workflow:transfer"}
+    )
 
 
 def test_financial_agent_has_exact_read_capabilities() -> None:

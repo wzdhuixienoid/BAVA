@@ -60,6 +60,7 @@ def test_application_registry_adds_financial_tools_without_expanding_minimal_age
     assert {spec.capability_id for spec in registry.all()} == {
         "account.list",
         "account.get_balance",
+        "payee.search",
         *FINANCIAL_CAPABILITIES,
     }
     assert [

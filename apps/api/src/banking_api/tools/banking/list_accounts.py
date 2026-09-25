@@ -4,6 +4,7 @@ from banking_api.tools.models import ListAccountsInput, ListAccountsOutput, Tool
 
 MINIMAL_BANKING_AGENT_ID = "agent:minimal-banking"
 FINANCIAL_ANALYSIS_AGENT_ID = "agent:financial-analysis"
+TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 
 def build_list_accounts_tool(bank: MockBankService) -> ToolSpec:
@@ -19,7 +20,11 @@ def build_list_accounts_tool(bank: MockBankService) -> ToolSpec:
         risk_level=RiskLevel.R1_PRIVATE_READ,
         side_effect=False,
         allowed_callers=frozenset(
-            {MINIMAL_BANKING_AGENT_ID, FINANCIAL_ANALYSIS_AGENT_ID}
+            {
+                MINIMAL_BANKING_AGENT_ID,
+                FINANCIAL_ANALYSIS_AGENT_ID,
+                TRANSFER_WORKFLOW_CALLER,
+            }
         ),
         handler=handler,
     )

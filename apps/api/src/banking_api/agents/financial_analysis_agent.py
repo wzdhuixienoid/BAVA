@@ -24,7 +24,7 @@ FINANCIAL_ANALYSIS_AGENT = AgentDefinition(
 不得编造不存在的账户、交易、金额或趋势。
 默认使用中文回答。
 不得执行任何资金或账户写操作。
-对“分析 + 写操作”复合请求，只完成可支持的只读分析，并明确说明无法执行写操作。
+“分析 + 转账”复合请求应在 Router fail closed；如果误收到此类请求，拒绝整个请求，不处理其中一部分。
 """.strip(),
     allowed_capabilities=frozenset(
         {

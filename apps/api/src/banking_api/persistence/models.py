@@ -23,7 +23,9 @@ from banking_api.domain.enums import (
     RequestedOutput,
     RuntimeBackend,
     TaskStatus,
+    WorkflowStatus,
 )
+from banking_api.domain.workflow import WorkflowType
 from banking_api.persistence.database import Base
 
 
@@ -47,6 +49,35 @@ class ConversationModel(Base):
     )
     tasks: Mapped[list["TaskModel"]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
+    )
+
+
+class WorkflowModel(Base):
+    __tablename__ = "workflows"
+    __table_args__ = (
+        Index("ix_workflows_user_created_at", "user_id", "created_at"),
+        Index("ix_workflows_conversation_created_at", "conversation_id", "created_at"),
+    )
+
+    workflow_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    conversation_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    source_task_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    workflow_type: Mapped[WorkflowType] = mapped_column(
+        Enum(WorkflowType, name="workflow_type")
+    )
+    status: Mapped[WorkflowStatus] = mapped_column(
+        Enum(WorkflowStatus, name="workflow_status"), index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    state_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
 

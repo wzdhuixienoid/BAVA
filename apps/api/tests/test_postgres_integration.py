@@ -11,6 +11,11 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.report_service import ReportService
 from banking_api.application.task_service import TaskService
+from banking_api.application.workflow_service import (
+    WorkflowNotFoundError,
+    WorkflowService,
+    WorkflowVersionConflictError,
+)
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole, RuntimeBackend, TaskStatus
 from banking_api.domain.message import Message
@@ -36,8 +41,14 @@ from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
-from banking_api.tools.banking import build_get_balance_tool, build_list_accounts_tool
+from banking_api.tools.banking import (
+    build_get_balance_tool,
+    build_list_accounts_tool,
+    build_search_payees_tool,
+)
 from banking_api.tools.executor import ToolExecutor
+from banking_api.workflows.transfer.engine import TransferWorkflowEngine
+from banking_api.workflows.transfer.models import TransferIntent
 
 pytestmark = pytest.mark.postgres
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
@@ -104,7 +115,17 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0005"
+        workflow_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'workflows'"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0006"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -122,6 +143,18 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "source_snapshot_hash",
             "created_at",
         }.issubset(report_columns)
+        assert {
+            "id",
+            "user_id",
+            "conversation_id",
+            "source_task_id",
+            "workflow_type",
+            "status",
+            "version",
+            "state_json",
+            "created_at",
+            "updated_at",
+        }.issubset(workflow_columns)
         conversation = await ConversationService(session, bus).create(
             user_id="postgres-test-user", title="PostgreSQL Agent E2E"
         )
@@ -201,6 +234,94 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
     assert [event.event_type for event in events].count("tool.call.completed") == 2
     assert events[-2].event_type == "task.completed"
     assert events[-1].event_type == "conversation.message.completed"
+
+
+async def test_postgres_transfer_workflow_persistence_version_and_ownership(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    bank = MockBankService()
+    registry = ToolRegistry()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank))
+    registry.register(build_search_payees_tool(bank))
+    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+
+    async with factory() as session:
+        conversation = await ConversationService(session, bus).create(
+            user_id="postgres-transfer-user", title="PostgreSQL Transfer"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id="postgres-transfer-user",
+            content="给张三转2000",
+        )
+    async with factory() as session:
+        created = await WorkflowService(session, bus, engine).create_transfer(
+            user_id="postgres-transfer-user",
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            intent=TransferIntent(recipient_query="张三", amount="2000.00"),
+        )
+    assert created.status.value == "WAITING_FOR_INPUT"
+    assert created.version == 2
+
+    async with factory() as session:
+        selected_payee = await WorkflowService(session, bus, engine).select_payee(
+            created.workflow_id,
+            user_id="postgres-transfer-user",
+            payee_id="payee_001",
+            expected_version=created.version,
+        )
+    assert selected_payee.version == 3
+    assert selected_payee.state["required_input"]["type"] == "SOURCE_ACCOUNT_SELECTION"
+
+    async with factory() as session:
+        with pytest.raises(WorkflowVersionConflictError):
+            await WorkflowService(session, bus, engine).select_source_account(
+                created.workflow_id,
+                user_id="postgres-transfer-user",
+                account_id="acc_salary",
+                expected_version=created.version,
+            )
+    async with factory() as session:
+        ready = await WorkflowService(session, bus, engine).select_source_account(
+            created.workflow_id,
+            user_id="postgres-transfer-user",
+            account_id="acc_salary",
+            expected_version=selected_payee.version,
+        )
+    assert ready.status.value == "READY_FOR_REVIEW"
+    assert ready.version == 4
+
+    async with factory() as session:
+        recovered = await WorkflowService(session, bus, engine).get(
+            ready.workflow_id, user_id="postgres-transfer-user"
+        )
+        with pytest.raises(WorkflowNotFoundError):
+            await WorkflowService(session, bus, engine).get(
+                ready.workflow_id, user_id="another-user"
+            )
+        workflow_events = list(
+            (
+                await session.execute(
+                    select(EventModel).where(
+                        EventModel.task_id == accepted.task_id,
+                        EventModel.event_type.like("workflow.%"),
+                    )
+                )
+            ).scalars()
+        )
+    assert recovered.state["review_payload"]["amount"] == "2000.00"
+    assert [event.event_type for event in workflow_events] == [
+        "workflow.created",
+        "workflow.waiting_for_input",
+        "workflow.waiting_for_input",
+        "workflow.ready_for_review",
+    ]
+    assert all("state_json" not in event.data_json for event in workflow_events)
 
 
 async def test_postgres_report_artifact_round_trip(postgres_factory) -> None:

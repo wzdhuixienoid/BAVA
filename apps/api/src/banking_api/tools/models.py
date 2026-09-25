@@ -40,6 +40,24 @@ class BalanceResult(BaseModel):
     balance: Decimal
 
 
+class SearchPayeesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1, max_length=100)
+
+
+class PayeeSummary(BaseModel):
+    payee_id: str
+    display_name: str
+    bank_name: str
+    masked_account: str
+    phone_alias: str
+
+
+class SearchPayeesOutput(BaseModel):
+    payees: list[PayeeSummary] = Field(max_length=10)
+
+
 ToolHandler = Callable[[BaseModel], BaseModel | Awaitable[BaseModel]]
 
 

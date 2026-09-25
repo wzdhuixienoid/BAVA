@@ -326,19 +326,13 @@ async def test_financial_route_cannot_gain_transfer_authority(app) -> None:
     await runner.run(accepted.task_id)
     task, events = await load_task_and_events(app, accepted.task_id)
 
-    assert task.status is TaskStatus.FAILED
-    assert task.executor_id == "agent:financial-analysis"
-    assert task.error is not None
-    assert task.error["code"] == "TOOL_NOT_FOUND"
-    assert len(provider.requests) == 3
-    failed = [event for event in events if event.event_type == "tool.call.failed"]
-    assert failed[-1].data_json["error_code"] == "TOOL_NOT_FOUND"
-    completed_data = [
-        event.data_json
-        for event in events
-        if event.event_type == "tool.call.completed"
-    ]
-    assert all("transfer" not in str(data).lower() for data in completed_data)
+    assert task.status is TaskStatus.COMPLETED
+    assert task.executor_id is None
+    assert task.output is not None
+    assert task.output["route"] == "UNSUPPORTED"
+    assert len(provider.requests) == 1
+    assert not any(event.event_type.startswith("agent.") for event in events)
+    assert not any(event.event_type.startswith("tool.") for event in events)
 
 
 async def test_monthly_report_product_pipeline_persists_one_visible_message(app) -> None:
@@ -423,7 +417,7 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
 
 async def test_normal_financial_answer_does_not_create_report(app) -> None:
     _, accepted = await accept(app, "分析2026年8月消费")
-    runner, _ = build_routed_runner(
+    runner, provider = build_routed_runner(
         app,
         [
             route_response("FINANCIAL_ANALYSIS"),
@@ -500,7 +494,7 @@ async def test_report_persistence_failure_emits_no_generated_event(
 
 async def test_report_request_cannot_gain_transfer_authority(app) -> None:
     _, accepted = await accept(app, "生成8月消费报告，然后给张三转1000")
-    runner, _ = build_routed_runner(
+    runner, provider = build_routed_runner(
         app,
         [
             route_response("FINANCIAL_ANALYSIS", "MONTHLY_REPORT"),
@@ -512,8 +506,10 @@ async def test_report_request_cannot_gain_transfer_authority(app) -> None:
     await runner.run(accepted.task_id)
     task, events = await load_task_and_events(app, accepted.task_id)
 
-    assert task.status is TaskStatus.FAILED
-    assert task.error is not None
-    assert task.error["code"] == "TOOL_NOT_FOUND"
+    assert task.status is TaskStatus.COMPLETED
+    assert task.executor_id is None
+    assert task.output is not None
+    assert task.output["route"] == "UNSUPPORTED"
+    assert len(provider.requests) == 1
     assert "skill.run.started" not in [event.event_type for event in events]
     assert "report.generated" not in [event.event_type for event in events]

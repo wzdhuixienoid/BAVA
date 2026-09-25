@@ -159,7 +159,7 @@ async def main() -> None:
             raise RuntimeError(f"Report task failed: {task.error}")
         report_id = task.output.get("report_id")
         if not isinstance(report_id, str):
-            raise RuntimeError("Task output does not contain a report reference")
+            raise TypeError("Task output does not contain a report reference")
 
         application = create_app()
 

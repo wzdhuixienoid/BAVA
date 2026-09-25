@@ -19,6 +19,12 @@ class MockBankService:
         self._transactions: list[dict[str, Any]] = json.loads(
             (directory / "transactions.json").read_text(encoding="utf-8")
         )
+        payees_path = directory / "payees.json"
+        self._payees: list[dict[str, Any]] = (
+            json.loads(payees_path.read_text(encoding="utf-8"))
+            if payees_path.exists()
+            else []
+        )
 
     def list_accounts(self) -> list[dict[str, Any]]:
         return [
@@ -50,3 +56,17 @@ class MockBankService:
     def list_transactions(self) -> list[dict[str, Any]]:
         """Return copies of synthetic transactions for internal domain services."""
         return [dict(item) for item in self._transactions]
+
+    @staticmethod
+    def _normalize(value: str) -> str:
+        return "".join(value.casefold().split())
+
+    def search_payees(self, query: str) -> list[dict[str, Any]]:
+        """Bounded exact matching only; no fuzzy or model-selected resolution."""
+        normalized = self._normalize(query)
+        return [
+            dict(item)
+            for item in self._payees
+            if self._normalize(item["display_name"]) == normalized
+            or self._normalize(item["phone_alias"]) == normalized
+        ][:10]

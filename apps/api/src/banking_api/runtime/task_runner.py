@@ -11,6 +11,7 @@ from banking_api.application.report_service import (
     ReportPersistenceError,
     ReportService,
 )
+from banking_api.application.workflow_service import WorkflowService
 from banking_api.domain.enums import (
     ExecutorType,
     MessageRole,
@@ -18,6 +19,7 @@ from banking_api.domain.enums import (
     RequestedOutput,
     RuntimeBackend,
     TaskStatus,
+    WorkflowStatus,
 )
 from banking_api.financial.analysis_snapshot import (
     FinancialAnalysisSnapshot,
@@ -48,16 +50,22 @@ from banking_api.skills.models import SkillDefinition
 from banking_api.skills.monthly_spending_report import (
     MONTHLY_SPENDING_REPORT_SKILL_ID,
 )
+from banking_api.workflows.transfer.engine import TransferWorkflowEngine
+from banking_api.workflows.transfer.intent_extractor import (
+    TransferIntentExtractionError,
+    TransferIntentExtractor,
+)
 
 UNSUPPORTED_MESSAGE = (
-    "当前只支持账户列表、余额查询，以及消费汇总、分类、环比和主要交易分析。"
-    "暂不支持转账、投资理财、卡片或其他账户写操作。"
+    "当前无法安全处理该请求。如果请求中包含转账和其他意图，"
+    "请将转账作为独立请求提交。"
 )
 
 ROUTE_AGENT_IDS = {
     RequestRoute.MINIMAL_BANKING: MINIMAL_BANKING_AGENT.agent_id,
     RequestRoute.FINANCIAL_ANALYSIS: FINANCIAL_ANALYSIS_AGENT_ID,
 }
+TRANSFER_WORKFLOW_ID = "workflow:transfer"
 
 REPORT_SOURCE_INSTRUCTIONS = """
 本次请求的产品输出是月度消费报告数据源。
@@ -82,6 +90,8 @@ class InProcessTaskRunner:
         agent_registry: AgentRegistry | None = None,
         skill_registry: SkillRegistry | None = None,
         skill_executor: SkillExecutor | None = None,
+        transfer_intent_extractor: TransferIntentExtractor | None = None,
+        transfer_workflow_engine: TransferWorkflowEngine | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.bus = bus
@@ -91,6 +101,8 @@ class InProcessTaskRunner:
         self.agent_registry = agent_registry
         self.skill_registry = skill_registry
         self.skill_executor = skill_executor
+        self.transfer_intent_extractor = transfer_intent_extractor
+        self.transfer_workflow_engine = transfer_workflow_engine
 
     async def run(self, task_id: UUID) -> None:
         async with self.session_factory() as session:
@@ -150,7 +162,11 @@ class InProcessTaskRunner:
 
         try:
             decision = await self._route(current_task)
-            executor_id = ROUTE_AGENT_IDS.get(decision.route)
+            executor_id = (
+                TRANSFER_WORKFLOW_ID
+                if decision.route is RequestRoute.TRANSFER_WORKFLOW
+                else ROUTE_AGENT_IDS.get(decision.route)
+            )
             await self._persist_route(
                 task_id=task_id,
                 conversation_id=conversation_id,
@@ -164,6 +180,14 @@ class InProcessTaskRunner:
                     conversation_id=conversation_id,
                     answer=UNSUPPORTED_MESSAGE,
                     route=decision.route,
+                )
+                return
+            if decision.route is RequestRoute.TRANSFER_WORKFLOW:
+                await self._run_transfer_workflow(
+                    task_id=task_id,
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    user_request=current_task,
                 )
                 return
             if executor_id is None:
@@ -273,6 +297,17 @@ class InProcessTaskRunner:
                     "retryable": False,
                 },
             )
+        except TransferIntentExtractionError:
+            await self._fail(
+                task_id,
+                conversation_id,
+                {
+                    "category": "INPUT",
+                    "code": "TRANSFER_INTENT_EXTRACTION_FAILED",
+                    "message": "Transfer intent extraction failed",
+                    "retryable": False,
+                },
+            )
         except AgentRuntimeError as exc:
             await self._fail(task_id, conversation_id, exc.as_dict())
         except SkillExecutionError as exc:
@@ -344,10 +379,15 @@ class InProcessTaskRunner:
             task = await tasks.get(task_id)
             if task is None:
                 return
+            executor_type = None
+            if route is RequestRoute.TRANSFER_WORKFLOW:
+                executor_type = ExecutorType.WORKFLOW
+            elif executor_id is not None:
+                executor_type = ExecutorType.AGENT
             await tasks.assign_route(
                 task,
                 requested_output=requested_output,
-                executor_type=(ExecutorType.AGENT if executor_id is not None else None),
+                executor_type=executor_type,
                 executor_id=executor_id,
             )
             routed = await publisher.persist(
@@ -362,6 +402,71 @@ class InProcessTaskRunner:
             )
             await session.commit()
             await publisher.publish_persisted(routed)
+
+    async def _run_transfer_workflow(
+        self,
+        *,
+        task_id: UUID,
+        conversation_id: UUID,
+        user_id: str,
+        user_request: str,
+    ) -> None:
+        if self.transfer_intent_extractor is None or self.transfer_workflow_engine is None:
+            raise AgentRuntimeError(
+                "TRANSFER_WORKFLOW_NOT_CONFIGURED",
+                "Transfer workflow is not configured",
+            )
+        intent = await self.transfer_intent_extractor.extract(user_request)
+        async with self.session_factory() as session:
+            workflow = await WorkflowService(
+                session, self.bus, self.transfer_workflow_engine
+            ).create_transfer(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                source_task_id=task_id,
+                intent=intent,
+            )
+
+        async with self.session_factory() as session:
+            tasks = TaskRepository(session)
+            messages = MessageRepository(session)
+            publisher = EventPublisher(session, self.bus)
+            task = await tasks.get(task_id)
+            if task is None:
+                return
+            assistant = await messages.create(
+                conversation_id=conversation_id,
+                role=MessageRole.ASSISTANT,
+                content=(
+                    "转账草稿已准备，请在转账卡片中完成所需选择。"
+                    if workflow.status is WorkflowStatus.WAITING_FOR_INPUT
+                    else "转账信息已准备完成，尚未提交。"
+                ),
+            )
+            await tasks.transition(
+                task,
+                TaskStatus.COMPLETED,
+                output={
+                    "route": RequestRoute.TRANSFER_WORKFLOW.value,
+                    "requested_output": RequestedOutput.WORKFLOW.value,
+                    "workflow_id": str(workflow.workflow_id),
+                    "assistant_message_id": str(assistant.message_id),
+                },
+            )
+            completed = await publisher.persist(
+                event_type="task.completed",
+                conversation_id=conversation_id,
+                task_id=task_id,
+                data={"status": task.status.value, "version": task.version},
+            )
+            message_completed = await publisher.persist(
+                event_type="conversation.message.completed",
+                conversation_id=conversation_id,
+                task_id=task_id,
+                data={"message_id": str(assistant.message_id), "role": assistant.role.value},
+            )
+            await session.commit()
+            await publisher.publish_persisted(completed, message_completed)
 
     async def _complete_without_agent(
         self,
