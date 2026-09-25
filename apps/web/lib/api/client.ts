@@ -8,6 +8,7 @@ type Task = components["schemas"]["Task"];
 type ReportListItem = components["schemas"]["ReportListItem"];
 type ReportResponse = components["schemas"]["ReportResponse"];
 type Workflow = components["schemas"]["Workflow"];
+type OperationResource = components["schemas"]["OperationResource"];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -108,6 +109,21 @@ export const api = {
           verification_code: verificationCode,
           expected_version: expectedVersion,
         }),
+      },
+    ),
+  commitTransfer: (workflowId: string, expectedVersion: number) =>
+    request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/commit`, {
+      method: "POST",
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }),
+  getOperation: (operationId: string) =>
+    request<OperationResource>(`/api/v1/operations/${encodeURIComponent(operationId)}`),
+  reconcileOperation: (operationId: string, expectedVersion: number) =>
+    request<OperationResource>(
+      `/api/v1/operations/${encodeURIComponent(operationId)}/actions/reconcile`,
+      {
+        method: "POST",
+        body: JSON.stringify({ expected_version: expectedVersion }),
       },
     ),
   cancelWorkflow: (workflowId: string, expectedVersion: number) =>

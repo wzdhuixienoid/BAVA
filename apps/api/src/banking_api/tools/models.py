@@ -2,6 +2,7 @@ from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -56,6 +57,26 @@ class PayeeSummary(BaseModel):
 
 class SearchPayeesOutput(BaseModel):
     payees: list[PayeeSummary] = Field(max_length=10)
+
+
+class TransferOperationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation_id: UUID
+
+
+class TransferCommitOutput(BaseModel):
+    outcome: str
+    provider_reference: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+
+
+class TransferStatusOutput(BaseModel):
+    status: str
+    provider_reference: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
 
 
 ToolHandler = Callable[[BaseModel], BaseModel | Awaitable[BaseModel]]

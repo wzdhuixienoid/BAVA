@@ -15,10 +15,12 @@ from banking_api.domain.enums import (
     ReauthenticationStatus,
     WorkflowStatus,
 )
+from banking_api.domain.operation import OperationSummary
 from banking_api.domain.reauthentication import ReauthenticationSummary
 from banking_api.domain.workflow import Workflow, WorkflowType
 from banking_api.persistence.models import ApprovalModel, ReauthenticationModel, WorkflowModel
 from banking_api.persistence.repositories.approvals import ApprovalRepository
+from banking_api.persistence.repositories.operations import OperationRepository
 from banking_api.persistence.repositories.reauthentications import (
     ReauthenticationRepository,
 )
@@ -86,6 +88,7 @@ class WorkflowService:
         self.session = session
         self.workflows = WorkflowRepository(session)
         self.approvals = ApprovalRepository(session)
+        self.operations = OperationRepository(session)
         self.reauthentications = ReauthenticationRepository(session)
         self.publisher = EventPublisher(session, bus)
         self.engine = engine
@@ -440,6 +443,13 @@ class WorkflowService:
 
     async def cancel(self, workflow_id: UUID, *, user_id: str, expected_version: int) -> Workflow:
         model, state = await self._load_action(workflow_id, user_id, expected_version)
+        if model.status not in {
+            WorkflowStatus.WAITING_FOR_INPUT,
+            WorkflowStatus.READY_FOR_REVIEW,
+            WorkflowStatus.REAUTH_REQUIRED,
+            WorkflowStatus.READY_FOR_COMMIT,
+        }:
+            raise WorkflowActionError("WORKFLOW_CANNOT_BE_CANCELLED")
         now = _as_utc(self.clock())
         invalidation_events = await self._invalidate_authorization(model, now)
         state.authorization = None
@@ -500,7 +510,12 @@ class WorkflowService:
             raise WorkflowNotFoundError
         if model.version != expected_version:
             raise WorkflowVersionConflictError
-        if model.status in {WorkflowStatus.CANCELLED, WorkflowStatus.FAILED}:
+        if model.status in {
+            WorkflowStatus.CANCELLED,
+            WorkflowStatus.FAILED,
+            WorkflowStatus.COMMITTING,
+            WorkflowStatus.SUCCEEDED,
+        }:
             raise WorkflowActionError("WORKFLOW_NO_LONGER_ACCEPTS_ACTIONS")
         return model, TransferWorkflowState.model_validate(model.state_json)
 
@@ -680,6 +695,7 @@ class WorkflowService:
     async def _to_workflow(self, model: WorkflowModel) -> Workflow:
         approval = await self.approvals.latest_for_workflow(model.workflow_id, model.user_id)
         reauth = await self.reauthentications.latest_for_workflow(model.workflow_id, model.user_id)
+        operation = await self.operations.get_for_workflow(model.workflow_id, model.user_id)
         return Workflow(
             workflow_id=model.workflow_id,
             user_id=model.user_id,
@@ -706,6 +722,18 @@ class WorkflowService:
                     expires_at=reauth.expires_at,
                 )
                 if reauth is not None
+                else None
+            ),
+            operation_summary=(
+                OperationSummary(
+                    operation_id=operation.operation_id,
+                    status=operation.status,
+                    provider_reference=operation.provider_reference,
+                    error_code=operation.error_code,
+                    created_at=operation.created_at,
+                    completed_at=operation.completed_at,
+                )
+                if operation is not None
                 else None
             ),
             created_at=model.created_at,
@@ -755,6 +783,8 @@ class WorkflowService:
             WorkflowStatus.READY_FOR_REVIEW: "workflow.ready_for_review",
             WorkflowStatus.REAUTH_REQUIRED: "workflow.reauth_required",
             WorkflowStatus.READY_FOR_COMMIT: "workflow.ready_for_commit",
+            WorkflowStatus.COMMITTING: "workflow.committing",
+            WorkflowStatus.SUCCEEDED: "workflow.succeeded",
             WorkflowStatus.FAILED: "workflow.failed",
             WorkflowStatus.CANCELLED: "workflow.cancelled",
         }.get(status, "workflow.updated")

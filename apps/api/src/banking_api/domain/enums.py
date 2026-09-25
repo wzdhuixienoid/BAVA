@@ -26,6 +26,8 @@ class WorkflowStatus(StrEnum):
     READY_FOR_REVIEW = "READY_FOR_REVIEW"
     REAUTH_REQUIRED = "REAUTH_REQUIRED"
     READY_FOR_COMMIT = "READY_FOR_COMMIT"
+    COMMITTING = "COMMITTING"
+    SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
@@ -35,6 +37,7 @@ class ApprovalStatus(StrEnum):
     APPROVED = "APPROVED"
     EXPIRED = "EXPIRED"
     INVALIDATED = "INVALIDATED"
+    CONSUMED = "CONSUMED"
 
 
 class ReauthenticationStatus(StrEnum):
@@ -66,6 +69,7 @@ class RiskLevel(StrEnum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     R1_PRIVATE_READ = "R1_PRIVATE_READ"
+    R4_FINANCIAL_COMMIT = "R4_FINANCIAL_COMMIT"
 
 
 class RuntimeBackend(StrEnum):

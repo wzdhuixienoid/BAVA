@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 from banking_api.domain.approval import ApprovalSummary
 from banking_api.domain.enums import WorkflowStatus
+from banking_api.domain.operation import OperationSummary
 from banking_api.domain.reauthentication import ReauthenticationSummary
 
 
@@ -29,5 +30,6 @@ class Workflow(BaseModel):
     state: dict[str, Any]
     approval_summary: ApprovalSummary | None = None
     reauth_summary: ReauthenticationSummary | None = None
+    operation_summary: OperationSummary | None = None
     created_at: datetime
     updated_at: datetime

@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及创建安全的转账草稿并校验到 `READY_FOR_REVIEW`。系统仍然没有任何移动资金的能力。
+面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及通过持久化 Transfer Workflow 完成草稿、校验、审批、重新认证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
 
@@ -11,7 +11,7 @@
 | 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
-| 转账草稿与初步校验 | `workflow:transfer` | 收款人/账户确定性解析 → `READY_FOR_REVIEW` |
+| 转账全链路 | `workflow:transfer` | Draft → Validation → Approval → Reauthentication → Operation → Verification |
 
 用户可以直接输入：
 
@@ -35,6 +35,8 @@ User Message
         └─ FinancialAnalysisAgent
     → LangGraphAgentRuntime
     → ToolRegistry → PolicyService → ToolExecutor
+        └─ transfer.commit (R4) / transfer.get_status (R1)
+    → persistent Operation → MockTransferProvider idempotency ledger
     → FinancialAnalysisSnapshot
     → SkillRegistry → MonthlySpendingReportSkill
     → immutable Report Artifact
@@ -46,7 +48,7 @@ User Message
 
 - Alembic 管理 Conversation、Message、Task、Event 和 Report 等应用表。
 - LangGraph PostgreSQL Checkpointer 管理 Agent runtime checkpoint。
-- committed Mock Bank synthetic data 提供当前金融交易数据。
+- committed Mock Bank synthetic data 作为基线 fixture；工资卡等有效余额会减去持久化 provider ledger 中已成功的转出，不修改 committed JSON。
 
 产品 Runtime 是 `LangGraphAgentRuntime`。`ManualAgentRuntime` 仅作为 reference 保留，不承载新功能。
 
@@ -92,12 +94,13 @@ User Message
 
 ## 权限边界
 
-所有现有 Tool 都是 `R1_PRIVATE_READ` 且无副作用。
+默认仍是只读和最小权限；唯一例外是 04.3 新增的受控资金提交能力。
 
 - `agent:minimal-banking`：允许 `account.list`、`account.get_balance`。
 - `agent:financial-analysis`：允许 `account.list` 和四个 Financial Tools，不允许余额、转账、卡片或其他写能力。
 - `skill:monthly-spending-report`：`allowed_tools=[]`，只能消费 `FinancialAnalysisSnapshot`。
-- `workflow:transfer`：只允许 `payee.search`、`account.list`、`account.get_balance`，均为无副作用读能力。
+- `workflow:transfer`：允许三项 R1 读能力，以及仅接受持久化 `operation_id` 的 `transfer.commit` (`R4_FINANCIAL_COMMIT`) 和 `transfer.get_status` (R1)。
+- 任何 Agent 或 Skill 都看不到、也无权调用 `transfer.commit`；LLM 在意图提取后完全退出执行路径。
 - Reports API 只有 GET list/detail，没有 POST、PUT、PATCH 或 DELETE。
 
 Router 只选择 Agent/Workflow 和 requested output，不扩大权限。未知 Tool、越权调用和写操作请求均 fail closed。
@@ -195,7 +198,9 @@ GET  /api/v1/reports
 GET  /api/v1/reports/{report_id}
 GET  /api/v1/workflows/{workflow_id}
 GET  /api/v1/workflows?conversation_id=...
-POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|approve|start-reauth|verify-reauth|cancel}
+POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|approve|start-reauth|verify-reauth|commit|cancel}
+GET  /api/v1/operations/{operation_id}
+POST /api/v1/operations/{operation_id}/actions/reconcile
 ```
 
 ```text
@@ -206,7 +211,7 @@ POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|s
 
 SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。
 
-`READY_FOR_COMMIT` 只表示当前 Transfer Payload 通过草稿校验、精确 payload 审批与 step-up 身份验证，完全不代表资金已转出。04.3 真正提交前仍必须重新验证 Approval、Reauthentication、payload hash、policy、payee、source account、balance 和 currency。
+`READY_FOR_COMMIT` 只表示当前 payload 已审批并重新认证。Commit 仍会重新验证 Approval、Reauthentication、payload hash、Policy、payee、source account、balance 和 currency。`SUBMITTED` 不是成功；`UNKNOWN` 表示 Provider 可能已接收或执行，只能查询原 Operation，不得新建或换 key 重提。只有 `Operation SUCCEEDED` 才能展示“转账成功”。
 
 ## 项目结构
 
@@ -226,11 +231,14 @@ docs/                     版本交付、测试结果与设计记录
 - [Implementation Report v0.4.2](docs/implementation-report-v0.4.2.md)
 - [Repository Tree v0.4.2](docs/repository-tree-v0.4.2.md)
 - [Test Results v0.4.2](docs/test-results-v0.4.2.md)
+- [Implementation Report v0.4.3](docs/implementation-report-v0.4.3.md)
+- [Repository Tree v0.4.3](docs/repository-tree-v0.4.3.md)
+- [Test Results v0.4.3](docs/test-results-v0.4.3.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 
 ## 当前限制
 
-当前不支持资金写操作、raw transaction search、汇率换算、Chart、Report 编辑/删除、PDF/Excel/邮件导出、定时报告、Memory、RAG、MCP、Planner 或 Agent-to-Agent 调用。
+当前资金写入仅限持久化 Mock Transfer Provider；不支持真实银行 API、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP 或 Agent-to-Agent 调用。
 
 Task runner 和实时事件传输当前按单 API process 设计；尚未引入 Outbox、Redis、Celery 或 multi-worker execution。

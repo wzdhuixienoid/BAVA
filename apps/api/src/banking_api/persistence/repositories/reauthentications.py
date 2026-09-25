@@ -49,6 +49,20 @@ class ReauthenticationRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_for_workflow_user_for_update(
+        self, reauth_id: UUID, workflow_id: UUID, user_id: str
+    ) -> ReauthenticationModel | None:
+        result = await self.session.execute(
+            select(ReauthenticationModel)
+            .where(
+                ReauthenticationModel.reauth_id == reauth_id,
+                ReauthenticationModel.workflow_id == workflow_id,
+                ReauthenticationModel.user_id == user_id,
+            )
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def latest_for_workflow(
         self, workflow_id: UUID, user_id: str
     ) -> ReauthenticationModel | None:

@@ -10,7 +10,7 @@ class PolicyResult(BaseModel):
 
 
 class PolicyService:
-    """Read-only minimal-agent allow rule; every unmatched request is denied."""
+    """Default-deny capability policy including the explicit transfer commit boundary."""
 
     def evaluate(
         self,
@@ -20,17 +20,34 @@ class PolicyService:
         authenticated: bool,
         agent_allowlist: frozenset[str],
     ) -> PolicyResult:
-        allowed = (
+        common = (
             authenticated
             and spec is not None
             and caller in spec.allowed_callers
             and spec.capability_id in agent_allowlist
+        )
+        read_allowed = (
+            common
+            and spec is not None
             and spec.risk_level is RiskLevel.R1_PRIVATE_READ
             and not spec.side_effect
         )
-        if allowed:
+        commit_allowed = (
+            common
+            and spec is not None
+            and caller == "workflow:transfer"
+            and spec.capability_id == "transfer.commit"
+            and spec.risk_level is RiskLevel.R4_FINANCIAL_COMMIT
+            and spec.side_effect
+        )
+        if read_allowed or commit_allowed:
             return PolicyResult(
-                decision=PolicyDecision.ALLOW, reason="read-only capability allowed"
+                decision=PolicyDecision.ALLOW,
+                reason=(
+                    "transfer financial commit allowed"
+                    if commit_allowed
+                    else "read-only capability allowed"
+                ),
             )
         return PolicyResult(
             decision=PolicyDecision.DENY,

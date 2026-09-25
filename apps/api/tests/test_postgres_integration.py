@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.application.conversation_service import ConversationService
+from banking_api.application.operation_service import OperationNotFoundError, OperationService
 from banking_api.application.report_service import ReportService
 from banking_api.application.task_service import TaskService
 from banking_api.application.workflow_service import (
@@ -21,6 +22,7 @@ from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import (
     ApprovalStatus,
     MessageRole,
+    OperationStatus,
     ReauthenticationStatus,
     RuntimeBackend,
     TaskStatus,
@@ -31,7 +33,12 @@ from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse, LLMToolCall
 from banking_api.mock_bank.service import MockBankService
-from banking_api.persistence.models import ApprovalModel, EventModel, ReauthenticationModel
+from banking_api.persistence.models import (
+    ApprovalModel,
+    EventModel,
+    OperationModel,
+    ReauthenticationModel,
+)
 from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
@@ -49,11 +56,14 @@ from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import (
+    build_commit_transfer_tool,
     build_get_balance_tool,
+    build_get_transfer_status_tool,
     build_list_accounts_tool,
     build_search_payees_tool,
 )
 from banking_api.tools.executor import ToolExecutor
+from banking_api.transfers.mock_provider import MockTransferProvider
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.models import TransferIntent
 
@@ -70,12 +80,18 @@ async def postgres_factory():
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with engine.begin() as connection:
         await connection.execute(
-            text("TRUNCATE events, tasks, messages, conversations RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE mock_bank_transfers, events, tasks, messages, conversations "
+                "RESTART IDENTITY CASCADE"
+            )
         )
     yield factory
     async with engine.begin() as connection:
         await connection.execute(
-            text("TRUNCATE events, tasks, messages, conversations RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE mock_bank_transfers, events, tasks, messages, conversations "
+                "RESTART IDENTITY CASCADE"
+            )
         )
     await engine.dispose()
 
@@ -152,7 +168,27 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0007"
+        operation_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'operations'"
+                    )
+                )
+            ).scalars()
+        )
+        provider_ledger_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'mock_bank_transfers'"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0008"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -194,6 +230,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "approved_at",
             "invalidated_at",
             "consumed_at",
+            "consumed_by_operation_id",
             "created_at",
         }.issubset(approval_columns)
         assert {
@@ -209,6 +246,31 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "attempt_count",
             "created_at",
         }.issubset(reauth_columns)
+        assert {
+            "id",
+            "user_id",
+            "workflow_id",
+            "approval_id",
+            "operation_type",
+            "payload_json",
+            "payload_hash",
+            "idempotency_key",
+            "status",
+            "version",
+            "provider_reference",
+            "created_at",
+            "updated_at",
+        }.issubset(operation_columns)
+        assert {
+            "provider_reference",
+            "idempotency_key",
+            "source_account_id",
+            "payee_id",
+            "amount",
+            "currency",
+            "status",
+            "applied_at",
+        }.issubset(provider_ledger_columns)
         conversation = await ConversationService(session, bus).create(
             user_id="postgres-test-user", title="PostgreSQL Agent E2E"
         )
@@ -469,6 +531,113 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
     assert mutated.approval_summary.status is ApprovalStatus.INVALIDATED
     assert mutated.reauth_summary is not None
     assert mutated.reauth_summary.status is ReauthenticationStatus.INVALIDATED
+
+
+async def test_postgres_operation_atomic_consumption_and_restart_recovery(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    bank = MockBankService()
+    provider = MockTransferProvider(factory, bank)
+    registry = ToolRegistry()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank, provider.effective_balance))
+    registry.register(build_search_payees_tool(bank))
+    registry.register(build_commit_transfer_tool(factory, provider))
+    registry.register(build_get_transfer_status_tool(factory, provider))
+    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+    user_id = "postgres-operation-user"
+
+    async with factory() as session:
+        conversation = await ConversationService(session, bus).create(
+            user_id=user_id, title="PostgreSQL Operation"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id=user_id,
+            content="给张三转2000",
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).create_transfer(
+            user_id=user_id,
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            intent=TransferIntent(recipient_query="张三", amount="2000.00"),
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).select_payee(
+            workflow.workflow_id,
+            user_id=user_id,
+            payee_id="payee_001",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).select_source_account(
+            workflow.workflow_id,
+            user_id=user_id,
+            account_id="acc_salary",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).approve(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).start_reauthentication(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).verify_reauthentication(
+            workflow.workflow_id,
+            user_id=user_id,
+            reauth_id=workflow.reauth_summary.reauth_id,  # type: ignore[union-attr]
+            verification_code="246810",
+            expected_version=workflow.version,
+        )
+
+    initial_balance = await provider.effective_balance("acc_salary")
+    async with factory() as session:
+        created = await OperationService(session, bus, engine).prepare_transfer(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    assert created.status is OperationStatus.CREATED
+    async with factory() as session:
+        persisted_created = await session.get(OperationModel, created.operation_id)
+        approval = await session.get(
+            ApprovalModel, workflow.approval_summary.approval_id  # type: ignore[union-attr]
+        )
+    stable_key = persisted_created.idempotency_key  # type: ignore[union-attr]
+    assert approval.status is ApprovalStatus.CONSUMED  # type: ignore[union-attr]
+    assert approval.consumed_by_operation_id == created.operation_id  # type: ignore[union-attr]
+
+    # New sessions model an application restart after the atomic CREATED boundary.
+    async with factory() as session:
+        succeeded = await OperationService(session, bus, engine).reconcile(
+            created.operation_id,
+            user_id=user_id,
+            expected_version=created.version,
+        )
+    assert succeeded.status is OperationStatus.SUCCEEDED
+    assert await provider.effective_balance("acc_salary") == initial_balance - Decimal(
+        "2000.00"
+    )
+    assert await provider.transfer_count() == 1
+    async with factory() as session:
+        recovered = await session.get(OperationModel, created.operation_id)
+        with pytest.raises(OperationNotFoundError):
+            await OperationService(session, bus, engine).get(
+                created.operation_id, user_id="other-user"
+            )
+    assert recovered.idempotency_key == stable_key  # type: ignore[union-attr]
+    assert recovered.payload_hash == approval.payload_hash  # type: ignore[union-attr]
 
 
 async def test_postgres_report_artifact_round_trip(postgres_factory) -> None:

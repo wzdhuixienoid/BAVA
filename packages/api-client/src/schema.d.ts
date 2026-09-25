@@ -345,6 +345,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/{workflow_id}/actions/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commit Transfer */
+        post: operations["commit_transfer_api_v1_workflows__workflow_id__actions_commit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/{operation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operation */
+        get: operations["get_operation_api_v1_operations__operation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/{operation_id}/actions/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcile Operation */
+        post: operations["reconcile_operation_api_v1_operations__operation_id__actions_reconcile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -353,7 +404,7 @@ export interface components {
          * ApprovalStatus
          * @enum {string}
          */
-        ApprovalStatus: "PENDING" | "APPROVED" | "EXPIRED" | "INVALIDATED";
+        ApprovalStatus: "PENDING" | "APPROVED" | "EXPIRED" | "INVALIDATED" | "CONSUMED";
         /** ApprovalSummary */
         ApprovalSummary: {
             /**
@@ -375,6 +426,11 @@ export interface components {
         };
         /** CancelWorkflowAction */
         CancelWorkflowAction: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** CommitTransferAction */
+        CommitTransferAction: {
             /** Expected Version */
             expected_version: number;
         };
@@ -547,6 +603,76 @@ export interface components {
             insights: components["schemas"]["ReportInsight"][];
         };
         /**
+         * OperationResource
+         * @description Frontend-safe operation resource; deliberately excludes key and payload.
+         */
+        OperationResource: {
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             */
+            workflow_id: string;
+            operation_type: components["schemas"]["OperationType"];
+            status: components["schemas"]["OperationStatus"];
+            /** Version */
+            version: number;
+            /** Provider Reference */
+            provider_reference?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Submitted At */
+            submitted_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * OperationStatus
+         * @enum {string}
+         */
+        OperationStatus: "CREATED" | "SUBMITTED" | "UNKNOWN" | "SUCCEEDED" | "FAILED";
+        /** OperationSummary */
+        OperationSummary: {
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            status: components["schemas"]["OperationStatus"];
+            /** Provider Reference */
+            provider_reference?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Completed At */
+            completed_at?: string | null;
+        };
+        /**
+         * OperationType
+         * @enum {string}
+         */
+        OperationType: "TRANSFER";
+        /**
          * ReauthenticationMethod
          * @enum {string}
          */
@@ -570,6 +696,11 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+        };
+        /** ReconcileOperationAction */
+        ReconcileOperationAction: {
+            /** Expected Version */
+            expected_version: number;
         };
         /** ReportCategory */
         ReportCategory: {
@@ -901,6 +1032,7 @@ export interface components {
             };
             approval_summary?: components["schemas"]["ApprovalSummary"] | null;
             reauth_summary?: components["schemas"]["ReauthenticationSummary"] | null;
+            operation_summary?: components["schemas"]["OperationSummary"] | null;
             /**
              * Created At
              * Format: date-time
@@ -916,7 +1048,7 @@ export interface components {
          * WorkflowStatus
          * @enum {string}
          */
-        WorkflowStatus: "DRAFT" | "WAITING_FOR_INPUT" | "VALIDATING" | "READY_FOR_REVIEW" | "REAUTH_REQUIRED" | "READY_FOR_COMMIT" | "FAILED" | "CANCELLED";
+        WorkflowStatus: "DRAFT" | "WAITING_FOR_INPUT" | "VALIDATING" | "READY_FOR_REVIEW" | "REAUTH_REQUIRED" | "READY_FOR_COMMIT" | "COMMITTING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
         /**
          * WorkflowType
          * @enum {string}
@@ -1589,6 +1721,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    commit_transfer_api_v1_workflows__workflow_id__actions_commit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitTransferAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operation_api_v1_operations__operation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResource"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reconcile_operation_api_v1_operations__operation_id__actions_reconcile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReconcileOperationAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationResource"];
                 };
             };
             /** @description Validation Error */

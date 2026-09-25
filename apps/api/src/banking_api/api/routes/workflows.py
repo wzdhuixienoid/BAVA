@@ -9,6 +9,12 @@ from banking_api.api.dependencies import (
     SessionDependency,
     TransferWorkflowEngineDependency,
 )
+from banking_api.application.operation_service import (
+    OperationActionError,
+    OperationNotFoundError,
+    OperationService,
+    OperationVersionConflictError,
+)
 from banking_api.application.workflow_service import (
     WorkflowActionError,
     WorkflowNotFoundError,
@@ -19,6 +25,7 @@ from banking_api.domain.workflow import Workflow
 from banking_api.workflows.transfer.models import (
     ApproveTransferAction,
     CancelWorkflowAction,
+    CommitTransferAction,
     SelectPayeeAction,
     SelectSourceAccountAction,
     SetAmountAction,
@@ -35,9 +42,9 @@ def _service(session, bus, engine) -> WorkflowService:  # type: ignore[no-untype
 
 
 def _raise_action_error(exc: Exception) -> NoReturn:
-    if isinstance(exc, WorkflowNotFoundError):
+    if isinstance(exc, (WorkflowNotFoundError, OperationNotFoundError)):
         raise HTTPException(status_code=404, detail="未找到该工作流") from exc
-    if isinstance(exc, WorkflowVersionConflictError):
+    if isinstance(exc, (WorkflowVersionConflictError, OperationVersionConflictError)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="工作流已更新，请刷新后重试",
@@ -227,4 +234,30 @@ async def verify_reauthentication(
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/commit", response_model=Workflow)
+async def commit_transfer(
+    workflow_id: UUID,
+    body: CommitTransferAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        await OperationService(session, bus, engine).commit_workflow(
+            workflow_id,
+            user_id=principal.user_id,
+            expected_version=body.expected_version,
+        )
+        return await _service(session, bus, engine).get(
+            workflow_id, user_id=principal.user_id
+        )
+    except (
+        OperationNotFoundError,
+        OperationVersionConflictError,
+        OperationActionError,
+    ) as exc:
         _raise_action_error(exc)

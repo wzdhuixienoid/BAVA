@@ -157,3 +157,7 @@ class VerifyReauthenticationAction(BaseModel):
 
 class CancelWorkflowAction(BaseModel):
     expected_version: int = Field(ge=1)
+
+
+class CommitTransferAction(BaseModel):
+    expected_version: int = Field(ge=1)

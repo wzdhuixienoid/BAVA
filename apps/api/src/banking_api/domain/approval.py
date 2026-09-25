@@ -13,7 +13,7 @@ class ApprovalType(StrEnum):
 
 
 class Approval(BaseModel):
-    """Single transfer-payload approval. Consumption is reserved for 04.3."""
+    """Single transfer-payload approval with atomic operation consumption."""
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -28,6 +28,7 @@ class Approval(BaseModel):
     approved_at: datetime | None = None
     invalidated_at: datetime | None = None
     consumed_at: datetime | None = None
+    consumed_by_operation_id: UUID | None = None
     created_at: datetime
 
 

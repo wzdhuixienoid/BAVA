@@ -30,15 +30,18 @@ from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import (
+    build_commit_transfer_tool,
     build_compare_spending_periods_tool,
     build_get_balance_tool,
     build_get_category_breakdown_tool,
     build_get_spending_summary_tool,
     build_get_top_transactions_tool,
+    build_get_transfer_status_tool,
     build_list_accounts_tool,
     build_search_payees_tool,
 )
 from banking_api.tools.executor import ToolExecutor
+from banking_api.transfers.mock_provider import MockTransferProvider
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.intent_extractor import TransferIntentExtractor
 
@@ -84,7 +87,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.4.2",
+        version="0.4.3",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -103,15 +106,18 @@ def create_app() -> FastAPI:
         timeout_seconds=settings.llm_timeout_seconds,
     )
     bank = MockBankService()
+    transfer_provider = MockTransferProvider(session_factory, bank)
     analytics = FinancialAnalyticsService(bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
-    registry.register(build_get_balance_tool(bank))
+    registry.register(build_get_balance_tool(bank, transfer_provider.effective_balance))
     registry.register(build_get_spending_summary_tool(analytics))
     registry.register(build_get_category_breakdown_tool(analytics))
     registry.register(build_compare_spending_periods_tool(analytics))
     registry.register(build_get_top_transactions_tool(analytics))
     registry.register(build_search_payees_tool(bank))
+    registry.register(build_commit_transfer_tool(session_factory, transfer_provider))
+    registry.register(build_get_transfer_status_tool(session_factory, transfer_provider))
     executor = ToolExecutor(registry, PolicyService())
     transfer_engine = TransferWorkflowEngine(executor)
     agent_registry = AgentRegistry()
@@ -137,6 +143,7 @@ def create_app() -> FastAPI:
     application.state.request_router = router
     application.state.runtime_factory = runtime_factory
     application.state.transfer_workflow_engine = transfer_engine
+    application.state.transfer_provider = transfer_provider
     application.state.task_runner = InProcessTaskRunner(
         session_factory,
         bus,

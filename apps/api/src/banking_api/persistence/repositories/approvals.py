@@ -48,6 +48,20 @@ class ApprovalRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_for_workflow_user_for_update(
+        self, approval_id: UUID, workflow_id: UUID, user_id: str
+    ) -> ApprovalModel | None:
+        result = await self.session.execute(
+            select(ApprovalModel)
+            .where(
+                ApprovalModel.approval_id == approval_id,
+                ApprovalModel.workflow_id == workflow_id,
+                ApprovalModel.user_id == user_id,
+            )
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def latest_for_workflow(self, workflow_id: UUID, user_id: str) -> ApprovalModel | None:
         result = await self.session.execute(
             select(ApprovalModel)

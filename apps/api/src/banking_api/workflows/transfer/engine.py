@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
-from banking_api.domain.enums import WorkflowStatus
+from banking_api.domain.enums import PolicyDecision, WorkflowStatus
 from banking_api.tools.executor import ToolExecutor
 from banking_api.workflows.transfer.models import (
     TransferDraft,
@@ -18,7 +19,13 @@ from banking_api.workflows.transfer.validation import amount_is_valid, normalize
 
 TRANSFER_CALLER = "workflow:transfer"
 TRANSFER_CAPABILITIES = frozenset(
-    {"payee.search", "account.list", "account.get_balance"}
+    {
+        "payee.search",
+        "account.list",
+        "account.get_balance",
+        "transfer.commit",
+        "transfer.get_status",
+    }
 )
 ELIGIBLE_ACCOUNT_TYPES = frozenset({"DEBIT", "SAVINGS"})
 
@@ -32,7 +39,7 @@ class InvalidWorkflowActionError(Exception):
 
 
 class TransferWorkflowEngine:
-    """Deterministic draft resolver. It has no transfer execution capability."""
+    """Deterministic transfer resolver and Tool/Policy execution boundary."""
 
     def __init__(self, executor: ToolExecutor) -> None:
         self._executor = executor
@@ -209,6 +216,38 @@ class TransferWorkflowEngine:
         accounts = await self._list_accounts()
         if account_id not in {str(item["account_id"]) for item in accounts}:
             raise InvalidWorkflowActionError("Account does not exist")
+
+    def ensure_commit_allowed(self) -> None:
+        spec = self._executor.registry.get("transfer.commit")
+        decision = self._executor.policy.evaluate(
+            spec=spec,
+            caller=TRANSFER_CALLER,
+            authenticated=True,
+            agent_allowlist=TRANSFER_CAPABILITIES,
+        )
+        if decision.decision is not PolicyDecision.ALLOW:
+            raise TransferWorkflowEngineError("TRANSFER_COMMIT_POLICY_DENIED")
+
+    async def submit_operation(self, operation_id: UUID) -> dict[str, Any]:
+        return await self._execute_operation_tool("commit_transfer", operation_id)
+
+    async def query_operation_status(self, operation_id: UUID) -> dict[str, Any]:
+        return await self._execute_operation_tool("get_transfer_status", operation_id)
+
+    async def _execute_operation_tool(
+        self, tool_name: str, operation_id: UUID
+    ) -> dict[str, Any]:
+        result = await self._executor.execute(
+            tool_name=tool_name,
+            arguments={"operation_id": str(operation_id)},
+            caller=TRANSFER_CALLER,
+            authenticated=True,
+            agent_allowlist=TRANSFER_CAPABILITIES,
+        )
+        if not result.ok or result.output is None:
+            code = result.error.code.value if result.error is not None else "UNKNOWN"
+            raise TransferWorkflowEngineError(f"Operation capability failed: {code}")
+        return result.output
 
     async def _search_payees(self, query: str) -> list[dict[str, Any]]:
         output = await self._read("search_payees", {"query": query})

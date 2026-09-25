@@ -105,7 +105,7 @@ export function TransferWorkflowCard({
   const [verificationCode, setVerificationCode] = useState("");
   const [editing, setEditing] = useState(false);
 
-  async function act(action: () => Promise<Workflow>) {
+  async function act(action: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
     try {
@@ -124,6 +124,20 @@ export function TransferWorkflowCard({
   const stable = ["READY_FOR_REVIEW", "REAUTH_REQUIRED", "READY_FOR_COMMIT"].includes(
     workflow.status,
   );
+  const operation = workflow.operation_summary;
+  const cancellable = [
+    "WAITING_FOR_INPUT",
+    "READY_FOR_REVIEW",
+    "REAUTH_REQUIRED",
+    "READY_FOR_COMMIT",
+  ].includes(workflow.status);
+
+  const reconcile = () =>
+    act(async () => {
+      if (!operation) throw new Error("未找到转账操作，请刷新后重试");
+      const authoritative = await api.getOperation(operation.operation_id);
+      return api.reconcileOperation(authoritative.operation_id, authoritative.version);
+    });
 
   return (
     <section className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -342,8 +356,63 @@ export function TransferWorkflowCard({
             尚未提交转账
           </p>
           <p className="mt-2 text-[11px] leading-5 text-slate-500">
-            READY_FOR_COMMIT 只表示当前 payload 已批准并完成身份验证；资金提交能力尚未实现。
+            READY_FOR_COMMIT 只表示当前 payload 已批准并完成身份验证。提交前后请勿重复操作。
           </p>
+          <p className="mt-3 text-xs font-semibold text-red-700">
+            这一步将真正提交资金转账
+          </p>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void act(() => api.commitTransfer(workflow.workflow_id, workflow.version))
+            }
+            className="mt-2 rounded bg-red-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            提交转账
+          </button>
+        </div>
+      )}
+
+      {workflow.status === "COMMITTING" && operation && (
+        <div className="mt-3 rounded-md border border-blue-200 bg-white p-3">
+          {operation.status === "UNKNOWN" ? (
+            <>
+              <p className="text-sm font-semibold text-blue-900">转账状态确认中</p>
+              <p className="mt-2 text-xs leading-5 text-slate-700">
+                银行可能已经收到这笔请求，请勿重复提交。
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-blue-900">正在提交转账</p>
+              <p className="mt-2 text-xs text-slate-700">请勿重复操作</p>
+            </>
+          )}
+          <ReviewDetails state={state} />
+          <button
+            disabled={busy}
+            onClick={() => void reconcile()}
+            className="mt-3 rounded border border-blue-300 px-3 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
+          >
+            检查状态
+          </button>
+        </div>
+      )}
+
+      {workflow.status === "SUCCEEDED" && operation?.status === "SUCCEEDED" && (
+        <div className="mt-3 rounded-md border border-emerald-200 bg-white p-3">
+          <p className="text-sm font-semibold text-emerald-800">转账成功</p>
+          <ReviewDetails state={state} />
+          {operation.provider_reference && (
+            <p className="mt-3 text-xs text-slate-600">
+              银行参考号：{operation.provider_reference}
+            </p>
+          )}
+          {operation.completed_at && (
+            <p className="mt-1 text-xs text-slate-500">
+              完成时间：{expiresAt(operation.completed_at)}
+            </p>
+          )}
         </div>
       )}
 
@@ -450,6 +519,13 @@ export function TransferWorkflowCard({
 
       {workflow.status === "FAILED" && (
         <div className="mt-3 rounded-md bg-red-50 p-2 text-xs text-red-700">
+          {operation?.status === "FAILED" && (
+            <>
+              <p className="font-semibold">转账未成功</p>
+              <p className="mt-1">{operation.error_code ?? "银行已明确确认本次转账未成功"}</p>
+              <p className="mt-1">如需再次转账，请重新发起。</p>
+            </>
+          )}
           {state.validation?.issues.map((issue) => (
             <p key={issue.code}>{issue.code}：{issue.message}</p>
           ))}
@@ -457,7 +533,7 @@ export function TransferWorkflowCard({
       )}
 
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-      {workflow.status !== "CANCELLED" && workflow.status !== "FAILED" && (
+      {cancellable && (
         <button
           disabled={busy}
           onClick={() => void cancel()}

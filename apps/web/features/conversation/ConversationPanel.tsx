@@ -57,7 +57,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     return subscribeToConversation(
       conversationId,
       (event) => {
-        if (event.type.startsWith("workflow.")) {
+        if (event.type.startsWith("workflow.") || event.type.startsWith("operation.")) {
           void refreshWorkflows();
         } else {
           void refresh();

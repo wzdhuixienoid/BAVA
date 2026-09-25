@@ -1,5 +1,6 @@
 import pytest
 
+from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.domain.enums import PolicyDecision, RiskLevel
 from banking_api.financial.analytics_service import FinancialAnalyticsService
@@ -61,12 +62,18 @@ def test_application_registry_adds_financial_tools_without_expanding_minimal_age
         "account.list",
         "account.get_balance",
         "payee.search",
+        "transfer.commit",
+        "transfer.get_status",
         *FINANCIAL_CAPABILITIES,
     }
     assert [
         spec.capability_id
         for spec in registry.resolve(MINIMAL_BANKING_AGENT.allowed_capabilities)
     ] == ["account.list", "account.get_balance"]
+    assert "transfer.commit" not in MINIMAL_BANKING_AGENT.allowed_capabilities
+    assert "transfer.get_status" not in MINIMAL_BANKING_AGENT.allowed_capabilities
+    assert "transfer.commit" not in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
+    assert "transfer.get_status" not in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
 
 
 @pytest.mark.parametrize("capability_id", sorted(FINANCIAL_CAPABILITIES))

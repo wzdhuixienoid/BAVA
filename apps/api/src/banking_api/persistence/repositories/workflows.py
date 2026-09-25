@@ -45,6 +45,19 @@ class WorkflowRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_for_user_for_update(
+        self, workflow_id: UUID, user_id: str
+    ) -> WorkflowModel | None:
+        result = await self.session.execute(
+            select(WorkflowModel)
+            .where(
+                WorkflowModel.workflow_id == workflow_id,
+                WorkflowModel.user_id == user_id,
+            )
+            .with_for_update()
+        )
+        return result.scalar_one_or_none()
+
     async def list_for_user(
         self, user_id: str, conversation_id: UUID | None = None
     ) -> list[WorkflowModel]:

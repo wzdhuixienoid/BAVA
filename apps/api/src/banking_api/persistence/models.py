@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -9,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -21,6 +23,7 @@ from banking_api.domain.enums import (
     ApprovalStatus,
     ExecutorType,
     MessageRole,
+    OperationStatus,
     ReauthenticationStatus,
     ReportType,
     RequestedOutput,
@@ -28,6 +31,7 @@ from banking_api.domain.enums import (
     TaskStatus,
     WorkflowStatus,
 )
+from banking_api.domain.operation import OperationType
 from banking_api.domain.reauthentication import ReauthenticationMethod
 from banking_api.domain.workflow import WorkflowType
 from banking_api.persistence.database import Base
@@ -104,6 +108,12 @@ class ApprovalModel(Base):
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    consumed_by_operation_id: Mapped[UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("operations.id", use_alter=True, name="fk_approvals_consumed_operation"),
+        nullable=True,
+        unique=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
@@ -129,6 +139,58 @@ class ReauthenticationModel(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class OperationModel(Base):
+    __tablename__ = "operations"
+    __table_args__ = (
+        UniqueConstraint(
+            "workflow_id", "operation_type", name="uq_operations_workflow_type"
+        ),
+        Index("ix_operations_user_created_at", "user_id", "created_at"),
+    )
+
+    operation_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    workflow_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("workflows.id", ondelete="CASCADE"), index=True
+    )
+    approval_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("approvals.id", ondelete="RESTRICT"), unique=True, index=True
+    )
+    operation_type: Mapped[OperationType] = mapped_column(
+        Enum(OperationType, name="operation_type")
+    )
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    idempotency_key: Mapped[UUID] = mapped_column(Uuid, unique=True, index=True)
+    status: Mapped[OperationStatus] = mapped_column(
+        Enum(OperationStatus, name="operation_status"), index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    provider_reference: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+
+class MockBankTransferModel(Base):
+    __tablename__ = "mock_bank_transfers"
+
+    provider_reference: Mapped[str] = mapped_column(String(255), primary_key=True)
+    idempotency_key: Mapped[UUID] = mapped_column(Uuid, unique=True, index=True)
+    source_account_id: Mapped[str] = mapped_column(String(255), index=True)
+    payee_id: Mapped[str] = mapped_column(String(255))
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
