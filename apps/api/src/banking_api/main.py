@@ -9,6 +9,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
+from banking_api.application.outbox_publication_policy import OutboxPublicationPolicy
 from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
@@ -26,6 +27,7 @@ from banking_api.runtime.langgraph.checkpoint import LangGraphCheckpointManager
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
 from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
+from banking_api.runtime.outbox_publisher import OutboxPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -54,10 +56,11 @@ def create_app() -> FastAPI:
     runtime_factory = AgentRuntimeFactory()
     checkpoint_manager: LangGraphCheckpointManager | None = None
     operation_recovery_worker: OperationRecoveryWorker | None = None
+    outbox_publisher: OutboxPublisher | None = None
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-        nonlocal checkpoint_manager, operation_recovery_worker
+        nonlocal checkpoint_manager, operation_recovery_worker, outbox_publisher
         checkpoint_url = (
             settings.langgraph_checkpoint_database_url or settings.database_url
         )
@@ -93,9 +96,21 @@ def create_app() -> FastAPI:
             )
             operation_recovery_worker.start()
             application.state.operation_recovery_worker = operation_recovery_worker
+        if settings.outbox_publisher_enabled:
+            outbox_publisher = OutboxPublisher(
+                session_factory,
+                bus,
+                policy=OutboxPublicationPolicy.from_settings(settings),
+                poll_interval_seconds=settings.outbox_publisher_poll_interval_seconds,
+                batch_size=settings.outbox_publisher_batch_size,
+            )
+            outbox_publisher.start()
+            application.state.outbox_publisher = outbox_publisher
         try:
             yield
         finally:
+            if outbox_publisher is not None:
+                await outbox_publisher.stop()
             if operation_recovery_worker is not None:
                 await operation_recovery_worker.stop()
             if checkpoint_manager is not None:
@@ -103,7 +118,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.5.2",
+        version="0.5.3",
         lifespan=lifespan,
     )
     application.add_middleware(

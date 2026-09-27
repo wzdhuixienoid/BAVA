@@ -99,4 +99,38 @@ web production build: passed (5 static/dynamic routes generated)
 
 ## Docker/product smoke
 
-Not executed. The PostgreSQL integration suite above is not described as Docker/browser E2E.
+Executed with the existing Compose deployment:
+
+```bash
+docker compose up --build --detach
+```
+
+Observed runtime checks:
+
+```text
+PostgreSQL: healthy
+API startup migration: 0009 -> 0010 succeeded
+GET /openapi.json: version 0.5.2
+Web HTTP response: 200
+```
+
+Two complete Transfer Workflows were then prepared through the running HTTP API. Both passed
+Draft, Validation, Approval, and Reauthentication while the source account still had enough funds
+for either individual transfer. Their distinct Operations were committed concurrently:
+
+```text
+source account fixture balance: 23,864.52
+pre-existing successful provider debit: 2,000.00
+available before smoke: 21,864.52
+
+Operation A: 12,000.00 -> SUCCEEDED
+Operation B: 12,000.00 -> FAILED / INSUFFICIENT_FUNDS
+
+successful provider debit added by smoke: 12,000.00
+successful provider debit after smoke: 14,000.00
+effective balance after smoke: 9,864.52
+```
+
+Both concurrent commit requests returned HTTP 200 with server-authoritative terminal Workflow and
+Operation states. The Provider ledger contains one new successful 12,000 row and one new failed
+12,000 row. No overspending occurred.

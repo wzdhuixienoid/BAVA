@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from banking_api.domain.event import Event
 from banking_api.persistence.models import EventModel
 from banking_api.persistence.repositories.events import EventRepository
-from banking_api.runtime.event_bus import EventBus
+from banking_api.persistence.repositories.outbox import OutboxRepository
 
 
 def to_event(model: EventModel) -> Event:
@@ -22,9 +22,11 @@ def to_event(model: EventModel) -> Event:
 
 
 class EventPublisher:
-    def __init__(self, session: AsyncSession, bus: EventBus) -> None:
+    """Atomically records a durable Event and its realtime publication intent."""
+
+    def __init__(self, session: AsyncSession) -> None:
         self.events = EventRepository(session)
-        self.bus = bus
+        self.outbox = OutboxRepository(session)
 
     async def persist(
         self,
@@ -34,14 +36,14 @@ class EventPublisher:
         task_id: UUID | None,
         data: dict[str, Any],
     ) -> EventModel:
-        return await self.events.create(
+        event = await self.events.create(
             event_type=event_type,
             conversation_id=conversation_id,
             task_id=task_id,
             data=data,
         )
-
-    async def publish_persisted(self, *models: EventModel) -> None:
-        for model in models:
-            await self.bus.publish(to_event(model))
-
+        await self.outbox.enqueue(
+            event_id=event.event_id,
+            next_publish_at=event.created_at,
+        )
+        return event

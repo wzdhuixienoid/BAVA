@@ -318,3 +318,40 @@ class EventModel(Base):
     )
     data_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class OutboxEventModel(Base):
+    __tablename__ = "outbox_events"
+    __table_args__ = (
+        UniqueConstraint("event_id", name="uq_outbox_events_event_id"),
+        CheckConstraint(
+            "publish_attempts >= 0", name="ck_outbox_events_publish_attempts_nonnegative"
+        ),
+        Index(
+            "ix_outbox_events_due",
+            "next_publish_at",
+            "lease_expires_at",
+            "created_at",
+            postgresql_where=text("published_at IS NULL"),
+        ),
+    )
+
+    outbox_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    event_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("events.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    publish_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0")
+    )
+    next_publish_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)

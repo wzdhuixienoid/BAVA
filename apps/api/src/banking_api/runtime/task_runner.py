@@ -108,7 +108,7 @@ class InProcessTaskRunner:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             task = await tasks.get(task_id)
             if task is None or task.status is not TaskStatus.PENDING:
                 return
@@ -132,7 +132,7 @@ class InProcessTaskRunner:
                 TaskStatus.RUNNING,
                 progress_message="正在理解请求",
             )
-            started = await publisher.persist(
+            await publisher.persist(
                 event_type="task.started",
                 conversation_id=conversation_id,
                 task_id=task_id,
@@ -143,14 +143,13 @@ class InProcessTaskRunner:
                     "checkpoint_enabled": runtime_backend is RuntimeBackend.LANGGRAPH,
                 },
             )
-            progress = await publisher.persist(
+            await publisher.persist(
                 event_type="task.progress",
                 conversation_id=conversation_id,
                 task_id=task_id,
                 data={"message": "正在理解请求", "version": task.version},
             )
             await session.commit()
-            await publisher.publish_persisted(started, progress)
 
         async def event_sink(event_type: str, data: dict[str, Any]) -> None:
             await self._persist_runtime_event(
@@ -246,7 +245,7 @@ class InProcessTaskRunner:
             async with self.session_factory() as session:
                 tasks = TaskRepository(session)
                 messages = MessageRepository(session)
-                publisher = EventPublisher(session, self.bus)
+                publisher = EventPublisher(session)
                 task = await tasks.get(task_id)
                 if task is None:
                     return
@@ -267,7 +266,7 @@ class InProcessTaskRunner:
                         requested_output=decision.requested_output,
                     ),
                 )
-                completed = await publisher.persist(
+                await publisher.persist(
                     event_type="task.completed",
                     conversation_id=conversation_id,
                     task_id=task_id,
@@ -278,14 +277,13 @@ class InProcessTaskRunner:
                         "checkpoint_enabled": runtime_backend is RuntimeBackend.LANGGRAPH,
                     },
                 )
-                message_completed = await publisher.persist(
+                await publisher.persist(
                     event_type="conversation.message.completed",
                     conversation_id=conversation_id,
                     task_id=task_id,
                     data={"message_id": str(assistant.message_id), "role": assistant.role.value},
                 )
                 await session.commit()
-                await publisher.publish_persisted(completed, message_completed)
         except RoutingError:
             await self._fail(
                 task_id,
@@ -375,7 +373,7 @@ class InProcessTaskRunner:
     ) -> None:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             task = await tasks.get(task_id)
             if task is None:
                 return
@@ -390,7 +388,7 @@ class InProcessTaskRunner:
                 executor_type=executor_type,
                 executor_id=executor_id,
             )
-            routed = await publisher.persist(
+            await publisher.persist(
                 event_type="request.routed",
                 conversation_id=conversation_id,
                 task_id=task_id,
@@ -401,7 +399,6 @@ class InProcessTaskRunner:
                 },
             )
             await session.commit()
-            await publisher.publish_persisted(routed)
 
     async def _run_transfer_workflow(
         self,
@@ -430,7 +427,7 @@ class InProcessTaskRunner:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             task = await tasks.get(task_id)
             if task is None:
                 return
@@ -453,20 +450,19 @@ class InProcessTaskRunner:
                     "assistant_message_id": str(assistant.message_id),
                 },
             )
-            completed = await publisher.persist(
+            await publisher.persist(
                 event_type="task.completed",
                 conversation_id=conversation_id,
                 task_id=task_id,
                 data={"status": task.status.value, "version": task.version},
             )
-            message_completed = await publisher.persist(
+            await publisher.persist(
                 event_type="conversation.message.completed",
                 conversation_id=conversation_id,
                 task_id=task_id,
                 data={"message_id": str(assistant.message_id), "role": assistant.role.value},
             )
             await session.commit()
-            await publisher.publish_persisted(completed, message_completed)
 
     async def _complete_without_agent(
         self,
@@ -479,7 +475,7 @@ class InProcessTaskRunner:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             task = await tasks.get(task_id)
             if task is None:
                 return
@@ -498,7 +494,7 @@ class InProcessTaskRunner:
                     "assistant_message_id": str(assistant.message_id),
                 },
             )
-            completed = await publisher.persist(
+            await publisher.persist(
                 event_type="task.completed",
                 conversation_id=conversation_id,
                 task_id=task_id,
@@ -509,14 +505,13 @@ class InProcessTaskRunner:
                     "checkpoint_enabled": False,
                 },
             )
-            message_completed = await publisher.persist(
+            await publisher.persist(
                 event_type="conversation.message.completed",
                 conversation_id=conversation_id,
                 task_id=task_id,
                 data={"message_id": str(assistant.message_id), "role": assistant.role.value},
             )
             await session.commit()
-            await publisher.publish_persisted(completed, message_completed)
 
     @staticmethod
     def _build_task_output(
@@ -635,7 +630,7 @@ class InProcessTaskRunner:
             async with self.session_factory() as session:
                 tasks = TaskRepository(session)
                 messages = MessageRepository(session)
-                publisher = EventPublisher(session, self.bus)
+                publisher = EventPublisher(session)
                 task = await tasks.get(task_id)
                 if task is None:
                     raise ReportPersistenceError("Source task no longer exists")
@@ -647,7 +642,7 @@ class InProcessTaskRunner:
                     snapshot=snapshot,
                     skill=skill,
                 )
-                report_generated = await publisher.persist(
+                await publisher.persist(
                     event_type="report.generated",
                     conversation_id=conversation_id,
                     task_id=task_id,
@@ -680,7 +675,7 @@ class InProcessTaskRunner:
                         "tool_calls": tool_calls,
                     },
                 )
-                completed = await publisher.persist(
+                await publisher.persist(
                     event_type="task.completed",
                     conversation_id=conversation_id,
                     task_id=task_id,
@@ -693,7 +688,7 @@ class InProcessTaskRunner:
                         ),
                     },
                 )
-                message_completed = await publisher.persist(
+                await publisher.persist(
                     event_type="conversation.message.completed",
                     conversation_id=conversation_id,
                     task_id=task_id,
@@ -703,11 +698,6 @@ class InProcessTaskRunner:
                     },
                 )
                 await session.commit()
-                await publisher.publish_persisted(
-                    report_generated,
-                    completed,
-                    message_completed,
-                )
         except ReportPersistenceError:
             raise
         except Exception as exc:
@@ -723,8 +713,8 @@ class InProcessTaskRunner:
         skill_version: int,
     ) -> None:
         async with self.session_factory() as session:
-            publisher = EventPublisher(session, self.bus)
-            event = await publisher.persist(
+            publisher = EventPublisher(session)
+            await publisher.persist(
                 event_type=event_type,
                 conversation_id=conversation_id,
                 task_id=task_id,
@@ -735,7 +725,6 @@ class InProcessTaskRunner:
                 },
             )
             await session.commit()
-            await publisher.publish_persisted(event)
 
     async def _update_progress(
         self,
@@ -746,19 +735,18 @@ class InProcessTaskRunner:
     ) -> None:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             task = await tasks.get(task_id)
             if task is None or task.progress_message == message:
                 return
             await tasks.update_progress(task, message)
-            progress = await publisher.persist(
+            await publisher.persist(
                 event_type="task.progress",
                 conversation_id=conversation_id,
                 task_id=task_id,
                 data={"message": message, "version": task.version},
             )
             await session.commit()
-            await publisher.publish_persisted(progress)
 
     async def _persist_runtime_event(
         self,
@@ -776,7 +764,7 @@ class InProcessTaskRunner:
 
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             persisted = []
             task = await tasks.get(task_id)
             if task is None:
@@ -800,19 +788,18 @@ class InProcessTaskRunner:
                 )
             )
             await session.commit()
-            await publisher.publish_persisted(*persisted)
 
     async def _fail(
         self, task_id: UUID, conversation_id: UUID, error: dict[str, Any]
     ) -> None:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             task = await tasks.get(task_id)
             if task is None:
                 return
             await tasks.transition(task, TaskStatus.FAILED, error=error)
-            failed = await publisher.persist(
+            await publisher.persist(
                 event_type="task.failed",
                 conversation_id=conversation_id,
                 task_id=task_id,
@@ -825,4 +812,3 @@ class InProcessTaskRunner:
                 },
             )
             await session.commit()
-            await publisher.publish_persisted(failed)

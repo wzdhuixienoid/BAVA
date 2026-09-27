@@ -80,7 +80,7 @@ class OperationService:
         self.approvals = ApprovalRepository(session)
         self.reauthentications = ReauthenticationRepository(session)
         self.operations = OperationRepository(session)
-        self.publisher = EventPublisher(session, bus)
+        self.publisher = EventPublisher(session)
 
     async def get(self, operation_id: UUID, *, user_id: str) -> OperationResource:
         model = await self.operations.get_for_user(operation_id, user_id)
@@ -185,15 +185,14 @@ class OperationService:
         if updated is None:
             await self.session.rollback()
             raise OperationVersionConflictError
-        created = await self._operation_event(operation, "operation.created")
-        committing = await self.publisher.persist(
+        await self._operation_event(operation, "operation.created")
+        await self.publisher.persist(
             event_type="workflow.committing",
             conversation_id=workflow.conversation_id,
             task_id=workflow.source_task_id,
             data=self._workflow_event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(created, committing)
         return self._resource(operation)
 
     async def reconcile(
@@ -416,19 +415,18 @@ class OperationService:
         if updated_workflow is None:
             await self.session.rollback()
             raise OperationVersionConflictError
-        operation_event = await self._operation_event(updated_operation, event_type)
+        await self._operation_event(updated_operation, event_type)
         workflow_event_type = {
             WorkflowStatus.SUCCEEDED: "workflow.succeeded",
             WorkflowStatus.FAILED: "workflow.failed",
         }.get(workflow_status, "workflow.committing")
-        workflow_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type=workflow_event_type,
             conversation_id=workflow.conversation_id,
             task_id=workflow.source_task_id,
             data=self._workflow_event_data(updated_workflow),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(operation_event, workflow_event)
         if terminal:
             logger.info(
                 "operation reconciliation terminal operation_id=%s status=%s attempts=%s",
@@ -538,25 +536,20 @@ class OperationService:
         if updated is None:
             await self.session.rollback()
             raise OperationVersionConflictError
-        events = [
+        for resource_event_type, data in resource_events or []:
             await self.publisher.persist(
                 event_type=resource_event_type,
                 conversation_id=workflow.conversation_id,
                 task_id=workflow.source_task_id,
                 data=data,
             )
-            for resource_event_type, data in (resource_events or [])
-        ]
-        events.append(
-            await self.publisher.persist(
-                event_type=event_type,
-                conversation_id=workflow.conversation_id,
-                task_id=workflow.source_task_id,
-                data=self._workflow_event_data(updated),
-            )
+        await self.publisher.persist(
+            event_type=event_type,
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+            data=self._workflow_event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(*events)
 
     async def _operation_event(self, operation: OperationModel, event_type: str):  # type: ignore[no-untyped-def]
         workflow = await self.workflows.get_for_user(operation.workflow_id, operation.user_id)

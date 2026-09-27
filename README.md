@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-当前版本：`v0.5.2`
+当前版本：`v0.5.3`
 
 面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及通过持久化 Transfer Workflow 完成草稿、校验、审批、重新认证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
 
@@ -16,12 +16,14 @@
 | 转账全链路 | `workflow:transfer` | Draft → Validation → Approval → Reauthentication → Operation → Verification |
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
 | 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
+| 持久事件发布 | Transactional Outbox | Event + Outbox atomic commit → leased publisher → EventBus/SSE |
 
 ```text
 Financial Analysis Vertical Slice: COMPLETE
 Transfer Vertical Slice: COMPLETE
 Durable Operation Recovery: COMPLETE
 Cross-Process Financial Concurrency: COMPLETE
+Transactional Outbox: COMPLETE
 ```
 
 用户可以直接输入：
@@ -50,6 +52,7 @@ User Message
     → persistent Operation → MockTransferProvider idempotency ledger
         → PostgreSQL account advisory lock → authoritative balance decision
     → PostgreSQL claim/lease → automatic Operation recovery
+    → durable Event + Outbox intent → OutboxPublisher → EventBus/SSE
     → FinancialAnalysisSnapshot
     → SkillRegistry → MonthlySpendingReportSkill
     → immutable Report Artifact
@@ -64,6 +67,7 @@ User Message
 - committed Mock Bank synthetic data 作为基线 fixture；工资卡等有效余额会减去持久化 provider ledger 中已成功的转出，不修改 committed JSON。
 - Mock Provider 在自己的短 PostgreSQL transaction 内按 source account 串行化，重新计算 fixture balance 减成功 ledger 的 authoritative balance，然后原子地接受或拒绝转账。
 - Operation recovery 调度、尝试次数和 lease 同样持久化在 Application PostgreSQL；LangGraph checkpoint 不是 Workflow/Operation 业务事实源。
+- 所有需实时通知的 durable Event 都与唯一 Outbox intent 在同一业务 transaction 内写入；Outbox 只引用 Event identity，不复制 payload。
 
 产品 Runtime 是 `LangGraphAgentRuntime`。`ManualAgentRuntime` 仅作为 reference 保留，不承载新功能。
 
@@ -151,7 +155,7 @@ docker compose up --build
 - API：<http://localhost:8000>
 - OpenAPI：<http://localhost:8000/docs>
 
-API 启动时依次执行 Alembic migration、LangGraph checkpoint setup、stale Task reconciliation，然后启动 Operation recovery loop。关闭时 worker 会停止并等待当前轮询结束。
+API 启动时依次执行 Alembic migration、LangGraph checkpoint setup、stale Task reconciliation，然后启动 Operation recovery loop 和 Outbox publisher。关闭时两个专用 worker 都会停止并等待当前轮询结束。
 
 Recovery 通过环境变量配置：
 
@@ -163,6 +167,18 @@ OPERATION_RECOVERY_INITIAL_RETRY_SECONDS=5
 OPERATION_RECOVERY_MAX_RETRY_SECONDS=300
 OPERATION_RECOVERY_BACKOFF_MULTIPLIER=2
 OPERATION_RECOVERY_BATCH_SIZE=10
+```
+
+Outbox 通过环境变量配置：
+
+```env
+OUTBOX_PUBLISHER_ENABLED=true
+OUTBOX_PUBLISHER_POLL_INTERVAL_SECONDS=0.5
+OUTBOX_PUBLISHER_LEASE_SECONDS=30
+OUTBOX_PUBLISHER_INITIAL_RETRY_SECONDS=1
+OUTBOX_PUBLISHER_MAX_RETRY_SECONDS=60
+OUTBOX_PUBLISHER_BACKOFF_MULTIPLIER=2
+OUTBOX_PUBLISHER_BATCH_SIZE=20
 ```
 
 ## 本地开发
@@ -237,7 +253,7 @@ POST /api/v1/operations/{operation_id}/actions/reconcile
 /reports/{reportId}  Structured monthly report
 ```
 
-SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。
+SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。`business state + Event + Outbox intent` 在同一 PostgreSQL transaction 内提交；Outbox Publisher 使用 `SKIP LOCKED` + durable lease 向现有 EventBus 做 at-least-once 发布。发布成功后、`published_at` 写回前崩溃可能导致重复通知，但不会重复业务副作用。
 
 `READY_FOR_COMMIT` 只表示当前 payload 已审批并重新认证。Commit 仍会重新验证 Approval、Reauthentication、payload hash、Policy、payee、source account、balance 和 currency。`SUBMITTED` 不是成功；`UNKNOWN` 表示 Provider 可能已接收或执行，只能查询原 Operation，不得新建或换 key 重提。只有 `Operation SUCCEEDED` 才能展示“转账成功”。
 
@@ -263,6 +279,9 @@ docs/                     版本交付、测试结果与设计记录
 - [Implementation Report v0.5.2](docs/implementation-report-v0.5.2.md)
 - [Repository Tree v0.5.2](docs/repository-tree-v0.5.2.md)
 - [Test Results v0.5.2](docs/test-results-v0.5.2.md)
+- [Implementation Report v0.5.3](docs/implementation-report-v0.5.3.md)
+- [Repository Tree v0.5.3](docs/repository-tree-v0.5.3.md)
+- [Test Results v0.5.3](docs/test-results-v0.5.3.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 
@@ -270,4 +289,4 @@ docs/                     版本交付、测试结果与设计记录
 
 当前资金写入仅限持久化 Mock Transfer Provider；不支持真实转账 Provider、真实重新认证 Provider、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP 或 Agent-to-Agent 调用。
 
-仍然没有 Transactional Outbox、balance reservation/hold/capture 系统，也没有 durable generic task worker。Operation recovery 是一个明确、专用的后台 loop，不是 Celery、任务队列或通用调度框架。Task runner 和实时 EventBus 仍按单 API process 设计；SSE 仍不是 authoritative source。
+仍然没有 balance reservation/hold/capture 系统，也没有 durable generic task worker。Operation recovery 和 Outbox publisher 是两个明确、独立的专用 loop，不是 Celery、任务队列或通用调度框架。EventBus 仍是 process-local：多 API process 下，某个 publisher 的本地发布不保证另一 process 上的 SSE client 收到。本版也没有 client acknowledgement、SSE replay、Outbox archival/cleanup 或跨进程 realtime broker；Resource API 仍是事实源。

@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     operation_recovery_max_retry_seconds: float = Field(default=300.0, gt=0)
     operation_recovery_backoff_multiplier: int = Field(default=2, ge=1)
     operation_recovery_batch_size: int = Field(default=10, ge=1, le=100)
+    outbox_publisher_enabled: bool = True
+    outbox_publisher_poll_interval_seconds: float = Field(default=0.5, gt=0)
+    outbox_publisher_lease_seconds: float = Field(default=30.0, gt=0)
+    outbox_publisher_initial_retry_seconds: float = Field(default=1.0, gt=0)
+    outbox_publisher_max_retry_seconds: float = Field(default=60.0, gt=0)
+    outbox_publisher_backoff_multiplier: int = Field(default=2, ge=1)
+    outbox_publisher_batch_size: int = Field(default=20, ge=1, le=100)
 
 
 @lru_cache

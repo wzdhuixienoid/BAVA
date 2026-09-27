@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.5.2"
-description = "支持 Provider 端跨进程账户资金串行化的 AI 银行助手"
+version = "0.5.3"
+description = "支持 Transactional Outbox 持久事件发布的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

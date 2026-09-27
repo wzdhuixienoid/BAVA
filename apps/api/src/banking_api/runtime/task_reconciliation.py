@@ -20,7 +20,7 @@ class TaskReconciliationService:
     async def reconcile(self) -> int:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
-            publisher = EventPublisher(session, self.bus)
+            publisher = EventPublisher(session)
             interrupted_events = []
             stale_tasks = await tasks.list_stale()
             for task in stale_tasks:
@@ -44,5 +44,4 @@ class TaskReconciliationService:
                     )
                 )
             await session.commit()
-            await publisher.publish_persisted(*interrupted_events)
             return len(stale_tasks)

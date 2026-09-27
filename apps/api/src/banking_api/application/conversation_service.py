@@ -37,7 +37,7 @@ class ConversationService:
         self.conversations = ConversationRepository(session)
         self.messages = MessageRepository(session)
         self.tasks = TaskRepository(session)
-        self.publisher = EventPublisher(session, bus)
+        self.publisher = EventPublisher(session)
         self.runtime_backend = runtime_backend
 
     async def create(self, *, user_id: str, title: str) -> Conversation:
@@ -76,13 +76,13 @@ class ConversationService:
             input_data={"message_id": str(message.message_id), "request_id": str(request_id)},
             runtime_backend=self.runtime_backend,
         )
-        message_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="conversation.message.created",
             conversation_id=conversation_id,
             task_id=task.task_id,
             data={"message_id": str(message.message_id), "role": message.role.value},
         )
-        task_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="task.created",
             conversation_id=conversation_id,
             task_id=task.task_id,
@@ -93,7 +93,6 @@ class ConversationService:
             },
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(message_event, task_event)
         return MessageAccepted(
             message_id=message.message_id, task_id=task.task_id, request_id=request_id
         )

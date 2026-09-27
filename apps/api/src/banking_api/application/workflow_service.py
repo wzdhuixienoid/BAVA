@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,7 +89,7 @@ class WorkflowService:
         self.approvals = ApprovalRepository(session)
         self.operations = OperationRepository(session)
         self.reauthentications = ReauthenticationRepository(session)
-        self.publisher = EventPublisher(session, bus)
+        self.publisher = EventPublisher(session)
         self.engine = engine
         self.reauth_provider = reauth_provider or MockReauthenticationProvider(
             settings.mock_reauth_code
@@ -143,7 +142,7 @@ class WorkflowService:
             status=WorkflowStatus.DRAFT,
             state=initial.model_dump(mode="json"),
         )
-        created = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.created",
             conversation_id=conversation_id,
             task_id=source_task_id,
@@ -159,14 +158,13 @@ class WorkflowService:
         )
         if updated is None:
             raise WorkflowVersionConflictError
-        state_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type=self._workflow_event_type(status),
             conversation_id=conversation_id,
             task_id=source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(created, state_event)
         return await self._to_workflow(updated)
 
     async def set_recipient_query(
@@ -251,18 +249,17 @@ class WorkflowService:
             if updated is None:
                 await self.session.rollback()
                 raise WorkflowVersionConflictError
-            event = await self.publisher.persist(
+            await self.publisher.persist(
                 event_type=self._workflow_event_type(validation_status),
                 conversation_id=model.conversation_id,
                 task_id=model.source_task_id,
                 data=self._event_data(updated),
             )
             await self.session.commit()
-            await self.publisher.publish_persisted(event)
             raise WorkflowActionError("TRANSFER_REVALIDATION_FAILED")
 
         now = _as_utc(self.clock())
-        invalidation_events = await self._invalidate_authorization(model, now)
+        await self._invalidate_authorization(model, now)
         canonical_payload = canonicalize_transfer_payload(state.review_payload)
         payload_hash = transfer_payload_hash(state.review_payload)
         approval = await self.approvals.create_pending(
@@ -272,7 +269,7 @@ class WorkflowService:
             payload_hash=payload_hash,
             expires_at=now + self.approval_ttl,
         )
-        created = await self._persist_authorization_event(
+        await self._persist_authorization_event(
             model,
             "approval.created",
             approval_id=approval.approval_id,
@@ -296,21 +293,20 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        approved = await self._persist_authorization_event(
+        await self._persist_authorization_event(
             updated,
             "approval.approved",
             approval_id=approval.approval_id,
             status=approval.status.value,
             expires_at=approval.expires_at,
         )
-        required = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.reauth_required",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(*invalidation_events, created, approved, required)
         return await self._to_workflow(updated)
 
     async def start_reauthentication(
@@ -355,21 +351,20 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        created = await self._persist_authorization_event(
+        await self._persist_authorization_event(
             updated,
             "reauth.challenge.created",
             reauth_id=reauth.reauth_id,
             status=reauth.status.value,
             expires_at=reauth.expires_at,
         )
-        workflow_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.updated",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(created, workflow_event)
         return await self._to_workflow(updated)
 
     async def verify_reauthentication(
@@ -424,21 +419,20 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        verified_event = await self._persist_authorization_event(
+        await self._persist_authorization_event(
             updated,
             "reauth.verified",
             reauth_id=reauth.reauth_id,
             status=reauth.status.value,
             expires_at=reauth.expires_at,
         )
-        ready = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.ready_for_commit",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(verified_event, ready)
         return await self._to_workflow(updated)
 
     async def cancel(self, workflow_id: UUID, *, user_id: str, expected_version: int) -> Workflow:
@@ -451,7 +445,7 @@ class WorkflowService:
         }:
             raise WorkflowActionError("WORKFLOW_CANNOT_BE_CANCELLED")
         now = _as_utc(self.clock())
-        invalidation_events = await self._invalidate_authorization(model, now)
+        await self._invalidate_authorization(model, now)
         state.authorization = None
         updated = await self.workflows.update_if_version(
             workflow_id=model.workflow_id,
@@ -463,14 +457,13 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        cancelled = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.cancelled",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(*invalidation_events, cancelled)
         return await self._to_workflow(updated)
 
     async def _mutate_and_advance(
@@ -479,7 +472,7 @@ class WorkflowService:
         state: TransferWorkflowState,
         expected_version: int,
     ) -> Workflow:
-        invalidation_events = await self._invalidate_authorization(model, _as_utc(self.clock()))
+        await self._invalidate_authorization(model, _as_utc(self.clock()))
         state.authorization = None
         status, advanced = await self.engine.advance(state)
         updated = await self.workflows.update_if_version(
@@ -492,14 +485,13 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        workflow_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type=self._workflow_event_type(status),
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(*invalidation_events, workflow_event)
         return await self._to_workflow(updated)
 
     async def _load_action(
@@ -541,31 +533,25 @@ class WorkflowService:
             raise WorkflowActionError("APPROVAL_PAYLOAD_MISMATCH")
         return approval
 
-    async def _invalidate_authorization(self, model: WorkflowModel, now: datetime) -> list[Any]:
-        events: list[Any] = []
+    async def _invalidate_authorization(self, model: WorkflowModel, now: datetime) -> None:
         approvals = await self.approvals.invalidate_active(model.workflow_id, model.user_id, now)
         reauthentications = await self.reauthentications.invalidate_active(
             model.workflow_id, model.user_id, now
         )
         for approval in approvals:
-            events.append(
-                await self._persist_authorization_event(
-                    model,
-                    "approval.invalidated",
-                    approval_id=approval.approval_id,
-                    status=approval.status.value,
-                )
+            await self._persist_authorization_event(
+                model,
+                "approval.invalidated",
+                approval_id=approval.approval_id,
+                status=approval.status.value,
             )
         for reauth in reauthentications:
-            events.append(
-                await self._persist_authorization_event(
-                    model,
-                    "reauth.invalidated",
-                    reauth_id=reauth.reauth_id,
-                    status=reauth.status.value,
-                )
+            await self._persist_authorization_event(
+                model,
+                "reauth.invalidated",
+                reauth_id=reauth.reauth_id,
+                status=reauth.status.value,
             )
-        return events
 
     async def _expire_approval(
         self,
@@ -588,32 +574,27 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        events = [
+        await self._persist_authorization_event(
+            updated,
+            "approval.expired",
+            approval_id=approval.approval_id,
+            status=approval.status.value,
+            expires_at=approval.expires_at,
+        )
+        for reauth in reauths:
             await self._persist_authorization_event(
                 updated,
-                "approval.expired",
-                approval_id=approval.approval_id,
-                status=approval.status.value,
-                expires_at=approval.expires_at,
+                "reauth.invalidated",
+                reauth_id=reauth.reauth_id,
+                status=reauth.status.value,
             )
-        ]
-        for reauth in reauths:
-            events.append(
-                await self._persist_authorization_event(
-                    updated,
-                    "reauth.invalidated",
-                    reauth_id=reauth.reauth_id,
-                    status=reauth.status.value,
-                )
-            )
-        workflow_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.ready_for_review",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(*events, workflow_event)
 
     async def _expire_reauthentication(
         self,
@@ -637,21 +618,20 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        event = await self._persist_authorization_event(
+        await self._persist_authorization_event(
             updated,
             "reauth.expired",
             reauth_id=reauth.reauth_id,
             status=reauth.status.value,
             expires_at=reauth.expires_at,
         )
-        workflow_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.reauth_required",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(event, workflow_event)
 
     async def _record_failed_reauthentication(
         self,
@@ -677,20 +657,19 @@ class WorkflowService:
         if updated is None:
             await self.session.rollback()
             raise WorkflowVersionConflictError
-        event = await self._persist_authorization_event(
+        await self._persist_authorization_event(
             updated,
             "reauth.failed",
             reauth_id=reauth.reauth_id,
             status=reauth.status.value,
         )
-        workflow_event = await self.publisher.persist(
+        await self.publisher.persist(
             event_type="workflow.reauth_required",
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
         await self.session.commit()
-        await self.publisher.publish_persisted(event, workflow_event)
 
     async def _to_workflow(self, model: WorkflowModel) -> Workflow:
         approval = await self.approvals.latest_for_workflow(model.workflow_id, model.user_id)

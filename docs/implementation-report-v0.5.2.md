@@ -236,6 +236,11 @@ Coverage includes:
 - provider success + Application crash + background recovery;
 - all v0.5.1 SKIP LOCKED, lease/fencing, UNKNOWN query-only, and terminal cleanup regressions.
 
+The Docker product smoke also rebuilt and started PostgreSQL, API, and Web, applied migration 0010,
+and drove two fully authorized 12,000 Transfers through the running HTTP API. Both Operations were
+committed concurrently against 21,864.52 available funds. One finished `SUCCEEDED`; the other
+finished `FAILED / INSUFFICIENT_FUNDS`; the resulting effective balance was 9,864.52.
+
 ## 15. Observability
 
 Mock Provider logs bounded events for serialization wait/acquisition, accepted transfer,

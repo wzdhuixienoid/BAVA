@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
@@ -16,6 +17,7 @@ from banking_api.application.operation_service import (
     OperationNotFoundError,
     OperationService,
 )
+from banking_api.application.outbox_publication_policy import OutboxPublicationPolicy
 from banking_api.application.report_service import ReportService
 from banking_api.application.task_service import TaskService
 from banking_api.application.workflow_service import (
@@ -41,25 +43,30 @@ from banking_api.llm.models import LLMResponse, LLMToolCall
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.models import (
     ApprovalModel,
+    ConversationModel,
     EventModel,
     MockBankTransferModel,
     OperationModel,
+    OutboxEventModel,
     ReauthenticationModel,
     WorkflowModel,
 )
 from banking_api.persistence.repositories.operations import OperationRepository
+from banking_api.persistence.repositories.outbox import OutboxRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.runtime.agent_runtime import AgentRuntime
 from banking_api.runtime.base import AgentRunRequest
 from banking_api.runtime.event_bus import EventBus
+from banking_api.runtime.event_publisher import EventPublisher
 from banking_api.runtime.langgraph.checkpoint import (
     LangGraphCheckpointManager,
     normalize_checkpoint_database_url,
 )
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
+from banking_api.runtime.outbox_publisher import OutboxPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -199,7 +206,17 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0010"
+        outbox_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'outbox_events'"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0011"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -289,6 +306,17 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "error_message",
             "applied_at",
         }.issubset(provider_ledger_columns)
+        assert {
+            "id",
+            "event_id",
+            "created_at",
+            "published_at",
+            "publish_attempts",
+            "next_publish_at",
+            "lease_owner",
+            "lease_expires_at",
+            "last_error_code",
+        }.issubset(outbox_columns)
         conversation = await ConversationService(session, bus).create(
             user_id="postgres-test-user", title="PostgreSQL Agent E2E"
         )
@@ -750,7 +778,7 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
     postgres_factory,
 ) -> None:
     factory = postgres_factory
-    bus = EventBus()
+    bus = RecordingPostgresEventBus()
     bank = FixedSalaryBalanceBank()
     provider = MockTransferProvider(factory, bank)
     registry = ToolRegistry()
@@ -826,6 +854,22 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
     assert await worker.run_once() == 1
     assert await provider.effective_balance("acc_salary") == Decimal("2000.00")
     assert await provider.transfer_count() == 2  # one succeeded fact + one failed fact
+
+    outbox_publisher = OutboxPublisher(
+        factory,
+        bus,
+        policy=outbox_policy(),
+        poll_interval_seconds=0.01,
+        batch_size=100,
+        publisher_id="operation-event-publisher",
+    )
+    assert await outbox_publisher.run_once() > 0
+    assert any(
+        event.event_type == "operation.succeeded"
+        and event.data["operation_id"] == str(created_a.operation_id)
+        for event in bus.published
+    )
+    assert await provider.transfer_count() == 2
 
     async with factory() as session:
         workflow_a = await session.get(WorkflowModel, created_a.workflow_id)
@@ -1202,3 +1246,235 @@ async def test_postgres_startup_reconciliation(postgres_factory) -> None:
         ]
         assert reconciled[0] is not None
         assert reconciled[0].runtime_backend is RuntimeBackend.LANGGRAPH
+
+
+class RecordingPostgresEventBus(EventBus):
+    def __init__(self, *, failures: int = 0) -> None:
+        super().__init__()
+        self.failures = failures
+        self.published = []
+
+    async def publish(self, event):  # type: ignore[no-untyped-def]
+        if self.failures:
+            self.failures -= 1
+            raise RuntimeError("temporary event bus failure")
+        self.published.append(event)
+        await super().publish(event)
+
+
+def outbox_policy(*, lease_seconds: float = 2) -> OutboxPublicationPolicy:
+    return OutboxPublicationPolicy(
+        lease_duration=timedelta(seconds=lease_seconds),
+        initial_retry_delay=timedelta(seconds=1),
+        maximum_retry_delay=timedelta(seconds=8),
+        backoff_multiplier=2,
+    )
+
+
+async def create_postgres_outbox_event(factory, bus, *, event_type="test.outbox"):
+    async with factory() as session:  # type: ignore[no-untyped-def]
+        conversation = await ConversationService(session, bus).create(
+            user_id="postgres-outbox-user", title="PostgreSQL Outbox"
+        )
+        event = await EventPublisher(session).persist(
+            event_type=event_type,
+            conversation_id=conversation.conversation_id,
+            task_id=None,
+            data={"business_version": 1},
+        )
+        await session.commit()
+    return conversation, event
+
+
+async def test_postgres_event_outbox_commit_then_publisher_recovers(postgres_factory) -> None:
+    factory = postgres_factory
+    bus = RecordingPostgresEventBus()
+    conversation, event = await create_postgres_outbox_event(factory, bus)
+
+    async with factory() as session:
+        outbox = (
+            await session.execute(
+                select(OutboxEventModel).where(OutboxEventModel.event_id == event.event_id)
+            )
+        ).scalar_one()
+        conversation_count = await session.scalar(
+            select(func.count())
+            .select_from(ConversationModel)
+            .where(ConversationModel.conversation_id == conversation.conversation_id)
+        )
+    assert outbox.published_at is None
+    assert bus.published == []
+    assert conversation_count == 1
+
+    async with factory() as session:
+        with pytest.raises(IntegrityError):
+            await OutboxRepository(session).enqueue(
+                event_id=event.event_id,
+                next_publish_at=datetime.now(UTC),
+            )
+        await session.rollback()
+
+    publisher = OutboxPublisher(
+        factory,
+        bus,
+        policy=outbox_policy(),
+        poll_interval_seconds=0.01,
+        batch_size=10,
+        publisher_id="postgres-restart-publisher",
+    )
+    assert await publisher.run_once() == 1
+    assert [item.event_id for item in bus.published] == [event.event_id]
+    async with factory() as session:
+        published = await session.get(OutboxEventModel, outbox.outbox_id)
+    assert published is not None and published.published_at is not None
+    assert published.next_publish_at is None
+    assert await publisher.run_once() == 0
+
+
+async def test_postgres_two_publishers_skip_locked_and_reclaim_expired_lease(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    _, event = await create_postgres_outbox_event(factory, bus)
+    now = datetime.now(UTC)
+
+    async with factory() as session_a, factory() as session_b:
+        claims_a = await OutboxRepository(session_a).claim_due(
+            lease_owner="publisher-a",
+            now=now,
+            lease_expires_at=now + timedelta(seconds=30),
+            limit=1,
+        )
+        claims_b = await OutboxRepository(session_b).claim_due(
+            lease_owner="publisher-b",
+            now=now,
+            lease_expires_at=now + timedelta(seconds=30),
+            limit=1,
+        )
+        assert [claim.event_id for claim in claims_a] == [event.event_id]
+        assert claims_b == []
+        await session_b.rollback()
+        await session_a.commit()
+
+    async with factory() as session:
+        active = await OutboxRepository(session).claim_due(
+            lease_owner="publisher-b",
+            now=now + timedelta(seconds=1),
+            lease_expires_at=now + timedelta(seconds=31),
+            limit=1,
+        )
+        assert active == []
+        await session.rollback()
+
+    async with factory() as session:
+        reclaimed = await OutboxRepository(session).claim_due(
+            lease_owner="publisher-b",
+            now=now + timedelta(seconds=31),
+            lease_expires_at=now + timedelta(seconds=61),
+            limit=1,
+        )
+        await session.commit()
+    assert len(reclaimed) == 1
+    assert reclaimed[0].event_id == event.event_id
+    assert reclaimed[0].reclaimed is True
+    assert reclaimed[0].attempt == 2
+
+
+async def test_postgres_publish_before_ack_crash_duplicates_only_notification(
+    postgres_factory, monkeypatch
+) -> None:
+    factory = postgres_factory
+    bus = RecordingPostgresEventBus()
+    conversation, event = await create_postgres_outbox_event(factory, bus)
+    clock = [datetime.now(UTC)]
+    first = OutboxPublisher(
+        factory,
+        bus,
+        policy=outbox_policy(lease_seconds=1),
+        poll_interval_seconds=0.01,
+        batch_size=1,
+        publisher_id="postgres-publisher-a",
+        clock=lambda: clock[0],
+    )
+
+    async def crash_before_ack(_claim):  # type: ignore[no-untyped-def]
+        raise RuntimeError("crash before outbox acknowledgement")
+
+    monkeypatch.setattr(first, "_mark_published", crash_before_ack)
+    with pytest.raises(RuntimeError, match="crash before"):
+        await first.run_once()
+
+    clock[0] += timedelta(seconds=2)
+    second = OutboxPublisher(
+        factory,
+        bus,
+        policy=outbox_policy(lease_seconds=1),
+        poll_interval_seconds=0.01,
+        batch_size=1,
+        publisher_id="postgres-publisher-b",
+        clock=lambda: clock[0],
+    )
+    assert await second.run_once() == 1
+    assert [item.event_id for item in bus.published] == [event.event_id, event.event_id]
+
+    async with factory() as session:
+        event_count = await session.scalar(
+            select(func.count())
+            .select_from(EventModel)
+            .where(EventModel.event_id == event.event_id)
+        )
+        outbox_rows = list(
+            (
+                await session.execute(
+                    select(OutboxEventModel).where(
+                        OutboxEventModel.event_id == event.event_id
+                    )
+                )
+            ).scalars()
+        )
+        conversation_count = await session.scalar(
+            select(func.count())
+            .select_from(ConversationModel)
+            .where(ConversationModel.conversation_id == conversation.conversation_id)
+        )
+    assert event_count == 1
+    assert len(outbox_rows) == 1
+    assert outbox_rows[0].published_at is not None
+    assert outbox_rows[0].publish_attempts == 2
+    assert conversation_count == 1
+
+
+async def test_postgres_event_bus_failure_schedules_retry(postgres_factory) -> None:
+    factory = postgres_factory
+    bus = RecordingPostgresEventBus(failures=1)
+    _, event = await create_postgres_outbox_event(factory, bus)
+    clock = [datetime.now(UTC)]
+    publisher = OutboxPublisher(
+        factory,
+        bus,
+        policy=outbox_policy(),
+        poll_interval_seconds=0.01,
+        batch_size=1,
+        publisher_id="postgres-retry-publisher",
+        clock=lambda: clock[0],
+    )
+    assert await publisher.run_once() == 1
+    async with factory() as session:
+        retry = (
+            await session.execute(
+                select(OutboxEventModel).where(OutboxEventModel.event_id == event.event_id)
+            )
+        ).scalar_one()
+    assert retry.published_at is None
+    assert retry.publish_attempts == 1
+    assert retry.last_error_code == "EVENT_BUS_PUBLISH_FAILED"
+    assert retry.lease_owner is None
+
+    clock[0] += timedelta(seconds=1)
+    assert await publisher.run_once() == 1
+    async with factory() as session:
+        published = await session.get(OutboxEventModel, retry.outbox_id)
+    assert published is not None and published.published_at is not None
+    assert published.publish_attempts == 2
+    assert [item.event_id for item in bus.published] == [event.event_id]
