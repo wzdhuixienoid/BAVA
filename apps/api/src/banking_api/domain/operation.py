@@ -33,6 +33,11 @@ class Operation(BaseModel):
     created_at: datetime
     submitted_at: datetime | None = None
     completed_at: datetime | None = None
+    next_reconcile_at: datetime | None = None
+    reconcile_attempts: int = Field(ge=0)
+    last_reconcile_at: datetime | None = None
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
     updated_at: datetime
 
 
@@ -50,6 +55,9 @@ class OperationResource(BaseModel):
     created_at: datetime
     submitted_at: datetime | None = None
     completed_at: datetime | None = None
+    next_reconcile_at: datetime | None = None
+    reconcile_attempts: int = Field(ge=0)
+    last_reconcile_at: datetime | None = None
     updated_at: datetime
 
 

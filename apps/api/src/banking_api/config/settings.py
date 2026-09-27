@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from banking_api.domain.enums import RuntimeBackend
@@ -26,6 +27,13 @@ class Settings(BaseSettings):
     transfer_reauth_ttl_seconds: int = 300
     transfer_reauth_max_attempts: int = 3
     mock_reauth_code: str = "246810"
+    operation_recovery_enabled: bool = True
+    operation_recovery_poll_interval_seconds: float = Field(default=5.0, gt=0)
+    operation_recovery_lease_seconds: float = Field(default=60.0, gt=0)
+    operation_recovery_initial_retry_seconds: float = Field(default=5.0, gt=0)
+    operation_recovery_max_retry_seconds: float = Field(default=300.0, gt=0)
+    operation_recovery_backoff_multiplier: int = Field(default=2, ge=1)
+    operation_recovery_batch_size: int = Field(default=10, ge=1, le=100)
 
 
 @lru_cache

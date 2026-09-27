@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -149,6 +151,16 @@ class OperationModel(Base):
             "workflow_id", "operation_type", name="uq_operations_workflow_type"
         ),
         Index("ix_operations_user_created_at", "user_id", "created_at"),
+        Index(
+            "ix_operations_recovery_due",
+            "status",
+            "next_reconcile_at",
+            "lease_expires_at",
+            postgresql_where=text("status IN ('CREATED', 'SUBMITTED', 'UNKNOWN')"),
+        ),
+        CheckConstraint(
+            "reconcile_attempts >= 0", name="ck_operations_reconcile_attempts_nonnegative"
+        ),
     )
 
     operation_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
@@ -175,6 +187,19 @@ class OperationModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_reconcile_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reconcile_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0")
+    )
+    last_reconcile_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )

@@ -636,6 +636,12 @@ export interface components {
             submitted_at?: string | null;
             /** Completed At */
             completed_at?: string | null;
+            /** Next Reconcile At */
+            next_reconcile_at?: string | null;
+            /** Reconcile Attempts */
+            reconcile_attempts: number;
+            /** Last Reconcile At */
+            last_reconcile_at?: string | null;
             /**
              * Updated At
              * Format: date-time

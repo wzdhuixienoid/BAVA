@@ -11,6 +11,7 @@ from banking_api.api.dependencies import (
 )
 from banking_api.application.operation_service import (
     OperationActionError,
+    OperationLeaseLostError,
     OperationNotFoundError,
     OperationService,
     OperationVersionConflictError,
@@ -44,7 +45,14 @@ def _service(session, bus, engine) -> WorkflowService:  # type: ignore[no-untype
 def _raise_action_error(exc: Exception) -> NoReturn:
     if isinstance(exc, (WorkflowNotFoundError, OperationNotFoundError)):
         raise HTTPException(status_code=404, detail="未找到该工作流") from exc
-    if isinstance(exc, (WorkflowVersionConflictError, OperationVersionConflictError)):
+    if isinstance(
+        exc,
+        (
+            WorkflowVersionConflictError,
+            OperationVersionConflictError,
+            OperationLeaseLostError,
+        ),
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="工作流已更新，请刷新后重试",
@@ -258,6 +266,7 @@ async def commit_transfer(
     except (
         OperationNotFoundError,
         OperationVersionConflictError,
+        OperationLeaseLostError,
         OperationActionError,
     ) as exc:
         _raise_action_error(exc)

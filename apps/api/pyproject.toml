@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.4.3"
-description = "支持转账操作、幂等提交与最终状态确认的 AI 银行助手"
+version = "0.5.1"
+description = "支持 PostgreSQL 持久化 Operation 自动恢复的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

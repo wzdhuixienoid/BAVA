@@ -11,6 +11,7 @@ from banking_api.api.dependencies import (
 )
 from banking_api.application.operation_service import (
     OperationActionError,
+    OperationLeaseLostError,
     OperationNotFoundError,
     OperationService,
     OperationVersionConflictError,
@@ -23,7 +24,7 @@ router = APIRouter(prefix="/operations", tags=["operations"])
 def _raise_error(exc: Exception) -> NoReturn:
     if isinstance(exc, OperationNotFoundError):
         raise HTTPException(status_code=404, detail="未找到该操作") from exc
-    if isinstance(exc, OperationVersionConflictError):
+    if isinstance(exc, (OperationVersionConflictError, OperationLeaseLostError)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="操作状态已更新，请刷新后重试",
@@ -65,6 +66,7 @@ async def reconcile_operation(
     except (
         OperationNotFoundError,
         OperationVersionConflictError,
+        OperationLeaseLostError,
         OperationActionError,
     ) as exc:
         _raise_error(exc)

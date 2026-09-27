@@ -8,6 +8,7 @@ from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
+from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
@@ -24,6 +25,7 @@ from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.langgraph.checkpoint import LangGraphCheckpointManager
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
+from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -51,10 +53,11 @@ def create_app() -> FastAPI:
     bus = EventBus()
     runtime_factory = AgentRuntimeFactory()
     checkpoint_manager: LangGraphCheckpointManager | None = None
+    operation_recovery_worker: OperationRecoveryWorker | None = None
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-        nonlocal checkpoint_manager
+        nonlocal checkpoint_manager, operation_recovery_worker
         checkpoint_url = (
             settings.langgraph_checkpoint_database_url or settings.database_url
         )
@@ -79,15 +82,28 @@ def create_app() -> FastAPI:
         if settings.agent_runtime is RuntimeBackend.LANGGRAPH:
             runtime_factory.get(RuntimeBackend.LANGGRAPH)
         await TaskReconciliationService(session_factory, bus).reconcile()
+        if settings.operation_recovery_enabled:
+            operation_recovery_worker = OperationRecoveryWorker(
+                session_factory,
+                bus,
+                transfer_engine,
+                policy=OperationRecoveryPolicy.from_settings(settings),
+                poll_interval_seconds=settings.operation_recovery_poll_interval_seconds,
+                batch_size=settings.operation_recovery_batch_size,
+            )
+            operation_recovery_worker.start()
+            application.state.operation_recovery_worker = operation_recovery_worker
         try:
             yield
         finally:
+            if operation_recovery_worker is not None:
+                await operation_recovery_worker.stop()
             if checkpoint_manager is not None:
                 await checkpoint_manager.close()
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.4.3",
+        version="0.5.1",
         lifespan=lifespan,
     )
     application.add_middleware(

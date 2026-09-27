@@ -1,8 +1,10 @@
+import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.domain.enums import (
     ApprovalStatus,
     OperationStatus,
@@ -42,6 +44,13 @@ class OperationActionError(Exception):
     pass
 
 
+class OperationLeaseLostError(Exception):
+    pass
+
+
+logger = logging.getLogger(__name__)
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
 
@@ -60,11 +69,13 @@ class OperationService:
         engine: TransferWorkflowEngine,
         *,
         clock=_now,  # type: ignore[no-untyped-def]
+        recovery_policy: OperationRecoveryPolicy | None = None,
     ) -> None:
         self.session = session
         self.bus = bus
         self.engine = engine
         self.clock = clock
+        self.recovery_policy = recovery_policy or OperationRecoveryPolicy.from_settings()
         self.workflows = WorkflowRepository(session)
         self.approvals = ApprovalRepository(session)
         self.reauthentications = ReauthenticationRepository(session)
@@ -159,6 +170,7 @@ class OperationService:
             payload=canonicalize_transfer_payload(state.review_payload),
             payload_hash=current_hash,
             idempotency_key=uuid4(),
+            next_reconcile_at=now,
         )
         approval.status = ApprovalStatus.CONSUMED
         approval.consumed_at = now
@@ -187,25 +199,77 @@ class OperationService:
     async def reconcile(
         self, operation_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
-        operation = await self.operations.get_for_user(operation_id, user_id)
+        lease_owner = f"manual:{uuid4()}"
+        operation = await self.operations.get_for_user(
+            operation_id, user_id, for_update=True
+        )
         if operation is None:
             raise OperationNotFoundError
         if operation.version != expected_version:
             raise OperationVersionConflictError
         if operation.status in {OperationStatus.SUCCEEDED, OperationStatus.FAILED}:
-            return self._resource(operation)
+            resource = self._resource(operation)
+            await self.session.rollback()
+            return resource
+
+        now = _as_utc(self.clock())
+        if (
+            operation.lease_owner is not None
+            and operation.lease_expires_at is not None
+            and _as_utc(operation.lease_expires_at) > now
+        ):
+            await self.session.rollback()
+            raise OperationActionError("OPERATION_RECONCILIATION_IN_PROGRESS")
+        reclaimed = operation.lease_expires_at is not None
+        operation.lease_owner = lease_owner
+        operation.lease_expires_at = now + self.recovery_policy.lease_duration
+        await self.session.commit()
+        logger.info(
+            "operation claimed operation_id=%s worker=%s reclaimed=%s",
+            operation_id,
+            lease_owner,
+            reclaimed,
+        )
+        return await self.reconcile_claimed(operation_id, lease_owner=lease_owner)
+
+    async def reconcile_claimed(
+        self, operation_id: UUID, *, lease_owner: str
+    ) -> OperationResource:
+        operation = await self.operations.get_claimed(
+            operation_id, lease_owner, lease_valid_at=_as_utc(self.clock())
+        )
+        if operation is None:
+            await self.session.rollback()
+            raise OperationLeaseLostError
+        if operation.status in {OperationStatus.SUCCEEDED, OperationStatus.FAILED}:
+            resource = self._resource(operation)
+            await self.session.rollback()
+            return resource
+        # End the snapshot transaction before any provider/network I/O.
+        await self.session.commit()
+        logger.info(
+            "operation reconciliation attempt operation_id=%s status=%s worker=%s",
+            operation_id,
+            operation.status.value,
+            lease_owner,
+        )
 
         if operation.status is OperationStatus.CREATED:
-            operation = await self._submit_created(operation)
+            operation = await self._submit_created(operation, lease_owner=lease_owner)
             if operation.status is not OperationStatus.SUBMITTED:
                 return self._resource(operation)
-        return await self._query_status(operation)
+        return await self._query_status(operation, lease_owner=lease_owner)
 
-    async def _submit_created(self, operation: OperationModel) -> OperationModel:
+    async def _submit_created(
+        self, operation: OperationModel, *, lease_owner: str
+    ) -> OperationModel:
         now = _as_utc(self.clock())
         try:
             output = await self.engine.submit_operation(operation.operation_id)
         except TransferWorkflowEngineError:
+            logger.warning(
+                "provider submission unavailable operation_id=%s", operation.operation_id
+            )
             output = {"outcome": "UNKNOWN", "error_code": "SUBMISSION_AMBIGUOUS"}
         outcome = output["outcome"]
         if outcome == "ACCEPTED":
@@ -232,12 +296,19 @@ class OperationService:
             submitted_at=submitted_at,
             completed_at=completed_at,
             event_type=event_type,
+            lease_owner=lease_owner,
+            finalize_attempt=status is not OperationStatus.SUBMITTED,
         )
 
-    async def _query_status(self, operation: OperationModel) -> OperationResource:
+    async def _query_status(
+        self, operation: OperationModel, *, lease_owner: str
+    ) -> OperationResource:
         try:
             output = await self.engine.query_operation_status(operation.operation_id)
         except TransferWorkflowEngineError:
+            logger.warning(
+                "provider status query unavailable operation_id=%s", operation.operation_id
+            )
             output = {"status": "UNKNOWN", "error_code": "STATUS_UNAVAILABLE"}
         provider_status = output["status"]
         now = _as_utc(self.clock())
@@ -266,6 +337,8 @@ class OperationService:
             submitted_at=operation.submitted_at,
             completed_at=completed_at,
             event_type=event_type,
+            lease_owner=lease_owner,
+            finalize_attempt=True,
         )
         return self._resource(updated)
 
@@ -280,22 +353,48 @@ class OperationService:
         submitted_at: datetime | None,
         completed_at: datetime | None,
         event_type: str,
+        lease_owner: str,
+        finalize_attempt: bool,
     ) -> OperationModel:
+        now = _as_utc(self.clock())
+        claimed = await self.operations.get_claimed(
+            operation.operation_id,
+            lease_owner,
+            lease_valid_at=now,
+            for_update=True,
+        )
+        if claimed is None or claimed.version != operation.version:
+            await self.session.rollback()
+            raise OperationLeaseLostError
         workflow = await self.workflows.get_for_user_for_update(
-            operation.workflow_id, operation.user_id
+            claimed.workflow_id, claimed.user_id
         )
         if workflow is None:
             raise OperationNotFoundError
+        terminal = status in {OperationStatus.SUCCEEDED, OperationStatus.FAILED}
+        attempt_count = claimed.reconcile_attempts + (1 if finalize_attempt else 0)
+        next_reconcile_at = claimed.next_reconcile_at
+        if terminal:
+            next_reconcile_at = None
+        elif finalize_attempt:
+            next_reconcile_at = now + self.recovery_policy.retry_delay(attempt_count)
         updated_operation = await self.operations.update_if_version(
-            operation_id=operation.operation_id,
-            user_id=operation.user_id,
-            expected_version=operation.version,
+            operation_id=claimed.operation_id,
+            user_id=claimed.user_id,
+            expected_version=claimed.version,
             status=status,
             provider_reference=provider_reference,
             error_code=error_code,
             error_message=error_message,
             submitted_at=submitted_at,
             completed_at=completed_at,
+            lease_owner=lease_owner,
+            reconcile_attempts=attempt_count,
+            last_reconcile_at=now if finalize_attempt else claimed.last_reconcile_at,
+            next_reconcile_at=next_reconcile_at,
+            release_lease=finalize_attempt or terminal,
+            lease_valid_at=now,
+            retained_lease_expires_at=now + self.recovery_policy.lease_duration,
         )
         if updated_operation is None:
             await self.session.rollback()
@@ -330,6 +429,22 @@ class OperationService:
         )
         await self.session.commit()
         await self.publisher.publish_persisted(operation_event, workflow_event)
+        if terminal:
+            logger.info(
+                "operation reconciliation terminal operation_id=%s status=%s attempts=%s",
+                updated_operation.operation_id,
+                updated_operation.status.value,
+                updated_operation.reconcile_attempts,
+            )
+        elif finalize_attempt:
+            logger.info(
+                "operation reconciliation remains non-terminal operation_id=%s "
+                "status=%s attempts=%s next_reconcile_at=%s",
+                updated_operation.operation_id,
+                updated_operation.status.value,
+                updated_operation.reconcile_attempts,
+                updated_operation.next_reconcile_at,
+            )
         return updated_operation
 
     async def _expire_approval(self, workflow, state, approval) -> None:  # type: ignore[no-untyped-def]
@@ -488,5 +603,8 @@ class OperationService:
             created_at=model.created_at,
             submitted_at=model.submitted_at,
             completed_at=model.completed_at,
+            next_reconcile_at=model.next_reconcile_at,
+            reconcile_attempts=model.reconcile_attempts,
+            last_reconcile_at=model.last_reconcile_at,
             updated_at=model.updated_at,
         )

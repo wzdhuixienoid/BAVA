@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
@@ -10,7 +10,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.application.conversation_service import ConversationService
-from banking_api.application.operation_service import OperationNotFoundError, OperationService
+from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
+from banking_api.application.operation_service import (
+    OperationLeaseLostError,
+    OperationNotFoundError,
+    OperationService,
+)
 from banking_api.application.report_service import ReportService
 from banking_api.application.task_service import TaskService
 from banking_api.application.workflow_service import (
@@ -39,6 +44,7 @@ from banking_api.persistence.models import (
     OperationModel,
     ReauthenticationModel,
 )
+from banking_api.persistence.repositories.operations import OperationRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
@@ -64,6 +70,7 @@ from banking_api.tools.banking import (
 )
 from banking_api.tools.executor import ToolExecutor
 from banking_api.transfers.mock_provider import MockTransferProvider
+from banking_api.transfers.provider import TransferProviderRequest
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.models import TransferIntent
 
@@ -188,7 +195,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0008"
+        assert revision == "0009"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -258,6 +265,11 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "status",
             "version",
             "provider_reference",
+            "next_reconcile_at",
+            "reconcile_attempts",
+            "last_reconcile_at",
+            "lease_owner",
+            "lease_expires_at",
             "created_at",
             "updated_at",
         }.issubset(operation_columns)
@@ -638,6 +650,183 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
             )
     assert recovered.idempotency_key == stable_key  # type: ignore[union-attr]
     assert recovered.payload_hash == approval.payload_hash  # type: ignore[union-attr]
+
+
+async def _create_postgres_created_operation(factory, bus, *, user_id):  # type: ignore[no-untyped-def]
+    bank = MockBankService()
+    provider = MockTransferProvider(factory, bank)
+    registry = ToolRegistry()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank, provider.effective_balance))
+    registry.register(build_search_payees_tool(bank))
+    registry.register(build_commit_transfer_tool(factory, provider))
+    registry.register(build_get_transfer_status_tool(factory, provider))
+    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+    async with factory() as session:
+        conversation = await ConversationService(session, bus).create(
+            user_id=user_id, title="PostgreSQL Recovery Claim"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id=user_id,
+            content="给张三转2000",
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).create_transfer(
+            user_id=user_id,
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            intent=TransferIntent(recipient_query="张三", amount="2000.00"),
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).select_payee(
+            workflow.workflow_id,
+            user_id=user_id,
+            payee_id="payee_001",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).select_source_account(
+            workflow.workflow_id,
+            user_id=user_id,
+            account_id="acc_salary",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).approve(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).start_reauthentication(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(session, bus, engine).verify_reauthentication(
+            workflow.workflow_id,
+            user_id=user_id,
+            reauth_id=workflow.reauth_summary.reauth_id,  # type: ignore[union-attr]
+            verification_code="246810",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        created = await OperationService(session, bus, engine).prepare_transfer(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    return bank, provider, engine, created
+
+
+async def test_postgres_skip_locked_lease_expiry_and_exact_once_recovery(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    bank, provider, engine, created = await _create_postgres_created_operation(
+        factory, bus, user_id="postgres-claim-user"
+    )
+    initial_balance = Decimal(str(bank.get_balance("acc_salary")["balance"]))
+    now = datetime.now(UTC)
+    lease_duration = timedelta(seconds=30)
+
+    # Session A keeps the PostgreSQL row lock open. Session B must skip it rather
+    # than wait or claim the same Operation.
+    async with factory() as session_a, factory() as session_b:
+        claims_a = await OperationRepository(session_a).claim_due(
+            lease_owner="worker-a",
+            now=now,
+            lease_expires_at=now + lease_duration,
+            limit=1,
+        )
+        claims_b = await OperationRepository(session_b).claim_due(
+            lease_owner="worker-b",
+            now=now,
+            lease_expires_at=now + lease_duration,
+            limit=1,
+        )
+        assert [claim.operation_id for claim in claims_a] == [created.operation_id]
+        assert claims_b == []
+        await session_b.rollback()
+        await session_a.commit()
+
+    # Model a provider accept followed by worker A crashing before local status
+    # persistence. The application row remains CREATED and retains A's lease.
+    async with factory() as session:
+        operation = await session.get(OperationModel, created.operation_id)
+        stable_key = operation.idempotency_key  # type: ignore[union-attr]
+        payload = operation.payload_json  # type: ignore[union-attr]
+    await provider.submit_transfer(
+        TransferProviderRequest(
+            idempotency_key=stable_key,
+            source_account_id=payload["source_account_id"],
+            payee_id=payload["payee_id"],
+            amount=payload["amount"],
+            currency=payload["currency"],
+        )
+    )
+
+    async with factory() as session:
+        active_lease_claims = await OperationRepository(session).claim_due(
+            lease_owner="worker-b",
+            now=now + timedelta(seconds=1),
+            lease_expires_at=now + timedelta(seconds=31),
+            limit=1,
+        )
+        assert active_lease_claims == []
+        await session.rollback()
+
+    reclaimed_at = now + timedelta(seconds=31)
+    async with factory() as session:
+        reclaimed = await OperationRepository(session).claim_due(
+            lease_owner="worker-b",
+            now=reclaimed_at,
+            lease_expires_at=reclaimed_at + lease_duration,
+            limit=1,
+        )
+        await session.commit()
+    assert len(reclaimed) == 1
+    assert reclaimed[0].operation_id == created.operation_id
+    assert reclaimed[0].reclaimed is True
+
+    async with factory() as session:
+        with pytest.raises(OperationLeaseLostError):
+            await OperationService(session, bus, engine).reconcile_claimed(
+                created.operation_id, lease_owner="worker-a"
+            )
+
+    policy = OperationRecoveryPolicy(
+        lease_duration=lease_duration,
+        initial_retry_delay=timedelta(seconds=1),
+        maximum_retry_delay=timedelta(seconds=8),
+        backoff_multiplier=2,
+    )
+    async with factory() as session:
+        recovered = await OperationService(
+            session, bus, engine, recovery_policy=policy
+        ).reconcile_claimed(created.operation_id, lease_owner="worker-b")
+    assert recovered.status is OperationStatus.SUCCEEDED
+    assert await provider.transfer_count() == 1
+    assert await provider.effective_balance("acc_salary") == initial_balance - Decimal(
+        "2000.00"
+    )
+    async with factory() as session:
+        persisted = await session.get(OperationModel, created.operation_id)
+        terminal_claims = await OperationRepository(session).claim_due(
+            lease_owner="worker-c",
+            now=reclaimed_at + timedelta(minutes=1),
+            lease_expires_at=reclaimed_at + timedelta(minutes=2),
+            limit=1,
+        )
+    assert persisted.idempotency_key == stable_key  # type: ignore[union-attr]
+    assert persisted.reconcile_attempts == 1  # type: ignore[union-attr]
+    assert persisted.next_reconcile_at is None  # type: ignore[union-attr]
+    assert persisted.lease_owner is None  # type: ignore[union-attr]
+    assert terminal_claims == []
 
 
 async def test_postgres_report_artifact_round_trip(postgres_factory) -> None:
