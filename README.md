@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-当前版本：`v0.5.1`
+当前版本：`v0.5.2`
 
 面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及通过持久化 Transfer Workflow 完成草稿、校验、审批、重新认证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
 
@@ -15,11 +15,13 @@
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
 | 转账全链路 | `workflow:transfer` | Draft → Validation → Approval → Reauthentication → Operation → Verification |
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
+| 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
 
 ```text
 Financial Analysis Vertical Slice: COMPLETE
 Transfer Vertical Slice: COMPLETE
 Durable Operation Recovery: COMPLETE
+Cross-Process Financial Concurrency: COMPLETE
 ```
 
 用户可以直接输入：
@@ -46,6 +48,7 @@ User Message
     → ToolRegistry → PolicyService → ToolExecutor
         └─ transfer.commit (R4) / transfer.get_status (R1)
     → persistent Operation → MockTransferProvider idempotency ledger
+        → PostgreSQL account advisory lock → authoritative balance decision
     → PostgreSQL claim/lease → automatic Operation recovery
     → FinancialAnalysisSnapshot
     → SkillRegistry → MonthlySpendingReportSkill
@@ -59,6 +62,7 @@ User Message
 - Alembic 管理 Conversation、Message、Task、Event 和 Report 等应用表。
 - LangGraph PostgreSQL Checkpointer 管理 Agent runtime checkpoint。
 - committed Mock Bank synthetic data 作为基线 fixture；工资卡等有效余额会减去持久化 provider ledger 中已成功的转出，不修改 committed JSON。
+- Mock Provider 在自己的短 PostgreSQL transaction 内按 source account 串行化，重新计算 fixture balance 减成功 ledger 的 authoritative balance，然后原子地接受或拒绝转账。
 - Operation recovery 调度、尝试次数和 lease 同样持久化在 Application PostgreSQL；LangGraph checkpoint 不是 Workflow/Operation 业务事实源。
 
 产品 Runtime 是 `LangGraphAgentRuntime`。`ManualAgentRuntime` 仅作为 reference 保留，不承载新功能。
@@ -239,6 +243,8 @@ SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢
 
 `CREATED / SUBMITTED / UNKNOWN` 会按持久化 `next_reconcile_at` 自动恢复。多个 API process 可各自运行 worker；PostgreSQL `FOR UPDATE SKIP LOCKED` 与有期 lease 保证同一 Operation 在有效 lease 内只有一个 claim。Provider/network I/O 不持有数据库行锁。
 
+Idempotency 和资金并发是两个独立 invariant：同一 idempotency key 通过 provider ledger unique constraint 仅执行一次；不同 Operation/key 通过 source-account-scoped PostgreSQL transaction advisory lock 不能并发花穿余额。Workflow balance check 仅用于 early validation，Provider commit-time balance check 才是最终资金 correctness boundary。
+
 ## 项目结构
 
 ```text
@@ -251,18 +257,12 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.4.1](docs/implementation-report-v0.4.1.md)
-- [Repository Tree v0.4.1](docs/repository-tree-v0.4.1.md)
-- [Test Results v0.4.1](docs/test-results-v0.4.1.md)
-- [Implementation Report v0.4.2](docs/implementation-report-v0.4.2.md)
-- [Repository Tree v0.4.2](docs/repository-tree-v0.4.2.md)
-- [Test Results v0.4.2](docs/test-results-v0.4.2.md)
-- [Implementation Report v0.4.3](docs/implementation-report-v0.4.3.md)
-- [Repository Tree v0.4.3](docs/repository-tree-v0.4.3.md)
-- [Test Results v0.4.3](docs/test-results-v0.4.3.md)
 - [Implementation Report v0.5.1](docs/implementation-report-v0.5.1.md)
 - [Repository Tree v0.5.1](docs/repository-tree-v0.5.1.md)
 - [Test Results v0.5.1](docs/test-results-v0.5.1.md)
+- [Implementation Report v0.5.2](docs/implementation-report-v0.5.2.md)
+- [Repository Tree v0.5.2](docs/repository-tree-v0.5.2.md)
+- [Test Results v0.5.2](docs/test-results-v0.5.2.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 
@@ -270,4 +270,4 @@ docs/                     版本交付、测试结果与设计记录
 
 当前资金写入仅限持久化 Mock Transfer Provider；不支持真实转账 Provider、真实重新认证 Provider、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP 或 Agent-to-Agent 调用。
 
-仍然没有 Transactional Outbox、跨进程账户级资金串行化/余额预留，也没有 durable generic task worker。Operation recovery 是一个明确、专用的后台 loop，不是 Celery、任务队列或通用调度框架。Task runner 和实时 EventBus 仍按单 API process 设计；SSE 仍不是 authoritative source。
+仍然没有 Transactional Outbox、balance reservation/hold/capture 系统，也没有 durable generic task worker。Operation recovery 是一个明确、专用的后台 loop，不是 Celery、任务队列或通用调度框架。Task runner 和实时 EventBus 仍按单 API process 设计；SSE 仍不是 authoritative source。

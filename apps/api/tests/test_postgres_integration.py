@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
@@ -31,6 +31,7 @@ from banking_api.domain.enums import (
     ReauthenticationStatus,
     RuntimeBackend,
     TaskStatus,
+    WorkflowStatus,
 )
 from banking_api.domain.message import Message
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot, ToolEvidence
@@ -41,8 +42,10 @@ from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.models import (
     ApprovalModel,
     EventModel,
+    MockBankTransferModel,
     OperationModel,
     ReauthenticationModel,
+    WorkflowModel,
 )
 from banking_api.persistence.repositories.operations import OperationRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
@@ -56,6 +59,7 @@ from banking_api.runtime.langgraph.checkpoint import (
     normalize_checkpoint_database_url,
 )
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
+from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -195,7 +199,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0009"
+        assert revision == "0010"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -281,6 +285,8 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "amount",
             "currency",
             "status",
+            "error_code",
+            "error_message",
             "applied_at",
         }.issubset(provider_ledger_columns)
         conversation = await ConversationService(session, bus).create(
@@ -652,16 +658,26 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
     assert recovered.payload_hash == approval.payload_hash  # type: ignore[union-attr]
 
 
-async def _create_postgres_created_operation(factory, bus, *, user_id):  # type: ignore[no-untyped-def]
-    bank = MockBankService()
-    provider = MockTransferProvider(factory, bank)
-    registry = ToolRegistry()
-    registry.register(build_list_accounts_tool(bank))
-    registry.register(build_get_balance_tool(bank, provider.effective_balance))
-    registry.register(build_search_payees_tool(bank))
-    registry.register(build_commit_transfer_tool(factory, provider))
-    registry.register(build_get_transfer_status_tool(factory, provider))
-    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+async def _create_postgres_created_operation(
+    factory,
+    bus,
+    *,
+    user_id,
+    amount="2000.00",
+    bank=None,
+    provider=None,
+    engine=None,
+):  # type: ignore[no-untyped-def]
+    bank = bank or MockBankService()
+    provider = provider or MockTransferProvider(factory, bank)
+    if engine is None:
+        registry = ToolRegistry()
+        registry.register(build_list_accounts_tool(bank))
+        registry.register(build_get_balance_tool(bank, provider.effective_balance))
+        registry.register(build_search_payees_tool(bank))
+        registry.register(build_commit_transfer_tool(factory, provider))
+        registry.register(build_get_transfer_status_tool(factory, provider))
+        engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
             user_id=user_id, title="PostgreSQL Recovery Claim"
@@ -670,14 +686,14 @@ async def _create_postgres_created_operation(factory, bus, *, user_id):  # type:
         accepted = await ConversationService(session, bus).accept_message(
             conversation_id=conversation.conversation_id,
             user_id=user_id,
-            content="给张三转2000",
+            content=f"给张三转{amount}",
         )
     async with factory() as session:
         workflow = await WorkflowService(session, bus, engine).create_transfer(
             user_id=user_id,
             conversation_id=conversation.conversation_id,
             source_task_id=accepted.task_id,
-            intent=TransferIntent(recipient_query="张三", amount="2000.00"),
+            intent=TransferIntent(recipient_query="张三", amount=amount),
         )
     async with factory() as session:
         workflow = await WorkflowService(session, bus, engine).select_payee(
@@ -720,6 +736,111 @@ async def _create_postgres_created_operation(factory, bus, *, user_id):  # type:
             expected_version=workflow.version,
         )
     return bank, provider, engine, created
+
+
+class FixedSalaryBalanceBank(MockBankService):
+    def get_balance(self, account_id: str):  # type: ignore[no-untyped-def]
+        result = super().get_balance(account_id)
+        if account_id == "acc_salary":
+            result["balance"] = Decimal("10000.00")
+        return result
+
+
+async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exactly_once(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    bank = FixedSalaryBalanceBank()
+    provider = MockTransferProvider(factory, bank)
+    registry = ToolRegistry()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank, provider.effective_balance))
+    registry.register(build_search_payees_tool(bank))
+    registry.register(build_commit_transfer_tool(factory, provider))
+    registry.register(build_get_transfer_status_tool(factory, provider))
+    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+
+    _, _, _, created_a = await _create_postgres_created_operation(
+        factory,
+        bus,
+        user_id="crashed-operation-a",
+        amount="8000.00",
+        bank=bank,
+        provider=provider,
+        engine=engine,
+    )
+    _, _, _, created_b = await _create_postgres_created_operation(
+        factory,
+        bus,
+        user_id="stale-precheck-operation-b",
+        amount="8000.00",
+        bank=bank,
+        provider=provider,
+        engine=engine,
+    )
+
+    async with factory() as session:
+        operation_a = await session.get(OperationModel, created_a.operation_id)
+        payload_a = operation_a.payload_json  # type: ignore[union-attr]
+        key_a = operation_a.idempotency_key  # type: ignore[union-attr]
+    accepted_a = await provider.submit_transfer(
+        TransferProviderRequest(
+            idempotency_key=key_a,
+            source_account_id=payload_a["source_account_id"],
+            payee_id=payload_a["payee_id"],
+            amount=payload_a["amount"],
+            currency=payload_a["currency"],
+        )
+    )
+    assert accepted_a.outcome.value == "ACCEPTED"
+
+    # B passed the earlier Workflow check while the balance was 10,000. Provider
+    # now sees A's durable 8,000 debit and definitively rejects B.
+    async with factory() as session:
+        failed_b = await OperationService(session, bus, engine).reconcile(
+            created_b.operation_id,
+            user_id="stale-precheck-operation-b",
+            expected_version=created_b.version,
+        )
+    assert failed_b.status is OperationStatus.FAILED
+    assert failed_b.error_code == "INSUFFICIENT_FUNDS"
+
+    # Application A had crashed before persisting provider success. Recovery
+    # replays the same key and converges without a second debit.
+    policy = OperationRecoveryPolicy(
+        lease_duration=timedelta(seconds=30),
+        initial_retry_delay=timedelta(seconds=1),
+        maximum_retry_delay=timedelta(seconds=8),
+        backoff_multiplier=2,
+    )
+    worker = OperationRecoveryWorker(
+        factory,
+        bus,
+        engine,
+        policy=policy,
+        poll_interval_seconds=0.01,
+        batch_size=10,
+        worker_id="concurrency-recovery-worker",
+    )
+    assert await worker.run_once() == 1
+    assert await provider.effective_balance("acc_salary") == Decimal("2000.00")
+    assert await provider.transfer_count() == 2  # one succeeded fact + one failed fact
+
+    async with factory() as session:
+        workflow_a = await session.get(WorkflowModel, created_a.workflow_id)
+        workflow_b = await session.get(WorkflowModel, created_b.workflow_id)
+        recovered_a = await session.get(OperationModel, created_a.operation_id)
+        successful_provider_rows = await session.scalar(
+            select(func.count())
+            .select_from(MockBankTransferModel)
+            .where(MockBankTransferModel.status == "SUCCEEDED")
+        )
+    assert workflow_a.status is WorkflowStatus.SUCCEEDED  # type: ignore[union-attr]
+    assert workflow_b.status is WorkflowStatus.FAILED  # type: ignore[union-attr]
+    assert recovered_a.status is OperationStatus.SUCCEEDED  # type: ignore[union-attr]
+    assert recovered_a.provider_reference == accepted_a.provider_reference  # type: ignore[union-attr]
+    assert successful_provider_rows == 1
 
 
 async def test_postgres_skip_locked_lease_expiry_and_exact_once_recovery(

@@ -1,9 +1,11 @@
 import asyncio
+import hashlib
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -19,9 +21,20 @@ from banking_api.transfers.provider import (
     TransferSubmissionResult,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def provider_account_lock_key(source_account_id: str) -> int:
+    """Map one provider account to a stable signed PostgreSQL advisory-lock key."""
+
+    digest = hashlib.sha256(
+        f"mock-transfer-provider:source-account:{source_account_id}".encode()
+    ).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=True)
+
 
 class MockTransferProvider:
-    """Persistent mock-bank boundary with provider-side idempotency."""
+    """Persistent mock-bank boundary with idempotency and account serialization."""
 
     def __init__(
         self,
@@ -42,72 +55,104 @@ class MockTransferProvider:
         async with lock:
             existing = await self._find(request.idempotency_key)
             if existing is not None:
+                logger.info("mock provider idempotent replay")
                 return self._submission_from(existing)
-
-            now = datetime.now(UTC)
-            provider_reference = f"mocktr_{uuid4().hex}"
-            status = (
-                "FAILED"
-                if self.fault_mode is TransferProviderFaultMode.DEFINITIVE_FAILURE
-                else "SUCCEEDED"
-            )
-            error_code = "PROVIDER_REJECTED" if status == "FAILED" else None
             try:
-                async with self._session_factory() as session:
-                    async with session.begin():
-                        existing = (
-                            await session.execute(
-                                select(MockBankTransferModel)
-                                .where(
-                                    MockBankTransferModel.idempotency_key
-                                    == request.idempotency_key
-                                )
-                                .with_for_update()
-                            )
-                        ).scalar_one_or_none()
-                        if existing is not None:
-                            return self._submission_from(existing)
-                        available = await self._effective_balance_in_session(
-                            session, request.source_account_id
-                        )
-                        if available < request.amount:
-                            status = "FAILED"
-                            error_code = "INSUFFICIENT_FUNDS"
-                        transfer = MockBankTransferModel(
-                            provider_reference=provider_reference,
-                            idempotency_key=request.idempotency_key,
-                            source_account_id=request.source_account_id,
-                            payee_id=request.payee_id,
-                            amount=request.amount,
-                            currency=request.currency,
-                            status=status,
-                            applied_at=now if status == "SUCCEEDED" else None,
-                            created_at=now,
-                        )
-                        session.add(transfer)
-                        await session.flush()
+                result = await self._submit_in_provider_transaction(request)
             except IntegrityError:
                 existing = await self._find(request.idempotency_key)
                 if existing is None:
                     raise
+                logger.info("mock provider idempotent replay after uniqueness conflict")
                 return self._submission_from(existing)
 
             if (
                 self.fault_mode is TransferProviderFaultMode.TIMEOUT_AFTER_ACCEPT
-                and status == "SUCCEEDED"
+                and result.outcome is TransferSubmissionOutcome.ACCEPTED
             ):
                 raise TransferProviderAmbiguousError
-            if status == "FAILED":
-                return TransferSubmissionResult(
-                    outcome=TransferSubmissionOutcome.FAILED,
-                    provider_reference=provider_reference,
-                    error_code=error_code,
-                    error_message="Mock provider definitively rejected the transfer",
+            return result
+
+    async def _submit_in_provider_transaction(
+        self, request: TransferProviderRequest
+    ) -> TransferSubmissionResult:
+        now = datetime.now(UTC)
+        async with self._session_factory() as session:
+            async with session.begin():
+                await self._serialize_source_account(session, request.source_account_id)
+                existing = (
+                    await session.execute(
+                        select(MockBankTransferModel)
+                        .where(
+                            MockBankTransferModel.idempotency_key
+                            == request.idempotency_key
+                        )
+                        .with_for_update()
+                    )
+                ).scalar_one_or_none()
+                if existing is not None:
+                    logger.info("mock provider idempotent replay inside serialized transaction")
+                    return self._submission_from(existing)
+
+                status = (
+                    "FAILED"
+                    if self.fault_mode is TransferProviderFaultMode.DEFINITIVE_FAILURE
+                    else "SUCCEEDED"
                 )
-            return TransferSubmissionResult(
-                outcome=TransferSubmissionOutcome.ACCEPTED,
-                provider_reference=provider_reference,
-            )
+                error_code = "PROVIDER_REJECTED" if status == "FAILED" else None
+                error_message = (
+                    "Mock provider definitively rejected the transfer"
+                    if status == "FAILED"
+                    else None
+                )
+                available = await self._effective_balance_in_session(
+                    session, request.source_account_id
+                )
+                if available < request.amount:
+                    status = "FAILED"
+                    error_code = "INSUFFICIENT_FUNDS"
+                    error_message = "Insufficient available balance"
+                transfer = MockBankTransferModel(
+                    provider_reference=f"mocktr_{uuid4().hex}",
+                    idempotency_key=request.idempotency_key,
+                    source_account_id=request.source_account_id,
+                    payee_id=request.payee_id,
+                    amount=request.amount,
+                    currency=request.currency,
+                    status=status,
+                    error_code=error_code,
+                    error_message=error_message,
+                    applied_at=now if status == "SUCCEEDED" else None,
+                    created_at=now,
+                )
+                session.add(transfer)
+                await session.flush()
+                if status == "SUCCEEDED":
+                    logger.info("mock provider transfer accepted")
+                elif error_code == "INSUFFICIENT_FUNDS":
+                    logger.info("mock provider transfer rejected: insufficient funds")
+                else:
+                    logger.info("mock provider transfer definitively rejected")
+                return self._submission_from(transfer)
+
+    @staticmethod
+    async def _serialize_source_account(
+        session: AsyncSession, source_account_id: str
+    ) -> None:
+        bind = session.get_bind()
+        if bind.dialect.name != "postgresql":
+            return
+        lock_key = provider_account_lock_key(source_account_id)
+        logger.info(
+            "mock provider waiting for account serialization lock_key=%s", lock_key
+        )
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_key)"),
+            {"lock_key": lock_key},
+        )
+        logger.info(
+            "mock provider account serialization acquired lock_key=%s", lock_key
+        )
 
     async def get_transfer_status(
         self, *, idempotency_key: UUID, provider_reference: str | None
@@ -125,8 +170,9 @@ class MockTransferProvider:
         return TransferProviderStatus(
             status=TransferProviderStatusValue.FAILED,
             provider_reference=transfer.provider_reference,
-            error_code="PROVIDER_REJECTED",
-            error_message="Mock provider definitively rejected the transfer",
+            error_code=transfer.error_code or "PROVIDER_REJECTED",
+            error_message=transfer.error_message
+            or "Mock provider definitively rejected the transfer",
         )
 
     async def effective_balance(self, account_id: str) -> Decimal:
@@ -177,6 +223,7 @@ class MockTransferProvider:
         return TransferSubmissionResult(
             outcome=TransferSubmissionOutcome.FAILED,
             provider_reference=transfer.provider_reference,
-            error_code="PROVIDER_REJECTED",
-            error_message="Mock provider definitively rejected the transfer",
+            error_code=transfer.error_code or "PROVIDER_REJECTED",
+            error_message=transfer.error_message
+            or "Mock provider definitively rejected the transfer",
         )
