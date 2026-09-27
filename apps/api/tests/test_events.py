@@ -15,6 +15,7 @@ async def test_task_events_are_durable_and_sequenced(client, app) -> None:
         f"/api/v1/conversations/{conversation_id}/messages", json={"content": "Hello"}
     )
     task_id = UUID(accepted.json()["task_id"])
+    await app.state.task_runner.run(task_id)
 
     factory = app.state.test_session_factory
     async with factory() as session:

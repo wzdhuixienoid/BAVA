@@ -10,6 +10,7 @@ from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.application.outbox_publication_policy import OutboxPublicationPolicy
+from banking_api.application.task_execution_policy import TaskExecutionPolicy
 from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
@@ -29,6 +30,7 @@ from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
 from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
 from banking_api.runtime.outbox_publisher import OutboxPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
+from banking_api.runtime.task_execution_worker import TaskExecutionWorker
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.skill_runtime.executor import SkillExecutor
@@ -57,10 +59,12 @@ def create_app() -> FastAPI:
     checkpoint_manager: LangGraphCheckpointManager | None = None
     operation_recovery_worker: OperationRecoveryWorker | None = None
     outbox_publisher: OutboxPublisher | None = None
+    task_execution_worker: TaskExecutionWorker | None = None
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         nonlocal checkpoint_manager, operation_recovery_worker, outbox_publisher
+        nonlocal task_execution_worker
         checkpoint_url = (
             settings.langgraph_checkpoint_database_url or settings.database_url
         )
@@ -85,6 +89,17 @@ def create_app() -> FastAPI:
         if settings.agent_runtime is RuntimeBackend.LANGGRAPH:
             runtime_factory.get(RuntimeBackend.LANGGRAPH)
         await TaskReconciliationService(session_factory, bus).reconcile()
+        if settings.task_worker_enabled:
+            task_execution_worker = TaskExecutionWorker(
+                session_factory,
+                task_runner,
+                policy=TaskExecutionPolicy.from_settings(settings),
+                poll_interval_seconds=settings.task_worker_poll_interval_seconds,
+                batch_size=settings.task_worker_batch_size,
+                max_concurrency=settings.task_worker_max_concurrency,
+            )
+            task_execution_worker.start()
+            application.state.task_execution_worker = task_execution_worker
         if settings.operation_recovery_enabled:
             operation_recovery_worker = OperationRecoveryWorker(
                 session_factory,
@@ -109,16 +124,18 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
-            if outbox_publisher is not None:
-                await outbox_publisher.stop()
+            if task_execution_worker is not None:
+                await task_execution_worker.stop()
             if operation_recovery_worker is not None:
                 await operation_recovery_worker.stop()
+            if outbox_publisher is not None:
+                await outbox_publisher.stop()
             if checkpoint_manager is not None:
                 await checkpoint_manager.close()
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.5.3",
+        version="0.5.4",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -175,7 +192,7 @@ def create_app() -> FastAPI:
     application.state.runtime_factory = runtime_factory
     application.state.transfer_workflow_engine = transfer_engine
     application.state.transfer_provider = transfer_provider
-    application.state.task_runner = InProcessTaskRunner(
+    task_runner = InProcessTaskRunner(
         session_factory,
         bus,
         runtime_factory,
@@ -187,6 +204,7 @@ def create_app() -> FastAPI:
         transfer_intent_extractor=TransferIntentExtractor(provider),
         transfer_workflow_engine=transfer_engine,
     )
+    application.state.task_runner = task_runner
     application.include_router(health_router)
     application.include_router(api_router)
     return application

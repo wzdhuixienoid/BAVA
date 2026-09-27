@@ -45,6 +45,17 @@ class WorkflowRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_source_task(
+        self, source_task_id: UUID, user_id: str
+    ) -> WorkflowModel | None:
+        result = await self.session.execute(
+            select(WorkflowModel).where(
+                WorkflowModel.source_task_id == source_task_id,
+                WorkflowModel.user_id == user_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
     async def get_for_user_for_update(
         self, workflow_id: UUID, user_id: str
     ) -> WorkflowModel | None:

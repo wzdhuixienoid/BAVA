@@ -98,7 +98,7 @@ wheels = [
 
 [[package]]
 name = "banking-api"
-version = "0.5.3"
+version = "0.5.4"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },

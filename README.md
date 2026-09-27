@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-当前版本：`v0.5.3`
+当前版本：`v0.5.4`
 
 面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及通过持久化 Transfer Workflow 完成草稿、校验、审批、重新认证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
 
@@ -17,6 +17,7 @@
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
 | 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
 | 持久事件发布 | Transactional Outbox | Event + Outbox atomic commit → leased publisher → EventBus/SSE |
+| 持久 Task 执行 | PostgreSQL-backed Task worker | due scan → `SKIP LOCKED` claim → lease/heartbeat/fencing → retry/terminal |
 
 ```text
 Financial Analysis Vertical Slice: COMPLETE
@@ -24,6 +25,7 @@ Transfer Vertical Slice: COMPLETE
 Durable Operation Recovery: COMPLETE
 Cross-Process Financial Concurrency: COMPLETE
 Transactional Outbox: COMPLETE
+Durable Task Execution: COMPLETE
 ```
 
 用户可以直接输入：
@@ -42,6 +44,8 @@ Transactional Outbox: COMPLETE
 
 ```text
 User Message
+    → Message + durable Task + Event/Outbox atomic commit
+    → PostgreSQL Task claim/lease + heartbeat
     → RequestRouter
     → AgentRegistry / TransferWorkflow
         ├─ MinimalBankingAgent
@@ -67,6 +71,7 @@ User Message
 - committed Mock Bank synthetic data 作为基线 fixture；工资卡等有效余额会减去持久化 provider ledger 中已成功的转出，不修改 committed JSON。
 - Mock Provider 在自己的短 PostgreSQL transaction 内按 source account 串行化，重新计算 fixture balance 减成功 ledger 的 authoritative balance，然后原子地接受或拒绝转账。
 - Operation recovery 调度、尝试次数和 lease 同样持久化在 Application PostgreSQL；LangGraph checkpoint 不是 Workflow/Operation 业务事实源。
+- Task 的调度、attempt、lease 和 fencing token 持久化在 Application PostgreSQL；LangGraph checkpoint 只保存 Agent runtime 进度，不代替 Task ownership。
 - 所有需实时通知的 durable Event 都与唯一 Outbox intent 在同一业务 transaction 内写入；Outbox 只引用 Event identity，不复制 payload。
 
 产品 Runtime 是 `LangGraphAgentRuntime`。`ManualAgentRuntime` 仅作为 reference 保留，不承载新功能。
@@ -155,7 +160,23 @@ docker compose up --build
 - API：<http://localhost:8000>
 - OpenAPI：<http://localhost:8000/docs>
 
-API 启动时依次执行 Alembic migration、LangGraph checkpoint setup、stale Task reconciliation，然后启动 Operation recovery loop 和 Outbox publisher。关闭时两个专用 worker 都会停止并等待当前轮询结束。
+API 启动时依次执行 Alembic migration、LangGraph checkpoint setup、legacy stale Task 调度修复，然后启动 Task execution、Operation recovery 和 Outbox publication 三个专用 loop。关闭时三个 worker 都会停止并等待当前工作收敛。HTTP message handler 只持久化 Message/Task/Event/Outbox 并返回，不再拥有 Task 生命周期。
+
+Task worker 通过环境变量配置：
+
+```env
+TASK_WORKER_ENABLED=true
+TASK_WORKER_POLL_INTERVAL_SECONDS=0.5
+TASK_WORKER_LEASE_SECONDS=60
+TASK_WORKER_HEARTBEAT_SECONDS=15
+TASK_WORKER_INITIAL_RETRY_SECONDS=2
+TASK_WORKER_MAX_RETRY_SECONDS=120
+TASK_WORKER_BACKOFF_MULTIPLIER=2
+TASK_WORKER_BATCH_SIZE=4
+TASK_WORKER_MAX_CONCURRENCY=4
+```
+
+`TASK_WORKER_HEARTBEAT_SECONDS` 必须小于 lease duration。batch 不超过本地 concurrency 上限，claim 后立即并发 dispatch，避免长 LLM Task 在队列尾部耗尽 lease。
 
 Recovery 通过环境变量配置：
 
@@ -259,6 +280,8 @@ SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢
 
 `CREATED / SUBMITTED / UNKNOWN` 会按持久化 `next_reconcile_at` 自动恢复。多个 API process 可各自运行 worker；PostgreSQL `FOR UPDATE SKIP LOCKED` 与有期 lease 保证同一 Operation 在有效 lease 内只有一个 claim。Provider/network I/O 不持有数据库行锁。
 
+Task 执行同样使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、持久 lease、attempt fencing 和 heartbeat。保证是“at-least-once execution attempt + fenced authoritative completion”，不是外部副作用 exactly-once。Report 依赖 `source_task_id` 唯一约束；Transfer retry 复用同一 Workflow，金融副作用仍只由 Operation/Provider/OperationRecoveryWorker 收敛。
+
 Idempotency 和资金并发是两个独立 invariant：同一 idempotency key 通过 provider ledger unique constraint 仅执行一次；不同 Operation/key 通过 source-account-scoped PostgreSQL transaction advisory lock 不能并发花穿余额。Workflow balance check 仅用于 early validation，Provider commit-time balance check 才是最终资金 correctness boundary。
 
 ## 项目结构
@@ -282,11 +305,16 @@ docs/                     版本交付、测试结果与设计记录
 - [Implementation Report v0.5.3](docs/implementation-report-v0.5.3.md)
 - [Repository Tree v0.5.3](docs/repository-tree-v0.5.3.md)
 - [Test Results v0.5.3](docs/test-results-v0.5.3.md)
+- [Implementation Report v0.5.4](docs/implementation-report-v0.5.4.md)
+- [Repository Tree v0.5.4](docs/repository-tree-v0.5.4.md)
+- [Test Results v0.5.4](docs/test-results-v0.5.4.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 
 ## 当前限制
 
-当前资金写入仅限持久化 Mock Transfer Provider；不支持真实转账 Provider、真实重新认证 Provider、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP 或 Agent-to-Agent 调用。
+当前资金写入仅限持久化 Mock Transfer Provider；不支持真实认证、真实重新认证 Provider、真实转账 Provider、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP、Memory 或 Agent-to-Agent 调用。
 
-仍然没有 balance reservation/hold/capture 系统，也没有 durable generic task worker。Operation recovery 和 Outbox publisher 是两个明确、独立的专用 loop，不是 Celery、任务队列或通用调度框架。EventBus 仍是 process-local：多 API process 下，某个 publisher 的本地发布不保证另一 process 上的 SSE client 收到。本版也没有 client acknowledgement、SSE replay、Outbox archival/cleanup 或跨进程 realtime broker；Resource API 仍是事实源。
+仍然没有 balance reservation/hold/capture 系统。TaskExecutionWorker、OperationRecoveryWorker 和 OutboxPublisher 是三个明确、独立的专用 loop，不是 Celery、Redis、Kafka、通用任务队列或 Generic Worker/Scheduler Framework。Task worker 仍由 API process 托管，未提供独立 worker deployment、优先级队列或 per-conversation ordering。
+
+EventBus 仍是 process-local：多 API process 下，某个 publisher 的本地发布不保证另一 process 上的 SSE client 收到。本版也没有 client acknowledgement、SSE replay、Outbox DLQ、archival/cleanup、分布式 metrics/tracing 或跨进程 realtime broker；Resource API 仍是事实源。

@@ -19,6 +19,7 @@ from banking_api.application.operation_service import (
 )
 from banking_api.application.outbox_publication_policy import OutboxPublicationPolicy
 from banking_api.application.report_service import ReportService
+from banking_api.application.task_execution_policy import TaskExecutionPolicy
 from banking_api.application.task_service import TaskService
 from banking_api.application.workflow_service import (
     WorkflowNotFoundError,
@@ -49,6 +50,7 @@ from banking_api.persistence.models import (
     OperationModel,
     OutboxEventModel,
     ReauthenticationModel,
+    TaskModel,
     WorkflowModel,
 )
 from banking_api.persistence.repositories.operations import OperationRepository
@@ -68,6 +70,10 @@ from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
 from banking_api.runtime.outbox_publisher import OutboxPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
+from banking_api.runtime.task_execution_worker import (
+    TaskExecutionWorker,
+    TaskLeaseLostError,
+)
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.skill_runtime.executor import SkillExecutor
@@ -216,10 +222,29 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0011"
+        task_execution_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'tasks' AND column_name IN "
+                        "('next_run_at', 'execution_attempts', 'last_attempt_at', "
+                        "'lease_owner', 'lease_expires_at')"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0012"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
+        assert task_execution_columns == {
+            "next_run_at",
+            "execution_attempts",
+            "last_attempt_at",
+            "lease_owner",
+            "lease_expires_at",
+        }
         assert {
             "id",
             "user_id",
@@ -1232,6 +1257,8 @@ async def test_postgres_startup_reconciliation(postgres_factory) -> None:
         )
         await tasks.transition(running, TaskStatus.RUNNING)
         await tasks.transition(completed, TaskStatus.COMPLETED)
+        pending.next_run_at = None
+        running.next_run_at = None
         ids = [pending.task_id, running.task_id, completed.task_id]
         await session.commit()
 
@@ -1240,12 +1267,14 @@ async def test_postgres_startup_reconciliation(postgres_factory) -> None:
         tasks = TaskRepository(session)
         reconciled = [await tasks.get(task_id) for task_id in ids]
         assert [task.status for task in reconciled if task is not None] == [
-            TaskStatus.INTERRUPTED,
-            TaskStatus.INTERRUPTED,
+            TaskStatus.PENDING,
+            TaskStatus.RUNNING,
             TaskStatus.COMPLETED,
         ]
         assert reconciled[0] is not None
         assert reconciled[0].runtime_backend is RuntimeBackend.LANGGRAPH
+        assert reconciled[0].next_run_at is not None
+        assert reconciled[1] is not None and reconciled[1].next_run_at is not None
 
 
 class RecordingPostgresEventBus(EventBus):
@@ -1478,3 +1507,198 @@ async def test_postgres_event_bus_failure_schedules_retry(postgres_factory) -> N
     assert published is not None and published.published_at is not None
     assert published.publish_attempts == 2
     assert [item.event_id for item in bus.published] == [event.event_id]
+
+
+def task_execution_policy(*, lease_seconds: float = 30) -> TaskExecutionPolicy:
+    return TaskExecutionPolicy(
+        lease_duration=timedelta(seconds=lease_seconds),
+        heartbeat_interval=timedelta(seconds=max(lease_seconds / 4, 0.01)),
+        initial_retry_delay=timedelta(seconds=1),
+        maximum_retry_delay=timedelta(seconds=8),
+        backoff_multiplier=2,
+    )
+
+
+async def create_postgres_task(factory, bus):  # type: ignore[no-untyped-def]
+    async with factory() as session:
+        conversation = await ConversationService(session, bus).create(
+            user_id="postgres-task-worker", title="Durable Task"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id="postgres-task-worker",
+            content="查询工资卡余额",
+        )
+    return conversation, accepted
+
+
+async def test_postgres_two_task_workers_skip_locked_heartbeat_and_fencing(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    _, accepted = await create_postgres_task(factory, bus)
+    now = datetime.now(UTC)
+
+    async with factory() as session_a, factory() as session_b:
+        claims_a = await TaskRepository(session_a).claim_due(
+            lease_owner="task-worker-a",
+            now=now,
+            lease_expires_at=now + timedelta(seconds=30),
+            limit=1,
+        )
+        claims_b = await TaskRepository(session_b).claim_due(
+            lease_owner="task-worker-b",
+            now=now,
+            lease_expires_at=now + timedelta(seconds=30),
+            limit=1,
+        )
+        assert len(claims_a) == 1
+        assert claims_b == []
+        await session_b.rollback()
+        await session_a.commit()
+    claim_a = claims_a[0]
+
+    async with factory() as session:
+        renewed = await TaskRepository(session).renew_lease(
+            task_id=accepted.task_id,
+            lease_owner="task-worker-a",
+            attempt=claim_a.attempt,
+            now=now + timedelta(seconds=1),
+            lease_expires_at=now + timedelta(seconds=60),
+        )
+        await session.commit()
+    assert renewed is True
+
+    async with factory() as session:
+        active = await TaskRepository(session).claim_due(
+            lease_owner="task-worker-b",
+            now=now + timedelta(seconds=31),
+            lease_expires_at=now + timedelta(seconds=61),
+            limit=1,
+        )
+        await session.rollback()
+    assert active == []
+
+    async with factory() as session:
+        reclaimed = await TaskRepository(session).claim_due(
+            lease_owner="task-worker-b",
+            now=now + timedelta(seconds=61),
+            lease_expires_at=now + timedelta(seconds=91),
+            limit=1,
+        )
+        await session.commit()
+    assert len(reclaimed) == 1
+    claim_b = reclaimed[0]
+    assert claim_b.reclaimed is True
+    assert claim_b.attempt == claim_a.attempt + 1
+
+    async with factory() as session:
+        stale = await TaskRepository(session).get_owned(
+            task_id=accepted.task_id,
+            lease_owner=claim_a.lease_owner,
+            attempt=claim_a.attempt,
+            now=now + timedelta(seconds=62),
+            for_update=True,
+        )
+        current = await TaskRepository(session).get_owned(
+            task_id=accepted.task_id,
+            lease_owner=claim_b.lease_owner,
+            attempt=claim_b.attempt,
+            now=now + timedelta(seconds=62),
+            for_update=True,
+        )
+        await session.rollback()
+    assert stale is None
+    assert current is not None
+
+
+class CompletingTaskExecutor:
+    def __init__(self, factory) -> None:  # type: ignore[no-untyped-def]
+        self.factory = factory
+        self.calls = 0
+
+    async def execute_claimed(self, claim, *, policy):  # type: ignore[no-untyped-def]
+        self.calls += 1
+        async with self.factory() as session:
+            tasks = TaskRepository(session)
+            task = await tasks.get_owned(
+                task_id=claim.task_id,
+                lease_owner=claim.lease_owner,
+                attempt=claim.attempt,
+                now=datetime.now(UTC),
+                for_update=True,
+            )
+            if task is None:
+                raise TaskLeaseLostError
+            await tasks.transition(task, TaskStatus.COMPLETED, output={"recovered": True})
+            await EventPublisher(session).persist(
+                event_type="task.completed",
+                conversation_id=claim.conversation_id,
+                task_id=claim.task_id,
+                data={"status": task.status.value, "version": task.version},
+            )
+            await session.commit()
+
+
+async def test_postgres_task_worker_crash_lease_expiry_and_recovery(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    _, accepted = await create_postgres_task(factory, bus)
+    now = datetime.now(UTC)
+    async with factory() as session:
+        crashed = await TaskRepository(session).claim_due(
+            lease_owner="crashed-task-worker",
+            now=now,
+            lease_expires_at=now + timedelta(seconds=1),
+            limit=1,
+        )
+        await session.commit()
+    assert len(crashed) == 1
+
+    async with factory() as session:
+        task = await session.get(TaskModel, accepted.task_id)
+        assert task is not None
+        task.lease_expires_at = datetime.now(UTC) - timedelta(seconds=1)
+        await session.commit()
+
+    executor = CompletingTaskExecutor(factory)
+    worker = TaskExecutionWorker(
+        factory,
+        executor,
+        policy=task_execution_policy(),
+        poll_interval_seconds=0.01,
+        batch_size=1,
+        max_concurrency=1,
+        worker_id="recovery-task-worker",
+    )
+    assert await worker.run_task_once(accepted.task_id) is True
+    assert executor.calls == 1
+
+    async with factory() as session:
+        task = await session.get(TaskModel, accepted.task_id)
+        event_count = await session.scalar(
+            select(func.count())
+            .select_from(EventModel)
+            .where(
+                EventModel.task_id == accepted.task_id,
+                EventModel.event_type == "task.completed",
+            )
+        )
+        outbox_count = await session.scalar(
+            select(func.count())
+            .select_from(OutboxEventModel)
+            .join(EventModel, EventModel.event_id == OutboxEventModel.event_id)
+            .where(
+                EventModel.task_id == accepted.task_id,
+                EventModel.event_type == "task.completed",
+            )
+        )
+    assert task is not None and task.status is TaskStatus.COMPLETED
+    assert task.output_json == {"recovered": True}
+    assert task.execution_attempts == 2
+    assert task.lease_owner is None and task.lease_expires_at is None
+    assert event_count == outbox_count == 1

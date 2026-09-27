@@ -351,6 +351,9 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
     )
 
     await runner.run(accepted.task_id)
+    # A terminal Task is not claimable again; retry cannot duplicate the
+    # immutable Report or the final assistant message.
+    await runner.run(accepted.task_id)
     task, events = await load_task_and_events(app, accepted.task_id)
 
     assert task.status is TaskStatus.COMPLETED

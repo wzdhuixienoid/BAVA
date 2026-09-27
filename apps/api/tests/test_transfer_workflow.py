@@ -1,15 +1,26 @@
 import json
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import func, select
 
 from banking_api.api.dependencies import DevPrincipal, get_current_principal
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.task_service import TaskService
+from banking_api.application.workflow_service import WorkflowService
 from banking_api.domain.enums import ExecutorType, RequestedOutput, RuntimeBackend, TaskStatus
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse
 from banking_api.mock_bank.service import MockBankService
+from banking_api.persistence.models import (
+    ApprovalModel,
+    MessageModel,
+    OperationModel,
+    ReauthenticationModel,
+    WorkflowModel,
+)
+from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.routing.request_router import RequestRouter
@@ -190,6 +201,83 @@ async def test_fake_e2e_two_payees_then_account_reaches_review_without_mutation(
         for token in ("transfer.commit", "execute_transfer", "send_money", "payment.submit")
     )
     assert len(provider.requests) == 2
+
+
+async def test_reclaimed_transfer_task_reuses_existing_workflow_without_side_effects(
+    app,
+) -> None:
+    runner, _, _, provider = build_transfer_runtime(app, [])
+    factory = app.state.test_session_factory
+    async with factory() as session:
+        conversation = await ConversationService(session, app.state.event_bus).create(
+            user_id="dev-user-001", title="Transfer reclaim"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, app.state.event_bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id="dev-user-001",
+            content="给张三转2000",
+        )
+
+    now = datetime.now(UTC)
+    async with factory() as session:
+        claims = await TaskRepository(session).claim_due(
+            lease_owner="crashed-worker",
+            now=now,
+            lease_expires_at=now + timedelta(seconds=1),
+            limit=1,
+            task_id=accepted.task_id,
+        )
+        claimed_task = await TaskRepository(session).get(accepted.task_id)
+        assert claimed_task is not None
+        await TaskRepository(session).assign_route(
+            claimed_task,
+            requested_output=RequestedOutput.WORKFLOW,
+            executor_type=ExecutorType.WORKFLOW,
+            executor_id="workflow:transfer",
+        )
+        await session.commit()
+    assert len(claims) == 1
+
+    assert runner.transfer_workflow_engine is not None
+    async with factory() as session:
+        workflow = await WorkflowService(
+            session, app.state.event_bus, runner.transfer_workflow_engine
+        ).create_transfer(
+            user_id="dev-user-001",
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            intent=TransferIntent(recipient_query="张三", amount=Decimal("2000.00")),
+        )
+    async with factory() as session:
+        task = await TaskRepository(session).get(accepted.task_id)
+        assert task is not None
+        task.lease_expires_at = now - timedelta(seconds=1)
+        await session.commit()
+
+    await runner.run(accepted.task_id)
+
+    async with factory() as session:
+        task = await TaskRepository(session).get(accepted.task_id)
+        workflow_count = await session.scalar(select(func.count()).select_from(WorkflowModel))
+        approval_count = await session.scalar(select(func.count()).select_from(ApprovalModel))
+        reauth_count = await session.scalar(
+            select(func.count()).select_from(ReauthenticationModel)
+        )
+        operation_count = await session.scalar(select(func.count()).select_from(OperationModel))
+        assistant_count = await session.scalar(
+            select(func.count())
+            .select_from(MessageModel)
+            .where(MessageModel.role == "ASSISTANT")
+        )
+    assert task is not None and task.status is TaskStatus.COMPLETED
+    assert task.output_json["workflow_id"] == str(workflow.workflow_id)
+    assert workflow_count == 1
+    assert approval_count == 0
+    assert reauth_count == 0
+    assert operation_count == 0
+    assert assistant_count == 1
+    assert provider.requests == []
 
 
 async def test_engine_validation_and_resolution_rules(app) -> None:

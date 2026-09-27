@@ -121,6 +121,14 @@ class WorkflowService:
             raise WorkflowNotFoundError
         return await self._to_workflow(model)
 
+    async def get_by_source_task(
+        self, source_task_id: UUID, *, user_id: str
+    ) -> Workflow | None:
+        model = await self.workflows.get_by_source_task(source_task_id, user_id)
+        if model is None:
+            return None
+        return await self._to_workflow(model)
+
     async def list(self, *, user_id: str, conversation_id: UUID | None = None) -> list[Workflow]:
         models = await self.workflows.list_for_user(user_id, conversation_id)
         return [await self._to_workflow(model) for model in models]

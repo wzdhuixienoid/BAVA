@@ -92,6 +92,8 @@ async def test_startup_reconciliation_marks_only_stale_tasks(tmp_path) -> None:
         )
         await tasks.transition(running, TaskStatus.RUNNING)
         await tasks.transition(completed, TaskStatus.COMPLETED)
+        pending.next_run_at = None
+        running.next_run_at = None
         ids = (pending.task_id, running.task_id, completed.task_id)
         await session.commit()
 
@@ -100,22 +102,15 @@ async def test_startup_reconciliation_marks_only_stale_tasks(tmp_path) -> None:
     async with factory() as session:
         tasks = TaskRepository(session)
         pending, running, completed = [await tasks.get(task_id) for task_id in ids]
-        assert pending is not None and pending.status is TaskStatus.INTERRUPTED
-        assert running is not None and running.status is TaskStatus.INTERRUPTED
+        assert pending is not None and pending.status is TaskStatus.PENDING
+        assert running is not None and running.status is TaskStatus.RUNNING
         assert completed is not None and completed.status is TaskStatus.COMPLETED
         for stale in (pending, running):
-            assert stale.error_json == {
-                "category": "RUNTIME",
-                "code": "RUNTIME_INTERRUPTED",
-                "retryable": True,
-            }
+            assert stale.next_run_at is not None
         events = await EventRepository(session).list_for_conversation(
             completed.conversation_id
         )
-        assert [event.event_type for event in events] == [
-            "task.interrupted",
-            "task.interrupted",
-        ]
+        assert events == []
     await engine.dispose()
 
 

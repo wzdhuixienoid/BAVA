@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from banking_api.domain.enums import RuntimeBackend
@@ -41,6 +41,24 @@ class Settings(BaseSettings):
     outbox_publisher_max_retry_seconds: float = Field(default=60.0, gt=0)
     outbox_publisher_backoff_multiplier: int = Field(default=2, ge=1)
     outbox_publisher_batch_size: int = Field(default=20, ge=1, le=100)
+    task_worker_enabled: bool = True
+    task_worker_poll_interval_seconds: float = Field(default=0.5, gt=0)
+    task_worker_lease_seconds: float = Field(default=60.0, gt=0)
+    task_worker_heartbeat_seconds: float = Field(default=15.0, gt=0)
+    task_worker_initial_retry_seconds: float = Field(default=2.0, gt=0)
+    task_worker_max_retry_seconds: float = Field(default=120.0, gt=0)
+    task_worker_backoff_multiplier: int = Field(default=2, ge=1)
+    task_worker_batch_size: int = Field(default=4, ge=1, le=100)
+    task_worker_max_concurrency: int = Field(default=4, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def validate_task_worker_timing(self) -> "Settings":
+        if self.task_worker_heartbeat_seconds >= self.task_worker_lease_seconds:
+            raise ValueError(
+                "TASK_WORKER_HEARTBEAT_SECONDS must be less than "
+                "TASK_WORKER_LEASE_SECONDS"
+            )
+        return self
 
 
 @lru_cache

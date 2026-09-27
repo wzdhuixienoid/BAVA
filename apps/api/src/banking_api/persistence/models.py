@@ -237,6 +237,19 @@ class MessageModel(Base):
 
 class TaskModel(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index(
+            "ix_tasks_execution_due",
+            "status",
+            "next_run_at",
+            "lease_expires_at",
+            postgresql_where=text("status IN ('PENDING', 'RUNNING', 'INTERRUPTED')"),
+        ),
+        CheckConstraint(
+            "execution_attempts >= 0",
+            name="ck_tasks_execution_attempts_nonnegative",
+        ),
+    )
 
     task_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
     conversation_id: Mapped[UUID] = mapped_column(
@@ -258,6 +271,19 @@ class TaskModel(Base):
     output_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     error_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     progress_message: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=utc_now
+    )
+    execution_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0")
+    )
+    last_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(

@@ -1,3 +1,6 @@
+from uuid import UUID
+
+
 async def test_create_conversation_is_persisted(client) -> None:
     created = await client.post("/api/v1/conversations", json={"title": "Bootstrap test"})
     assert created.status_code == 201
@@ -10,7 +13,7 @@ async def test_create_conversation_is_persisted(client) -> None:
     assert loaded.json()["messages"] == []
 
 
-async def test_message_is_persisted_and_creates_task(client) -> None:
+async def test_message_is_persisted_and_creates_task(app, client) -> None:
     created = await client.post("/api/v1/conversations", json={"title": "Messages"})
     conversation_id = created.json()["conversation_id"]
 
@@ -20,6 +23,7 @@ async def test_message_is_persisted_and_creates_task(client) -> None:
 
     assert accepted.status_code == 202
     assert set(accepted.json()) == {"message_id", "task_id", "request_id"}
+    await app.state.task_runner.run(UUID(accepted.json()["task_id"]))
     loaded = await client.get(f"/api/v1/conversations/{conversation_id}")
     roles = [message["role"] for message in loaded.json()["messages"]]
     assert roles == ["USER", "ASSISTANT"]

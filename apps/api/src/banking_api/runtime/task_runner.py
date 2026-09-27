@@ -1,3 +1,6 @@
+import asyncio
+import logging
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +14,7 @@ from banking_api.application.report_service import (
     ReportPersistenceError,
     ReportService,
 )
+from banking_api.application.task_execution_policy import TaskExecutionPolicy
 from banking_api.application.workflow_service import WorkflowService
 from banking_api.domain.enums import (
     ExecutorType,
@@ -28,7 +32,7 @@ from banking_api.financial.analysis_snapshot import (
 from banking_api.financial.report_models import MonthlySpendingReport
 from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.messages import MessageRepository
-from banking_api.persistence.repositories.tasks import TaskRepository
+from banking_api.persistence.repositories.tasks import TaskExecutionClaim, TaskRepository
 from banking_api.registries.agent_registry import AgentRegistry
 from banking_api.registries.skill_registry import SkillRegistry
 from banking_api.routing.models import RequestRoute, RouteDecision
@@ -41,6 +45,10 @@ from banking_api.runtime.base import (
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
+from banking_api.runtime.task_execution_worker import (
+    TaskExecutionWorker,
+    TaskLeaseLostError,
+)
 from banking_api.skill_runtime.executor import (
     SkillErrorCode,
     SkillExecutionError,
@@ -76,9 +84,15 @@ top_transactions 使用 limit=5，以保持报告 Artifact 的有界展示范围
 中间自然语言回答不会展示给用户；只需在数据收集完成后简短结束。
 """.strip()
 
+logger = logging.getLogger(__name__)
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
 
 class InProcessTaskRunner:
-    """Runs one agent task outside the request's database session."""
+    """Executes an already-claimed Task through existing application runtimes."""
 
     def __init__(
         self,
@@ -92,6 +106,7 @@ class InProcessTaskRunner:
         skill_executor: SkillExecutor | None = None,
         transfer_intent_extractor: TransferIntentExtractor | None = None,
         transfer_workflow_engine: TransferWorkflowEngine | None = None,
+        clock=_now,  # type: ignore[no-untyped-def]
     ) -> None:
         self.session_factory = session_factory
         self.bus = bus
@@ -103,18 +118,44 @@ class InProcessTaskRunner:
         self.skill_executor = skill_executor
         self.transfer_intent_extractor = transfer_intent_extractor
         self.transfer_workflow_engine = transfer_workflow_engine
+        self.clock = clock
 
     async def run(self, task_id: UUID) -> None:
+        """Compatibility/test entry point using the durable claim path."""
+        policy = TaskExecutionPolicy.from_settings()
+        worker = TaskExecutionWorker(
+            self.session_factory,
+            self,
+            policy=policy,
+            poll_interval_seconds=policy.heartbeat_interval.total_seconds(),
+            batch_size=1,
+            max_concurrency=1,
+        )
+        await worker.run_task_once(task_id)
+
+    async def execute_claimed(
+        self, claim: TaskExecutionClaim, *, policy: TaskExecutionPolicy
+    ) -> None:
+        task_id = claim.task_id
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
-            publisher = EventPublisher(session)
-            task = await tasks.get(task_id)
-            if task is None or task.status is not TaskStatus.PENDING:
-                return
+            task = await self._get_owned(tasks, claim)
             message_id = UUID(str(task.input_json["message_id"]))
             current_message = await messages.get(message_id)
             if current_message is None:
+                await session.rollback()
+                await self._fail(
+                    claim,
+                    task.conversation_id,
+                    {
+                        "category": "INPUT",
+                        "code": "TASK_INPUT_MISSING",
+                        "message": "Task input message no longer exists",
+                        "retryable": False,
+                    },
+                    policy=policy,
+                )
                 return
             conversation_messages = [
                 to_message(message)
@@ -124,58 +165,55 @@ class InProcessTaskRunner:
             conversation_id = task.conversation_id
             conversation = await ConversationRepository(session).get(conversation_id)
             if conversation is None:
+                await session.rollback()
+                await self._fail(
+                    claim,
+                    conversation_id,
+                    {
+                        "category": "INPUT",
+                        "code": "TASK_CONVERSATION_MISSING",
+                        "message": "Task conversation no longer exists",
+                        "retryable": False,
+                    },
+                    policy=policy,
+                )
                 return
             user_id = conversation.user_id
             runtime_backend = task.runtime_backend
-            await tasks.transition(
-                task,
-                TaskStatus.RUNNING,
-                progress_message="正在理解请求",
-            )
-            await publisher.persist(
-                event_type="task.started",
-                conversation_id=conversation_id,
-                task_id=task_id,
-                data={
-                    "status": task.status.value,
-                    "version": task.version,
-                    "runtime_backend": runtime_backend.value,
-                    "checkpoint_enabled": runtime_backend is RuntimeBackend.LANGGRAPH,
-                },
-            )
-            await publisher.persist(
-                event_type="task.progress",
-                conversation_id=conversation_id,
-                task_id=task_id,
-                data={"message": "正在理解请求", "version": task.version},
-            )
-            await session.commit()
+            durable_executor_type = task.executor_type
+            durable_executor_id = task.executor_id
+            durable_requested_output = task.requested_output
 
         async def event_sink(event_type: str, data: dict[str, Any]) -> None:
             await self._persist_runtime_event(
-                task_id=task_id,
+                claim=claim,
                 conversation_id=conversation_id,
                 event_type=event_type,
                 data=data,
             )
 
         try:
-            decision = await self._route(current_task)
+            decision = self._durable_route(
+                executor_type=durable_executor_type,
+                executor_id=durable_executor_id,
+                requested_output=durable_requested_output,
+            ) or await self._route(current_task)
             executor_id = (
                 TRANSFER_WORKFLOW_ID
                 if decision.route is RequestRoute.TRANSFER_WORKFLOW
                 else ROUTE_AGENT_IDS.get(decision.route)
             )
-            await self._persist_route(
-                task_id=task_id,
-                conversation_id=conversation_id,
-                route=decision.route,
-                executor_id=executor_id,
-                requested_output=decision.requested_output,
-            )
+            if durable_executor_id is None:
+                await self._persist_route(
+                    claim=claim,
+                    conversation_id=conversation_id,
+                    route=decision.route,
+                    executor_id=executor_id,
+                    requested_output=decision.requested_output,
+                )
             if decision.route is RequestRoute.UNSUPPORTED:
                 await self._complete_without_agent(
-                    task_id=task_id,
+                    claim=claim,
                     conversation_id=conversation_id,
                     answer=UNSUPPORTED_MESSAGE,
                     route=decision.route,
@@ -183,7 +221,7 @@ class InProcessTaskRunner:
                 return
             if decision.route is RequestRoute.TRANSFER_WORKFLOW:
                 await self._run_transfer_workflow(
-                    task_id=task_id,
+                    claim=claim,
                     conversation_id=conversation_id,
                     user_id=user_id,
                     user_request=current_task,
@@ -213,7 +251,7 @@ class InProcessTaskRunner:
             )
             if decision.requested_output is RequestedOutput.MONTHLY_REPORT:
                 await self._update_progress(
-                    task_id=task_id,
+                    claim=claim,
                     conversation_id=conversation_id,
                     message="正在分析消费数据",
                 )
@@ -233,7 +271,7 @@ class InProcessTaskRunner:
                     result.state.successful_tool_results
                 )
                 await self._run_report_pipeline(
-                    task_id=task_id,
+                    claim=claim,
                     conversation_id=conversation_id,
                     user_id=user_id,
                     agent_id=agent.agent_id,
@@ -246,9 +284,7 @@ class InProcessTaskRunner:
                 tasks = TaskRepository(session)
                 messages = MessageRepository(session)
                 publisher = EventPublisher(session)
-                task = await tasks.get(task_id)
-                if task is None:
-                    return
+                task = await self._get_owned(tasks, claim, for_update=True)
                 assistant = await messages.create(
                     conversation_id=conversation_id,
                     role=MessageRole.ASSISTANT,
@@ -286,7 +322,7 @@ class InProcessTaskRunner:
                 await session.commit()
         except RoutingError:
             await self._fail(
-                task_id,
+                claim,
                 conversation_id,
                 {
                     "category": "INTERNAL",
@@ -294,10 +330,11 @@ class InProcessTaskRunner:
                     "message": "Request routing failed",
                     "retryable": False,
                 },
+                policy=policy,
             )
         except TransferIntentExtractionError:
             await self._fail(
-                task_id,
+                claim,
                 conversation_id,
                 {
                     "category": "INPUT",
@@ -305,12 +342,13 @@ class InProcessTaskRunner:
                     "message": "Transfer intent extraction failed",
                     "retryable": False,
                 },
+                policy=policy,
             )
         except AgentRuntimeError as exc:
-            await self._fail(task_id, conversation_id, exc.as_dict())
+            await self._fail(claim, conversation_id, exc.as_dict(), policy=policy)
         except SkillExecutionError as exc:
             await self._fail(
-                task_id,
+                claim,
                 conversation_id,
                 {
                     "category": "INTERNAL",
@@ -318,10 +356,11 @@ class InProcessTaskRunner:
                     "message": exc.message,
                     "retryable": False,
                 },
+                policy=policy,
             )
         except ReportPersistenceError:
             await self._fail(
-                task_id,
+                claim,
                 conversation_id,
                 {
                     "category": "INTERNAL",
@@ -329,7 +368,10 @@ class InProcessTaskRunner:
                     "message": "Report persistence failed",
                     "retryable": False,
                 },
+                policy=policy,
             )
+        except (TaskLeaseLostError, asyncio.CancelledError):
+            raise
         except Exception:
             error = {
                 "category": "INTERNAL",
@@ -341,7 +383,7 @@ class InProcessTaskRunner:
                 "agent.run.failed",
                 {"code": error["code"], "category": error["category"], "retryable": False},
             )
-            await self._fail(task_id, conversation_id, error)
+            await self._fail(claim, conversation_id, error, policy=policy)
 
     async def _route(self, current_task: str) -> RouteDecision:
         if self.router is None:
@@ -351,6 +393,34 @@ class InProcessTaskRunner:
                 confidence=1,
             )
         return await self.router.route(current_task)
+
+    @staticmethod
+    def _durable_route(
+        *,
+        executor_type: ExecutorType | None,
+        executor_id: str | None,
+        requested_output: RequestedOutput | None,
+    ) -> RouteDecision | None:
+        if executor_id is None or requested_output is None:
+            return None
+        if executor_type is ExecutorType.WORKFLOW and executor_id == TRANSFER_WORKFLOW_ID:
+            route = RequestRoute.TRANSFER_WORKFLOW
+        else:
+            route = next(
+                (
+                    candidate
+                    for candidate, agent_id in ROUTE_AGENT_IDS.items()
+                    if agent_id == executor_id
+                ),
+                None,
+            )
+        if route is None:
+            raise RoutingError("Persisted Task executor is not registered")
+        return RouteDecision(
+            route=route,
+            requested_output=requested_output,
+            confidence=1,
+        )
 
     def _get_agent(self, agent_id: str) -> AgentDefinition:
         if self.agent_registry is None:
@@ -365,7 +435,7 @@ class InProcessTaskRunner:
     async def _persist_route(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         route: RequestRoute,
         executor_id: str | None,
@@ -374,9 +444,7 @@ class InProcessTaskRunner:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             publisher = EventPublisher(session)
-            task = await tasks.get(task_id)
-            if task is None:
-                return
+            task = await self._get_owned(tasks, claim, for_update=True)
             executor_type = None
             if route is RequestRoute.TRANSFER_WORKFLOW:
                 executor_type = ExecutorType.WORKFLOW
@@ -391,7 +459,7 @@ class InProcessTaskRunner:
             await publisher.persist(
                 event_type="request.routed",
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={
                     "route": route.value,
                     "requested_output": requested_output.value,
@@ -403,7 +471,7 @@ class InProcessTaskRunner:
     async def _run_transfer_workflow(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         user_id: str,
         user_request: str,
@@ -413,24 +481,40 @@ class InProcessTaskRunner:
                 "TRANSFER_WORKFLOW_NOT_CONFIGURED",
                 "Transfer workflow is not configured",
             )
-        intent = await self.transfer_intent_extractor.extract(user_request)
         async with self.session_factory() as session:
-            workflow = await WorkflowService(
+            tasks = TaskRepository(session)
+            await self._get_owned(tasks, claim)
+            workflow_service = WorkflowService(
                 session, self.bus, self.transfer_workflow_engine
-            ).create_transfer(
-                user_id=user_id,
-                conversation_id=conversation_id,
-                source_task_id=task_id,
-                intent=intent,
             )
+            workflow = await workflow_service.get_by_source_task(
+                claim.task_id, user_id=user_id
+            )
+
+        if workflow is None:
+            intent = await self.transfer_intent_extractor.extract(user_request)
+            async with self.session_factory() as session:
+                tasks = TaskRepository(session)
+                await self._get_owned(tasks, claim, for_update=True)
+                workflow_service = WorkflowService(
+                    session, self.bus, self.transfer_workflow_engine
+                )
+                workflow = await workflow_service.get_by_source_task(
+                    claim.task_id, user_id=user_id
+                )
+                if workflow is None:
+                    workflow = await workflow_service.create_transfer(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        source_task_id=claim.task_id,
+                        intent=intent,
+                    )
 
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
             publisher = EventPublisher(session)
-            task = await tasks.get(task_id)
-            if task is None:
-                return
+            task = await self._get_owned(tasks, claim, for_update=True)
             assistant = await messages.create(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
@@ -453,13 +537,13 @@ class InProcessTaskRunner:
             await publisher.persist(
                 event_type="task.completed",
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={"status": task.status.value, "version": task.version},
             )
             await publisher.persist(
                 event_type="conversation.message.completed",
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={"message_id": str(assistant.message_id), "role": assistant.role.value},
             )
             await session.commit()
@@ -467,7 +551,7 @@ class InProcessTaskRunner:
     async def _complete_without_agent(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         answer: str,
         route: RequestRoute,
@@ -476,9 +560,7 @@ class InProcessTaskRunner:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
             publisher = EventPublisher(session)
-            task = await tasks.get(task_id)
-            if task is None:
-                return
+            task = await self._get_owned(tasks, claim, for_update=True)
             assistant = await messages.create(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
@@ -497,7 +579,7 @@ class InProcessTaskRunner:
             await publisher.persist(
                 event_type="task.completed",
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={
                     "status": task.status.value,
                     "version": task.version,
@@ -508,7 +590,7 @@ class InProcessTaskRunner:
             await publisher.persist(
                 event_type="conversation.message.completed",
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={"message_id": str(assistant.message_id), "role": assistant.role.value},
             )
             await session.commit()
@@ -547,7 +629,7 @@ class InProcessTaskRunner:
     async def _run_report_pipeline(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         user_id: str,
         agent_id: str,
@@ -567,12 +649,12 @@ class InProcessTaskRunner:
                 message="Monthly report skill is not registered",
             )
         await self._update_progress(
-            task_id=task_id,
+            claim=claim,
             conversation_id=conversation_id,
             message="正在生成报告",
         )
         await self._persist_skill_event(
-            task_id=task_id,
+            claim=claim,
             conversation_id=conversation_id,
             event_type="skill.run.started",
             skill_id=definition.skill_id,
@@ -582,7 +664,7 @@ class InProcessTaskRunner:
             report = await self.skill_executor.execute_registered(definition, snapshot)
         except SkillExecutionError:
             await self._persist_skill_event(
-                task_id=task_id,
+                claim=claim,
                 conversation_id=conversation_id,
                 event_type="skill.run.failed",
                 skill_id=definition.skill_id,
@@ -590,19 +672,19 @@ class InProcessTaskRunner:
             )
             raise
         await self._persist_skill_event(
-            task_id=task_id,
+            claim=claim,
             conversation_id=conversation_id,
             event_type="skill.run.completed",
             skill_id=definition.skill_id,
             skill_version=definition.version,
         )
         await self._update_progress(
-            task_id=task_id,
+            claim=claim,
             conversation_id=conversation_id,
             message="正在保存报告",
         )
         await self._persist_report_completion(
-            task_id=task_id,
+            claim=claim,
             conversation_id=conversation_id,
             user_id=user_id,
             agent_id=agent_id,
@@ -616,7 +698,7 @@ class InProcessTaskRunner:
     async def _persist_report_completion(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         user_id: str,
         agent_id: str,
@@ -631,13 +713,11 @@ class InProcessTaskRunner:
                 tasks = TaskRepository(session)
                 messages = MessageRepository(session)
                 publisher = EventPublisher(session)
-                task = await tasks.get(task_id)
-                if task is None:
-                    raise ReportPersistenceError("Source task no longer exists")
+                task = await self._get_owned(tasks, claim, for_update=True)
                 artifact = await ReportService(session).create_report(
                     user_id=user_id,
                     conversation_id=conversation_id,
-                    source_task_id=task_id,
+                    source_task_id=claim.task_id,
                     report=report,
                     snapshot=snapshot,
                     skill=skill,
@@ -645,12 +725,12 @@ class InProcessTaskRunner:
                 await publisher.persist(
                     event_type="report.generated",
                     conversation_id=conversation_id,
-                    task_id=task_id,
+                    task_id=claim.task_id,
                     data={
                         "report_id": str(artifact.report_id),
                         "report_type": artifact.report_type.value,
                         "period": artifact.period,
-                        "source_task_id": str(task_id),
+                        "source_task_id": str(claim.task_id),
                     },
                 )
                 year, month = artifact.period.split("-")
@@ -678,7 +758,7 @@ class InProcessTaskRunner:
                 await publisher.persist(
                     event_type="task.completed",
                     conversation_id=conversation_id,
-                    task_id=task_id,
+                    task_id=claim.task_id,
                     data={
                         "status": task.status.value,
                         "version": task.version,
@@ -691,7 +771,7 @@ class InProcessTaskRunner:
                 await publisher.persist(
                     event_type="conversation.message.completed",
                     conversation_id=conversation_id,
-                    task_id=task_id,
+                    task_id=claim.task_id,
                     data={
                         "message_id": str(assistant.message_id),
                         "role": assistant.role.value,
@@ -706,22 +786,24 @@ class InProcessTaskRunner:
     async def _persist_skill_event(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         event_type: str,
         skill_id: str,
         skill_version: int,
     ) -> None:
         async with self.session_factory() as session:
+            tasks = TaskRepository(session)
+            await self._get_owned(tasks, claim, for_update=True)
             publisher = EventPublisher(session)
             await publisher.persist(
                 event_type=event_type,
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={
                     "skill_id": skill_id,
                     "skill_version": skill_version,
-                    "task_id": str(task_id),
+                    "task_id": str(claim.task_id),
                 },
             )
             await session.commit()
@@ -729,21 +811,21 @@ class InProcessTaskRunner:
     async def _update_progress(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         message: str,
     ) -> None:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             publisher = EventPublisher(session)
-            task = await tasks.get(task_id)
-            if task is None or task.progress_message == message:
+            task = await self._get_owned(tasks, claim, for_update=True)
+            if task.progress_message == message:
                 return
             await tasks.update_progress(task, message)
             await publisher.persist(
                 event_type="task.progress",
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={"message": message, "version": task.version},
             )
             await session.commit()
@@ -751,7 +833,7 @@ class InProcessTaskRunner:
     async def _persist_runtime_event(
         self,
         *,
-        task_id: UUID,
+        claim: TaskExecutionClaim,
         conversation_id: UUID,
         event_type: str,
         data: dict[str, Any],
@@ -766,16 +848,14 @@ class InProcessTaskRunner:
             tasks = TaskRepository(session)
             publisher = EventPublisher(session)
             persisted = []
-            task = await tasks.get(task_id)
-            if task is None:
-                return
+            task = await self._get_owned(tasks, claim, for_update=True)
             if progress_message is not None and task.progress_message != progress_message:
                 await tasks.update_progress(task, progress_message)
                 persisted.append(
                     await publisher.persist(
                         event_type="task.progress",
                         conversation_id=conversation_id,
-                        task_id=task_id,
+                        task_id=claim.task_id,
                         data={"message": progress_message, "version": task.version},
                     )
                 )
@@ -783,32 +863,82 @@ class InProcessTaskRunner:
                 await publisher.persist(
                     event_type=event_type,
                     conversation_id=conversation_id,
-                    task_id=task_id,
+                    task_id=claim.task_id,
                     data=data,
                 )
             )
             await session.commit()
 
     async def _fail(
-        self, task_id: UUID, conversation_id: UUID, error: dict[str, Any]
+        self,
+        claim: TaskExecutionClaim,
+        conversation_id: UUID,
+        error: dict[str, Any],
+        *,
+        policy: TaskExecutionPolicy,
     ) -> None:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             publisher = EventPublisher(session)
-            task = await tasks.get(task_id)
-            if task is None:
-                return
-            await tasks.transition(task, TaskStatus.FAILED, error=error)
+            task = await self._get_owned(tasks, claim, for_update=True)
+            retryable = error.get("retryable") is True
+            if retryable:
+                next_run_at = self.clock() + policy.retry_delay(claim.attempt)
+                await tasks.schedule_retry(
+                    task,
+                    error=error,
+                    next_run_at=next_run_at,
+                )
+                event_type = "task.interrupted"
+                logger.info(
+                    "task retry scheduled task_id=%s attempt=%s code=%s next_run_at=%s",
+                    claim.task_id,
+                    claim.attempt,
+                    error.get("code"),
+                    next_run_at,
+                )
+            else:
+                next_run_at = None
+                await tasks.transition(task, TaskStatus.FAILED, error=error)
+                event_type = "task.failed"
+                logger.info(
+                    "task terminal failure task_id=%s attempt=%s code=%s",
+                    claim.task_id,
+                    claim.attempt,
+                    error.get("code"),
+                )
             await publisher.persist(
-                event_type="task.failed",
+                event_type=event_type,
                 conversation_id=conversation_id,
-                task_id=task_id,
+                task_id=claim.task_id,
                 data={
                     "status": task.status.value,
                     "version": task.version,
                     "code": error["code"],
                     "runtime_backend": task.runtime_backend.value,
                     "checkpoint_enabled": task.runtime_backend is RuntimeBackend.LANGGRAPH,
+                    "retryable": retryable,
+                    "next_run_at": (
+                        next_run_at.isoformat() if next_run_at is not None else None
+                    ),
                 },
             )
             await session.commit()
+
+    async def _get_owned(
+        self,
+        tasks: TaskRepository,
+        claim: TaskExecutionClaim,
+        *,
+        for_update: bool = False,
+    ):  # type: ignore[no-untyped-def]
+        task = await tasks.get_owned(
+            task_id=claim.task_id,
+            lease_owner=claim.lease_owner,
+            attempt=claim.attempt,
+            now=self.clock(),
+            for_update=for_update,
+        )
+        if task is None:
+            raise TaskLeaseLostError
+        return task
