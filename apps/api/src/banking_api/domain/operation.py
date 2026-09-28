@@ -10,10 +10,11 @@ from banking_api.domain.enums import OperationStatus
 
 class OperationType(StrEnum):
     TRANSFER = "TRANSFER"
+    SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
 
 
 class Operation(BaseModel):
-    """Authoritative application-side record of one transfer execution."""
+    """Authoritative application-side record of one real side effect."""
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

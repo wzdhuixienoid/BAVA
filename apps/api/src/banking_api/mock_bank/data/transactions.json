@@ -1654,5 +1654,29 @@
     "direction": "DEBIT",
     "category": "TRANSPORT",
     "status": "POSTED"
+  },
+  {
+    "transaction_id": "txn_sub_detect_01",
+    "account_id": "acc_credit",
+    "occurred_at": "2025-04-25T12:00:00Z",
+    "merchant": "晨光健身",
+    "description": "月度会员扣费",
+    "amount": "99.00",
+    "currency": "CNY",
+    "direction": "DEBIT",
+    "category": "HEALTH",
+    "status": "POSTED"
+  },
+  {
+    "transaction_id": "txn_sub_detect_02",
+    "account_id": "acc_credit",
+    "occurred_at": "2025-05-25T12:00:00Z",
+    "merchant": "晨光健身*月卡",
+    "description": "月度会员扣费",
+    "amount": "109.00",
+    "currency": "CNY",
+    "direction": "DEBIT",
+    "category": "HEALTH",
+    "status": "POSTED"
   }
 ]

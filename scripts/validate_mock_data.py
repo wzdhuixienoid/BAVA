@@ -35,7 +35,8 @@ def validate() -> dict[str, int]:
     assert any(row["account_id"] == "acc_salary" for row in accounts)
     assert any(count >= 2 for count in Counter(row["display_name"] for row in payees).values())
     assert all(row["currency"] == "CNY" for row in accounts + transactions + subscriptions)
-    assert all(1 <= int(row["billing_day"]) <= 28 for row in subscriptions)
+    assert all(row["billing_interval"] in {"MONTHLY", "ANNUAL"} for row in subscriptions)
+    assert all(isinstance(row["cancellable"], bool) for row in subscriptions)
     assert all(row["status"] in {"ACTIVE", "CANCELLED"} for row in subscriptions)
 
     for row in accounts:
@@ -46,7 +47,7 @@ def validate() -> dict[str, int]:
         except InvalidOperation as exc:
             raise AssertionError("invalid transaction amount") from exc
     for row in subscriptions:
-        assert Decimal(str(row["monthly_amount"])) >= 0
+        assert Decimal(str(row["amount"])) >= 0
 
     serialized = json.dumps(accounts + transactions + payees + subscriptions, ensure_ascii=False)
     assert not FULL_CARD_PATTERN.search(serialized), "dataset contains a full card-like number"

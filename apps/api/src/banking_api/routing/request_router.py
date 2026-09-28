@@ -8,7 +8,7 @@ from banking_api.llm.provider import LLMProvider, LLMProviderError
 from banking_api.routing.models import RequestRoute, RouteDecision
 
 ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对象，格式为：
-{"route":"MINIMAL_BANKING|FINANCIAL_ANALYSIS|TRANSFER_WORKFLOW|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT|WORKFLOW","confidence":0.0}
+{"route":"MINIMAL_BANKING|FINANCIAL_ANALYSIS|TRANSFER_WORKFLOW|SUBSCRIPTION_ANALYSIS|SUBSCRIPTION_CANCEL|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT|WORKFLOW","confidence":0.0}
 
 路由规则：
 - 账户列表、余额查询 -> MINIMAL_BANKING / ANSWER
@@ -16,12 +16,14 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 生成、制作、给我一份月度消费报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
 - 同时要求消费分析和生成报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
 - 独立转账请求 -> TRANSFER_WORKFLOW / WORKFLOW
+- 订阅列表、成本、涨价、即将续费 -> SUBSCRIPTION_ANALYSIS / ANSWER
+- 取消某项订阅或代扣 -> SUBSCRIPTION_CANCEL / WORKFLOW
 - 转账与分析、报告或其他意图混合 -> UNSUPPORTED / ANSWER，不处理任何一部分
 - 不含转账的分析请求如果包含其他不支持内容，只处理可支持的分析部分
 - 投资、理财购买、卡片写操作或当前系统不支持的业务 -> UNSUPPORTED / ANSWER
 
 MINIMAL_BANKING 和 UNSUPPORTED 的 requested_output 必须是 ANSWER。
-TRANSFER_WORKFLOW 必须是 WORKFLOW。
+TRANSFER_WORKFLOW 和 SUBSCRIPTION_CANCEL 必须是 WORKFLOW。
 
 不要输出解释、Markdown 或推理过程。
 """.strip()

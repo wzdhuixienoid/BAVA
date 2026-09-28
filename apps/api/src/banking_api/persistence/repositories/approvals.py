@@ -22,11 +22,12 @@ class ApprovalRepository:
         payload: dict[str, Any],
         payload_hash: str,
         expires_at: datetime,
+        approval_type: ApprovalType = ApprovalType.TRANSFER,
     ) -> ApprovalModel:
         model = ApprovalModel(
             user_id=user_id,
             workflow_id=workflow_id,
-            approval_type=ApprovalType.TRANSFER,
+            approval_type=approval_type,
             payload_json=payload,
             payload_hash=payload_hash,
             status=ApprovalStatus.PENDING,

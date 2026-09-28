@@ -103,6 +103,7 @@ def test_application_registers_two_agents_with_isolated_account_permissions() ->
     assert {agent.agent_id for agent in agents.all()} == {
         "agent:minimal-banking",
         "agent:financial-analysis",
+        "agent:subscription-analysis",
     }
     list_accounts = tools.get("account.list")
     get_balance = tools.get("account.get_balance")

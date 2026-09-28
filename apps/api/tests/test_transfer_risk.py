@@ -334,6 +334,89 @@ async def test_business_day_and_user_isolation(app) -> None:
     assert facts.successful_total == Decimal("300.00")
 
 
+async def test_cross_midnight_operation_keeps_creation_business_date(app) -> None:
+    _, _, _, engine = operation_runtime(app)
+    workflow = await create_ready_workflow(
+        app,
+        app.state.event_bus,
+        engine,
+        user_id="risk-exposure-user",
+        amount=Decimal("100.00"),
+    )
+    ready = await approve(app, engine, workflow)
+    async with app.state.test_session_factory() as session:
+        created = await OperationService(session, app.state.event_bus, engine).prepare_transfer(
+            ready.workflow_id,
+            user_id=ready.user_id,
+            expected_version=ready.version,
+        )
+        operation = await session.get(OperationModel, created.operation_id)
+        assert operation is not None
+        operation.risk_business_date = datetime(2026, 9, 28, tzinfo=UTC).date()
+        operation.created_at = datetime(2026, 9, 28, 15, 59, tzinfo=UTC)
+        operation.status = OperationStatus.UNKNOWN
+        await session.commit()
+
+    async with app.state.test_session_factory() as session:
+        unknown_day_one = await TransferRiskFactsService(
+            session, business_timezone="Asia/Shanghai"
+        ).for_user(
+            user_id=ready.user_id,
+            currency="CNY",
+            evaluated_at=datetime(2026, 9, 28, 15, 59, tzinfo=UTC),
+        )
+        unknown_day_two = await TransferRiskFactsService(
+            session, business_timezone="Asia/Shanghai"
+        ).for_user(
+            user_id=ready.user_id,
+            currency="CNY",
+            evaluated_at=datetime(2026, 9, 28, 16, 1, tzinfo=UTC),
+        )
+    assert unknown_day_one.successful_total == Decimal("0")
+    assert unknown_day_one.in_flight_exposure == Decimal("100.00")
+    assert unknown_day_two.successful_total == Decimal("0")
+    assert unknown_day_two.in_flight_exposure == Decimal("0")
+
+    async with app.state.test_session_factory() as session:
+        operation = await session.get(OperationModel, created.operation_id)
+        assert operation is not None
+        session.add(
+            MockBankTransferModel(
+                provider_reference=f"cross_{uuid4().hex}",
+                idempotency_key=operation.idempotency_key,
+                user_id=ready.user_id,
+                source_account_id="acc_savings",
+                payee_id="payee_003",
+                amount=Decimal("100.00"),
+                currency="CNY",
+                status="SUCCEEDED",
+                applied_at=datetime(2026, 9, 28, 16, 1, tzinfo=UTC),
+                created_at=datetime(2026, 9, 28, 16, 1, tzinfo=UTC),
+            )
+        )
+        await session.commit()
+
+    async with app.state.test_session_factory() as session:
+        day_one = await TransferRiskFactsService(
+            session, business_timezone="Asia/Shanghai"
+        ).for_user(
+            user_id=ready.user_id,
+            currency="CNY",
+            evaluated_at=datetime(2026, 9, 28, 15, 59, tzinfo=UTC),
+        )
+        day_two = await TransferRiskFactsService(
+            session, business_timezone="Asia/Shanghai"
+        ).for_user(
+            user_id=ready.user_id,
+            currency="CNY",
+            evaluated_at=datetime(2026, 9, 28, 16, 1, tzinfo=UTC),
+        )
+    assert day_one.successful_total == Decimal("100.00")
+    assert day_one.in_flight_exposure == Decimal("0")
+    assert day_two.successful_total == Decimal("0")
+    assert day_two.in_flight_exposure == Decimal("0")
+
+
 async def test_prompt_injection_cannot_set_or_lower_transfer_risk(app) -> None:
     extractor = TransferIntentExtractor(
         FakeLLMProvider(

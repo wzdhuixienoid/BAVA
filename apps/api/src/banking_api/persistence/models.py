@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import (
     JSON,
     CheckConstraint,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -187,6 +188,7 @@ class OperationModel(Base):
     payload_json: Mapped[dict[str, Any]] = mapped_column(JSON)
     payload_hash: Mapped[str] = mapped_column(String(64))
     idempotency_key: Mapped[UUID] = mapped_column(Uuid, unique=True, index=True)
+    risk_business_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     status: Mapped[OperationStatus] = mapped_column(
         Enum(OperationStatus, name="operation_status"), index=True
     )
@@ -228,6 +230,19 @@ class MockBankTransferModel(Base):
     error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class MockSubscriptionCancellationModel(Base):
+    __tablename__ = "mock_subscription_cancellations"
+
+    provider_reference: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    subscription_id: Mapped[str] = mapped_column(String(255), index=True)
+    idempotency_key: Mapped[UUID] = mapped_column(Uuid, unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class MessageModel(Base):

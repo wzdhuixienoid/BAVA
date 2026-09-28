@@ -9,6 +9,8 @@ class RequestRoute(StrEnum):
     MINIMAL_BANKING = "MINIMAL_BANKING"
     FINANCIAL_ANALYSIS = "FINANCIAL_ANALYSIS"
     TRANSFER_WORKFLOW = "TRANSFER_WORKFLOW"
+    SUBSCRIPTION_ANALYSIS = "SUBSCRIPTION_ANALYSIS"
+    SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
     UNSUPPORTED = "UNSUPPORTED"
 
 
@@ -21,9 +23,9 @@ class RouteDecision(BaseModel):
 
     @model_validator(mode="after")
     def validate_output_for_route(self) -> "RouteDecision":
-        if self.route is RequestRoute.TRANSFER_WORKFLOW:
+        if self.route in {RequestRoute.TRANSFER_WORKFLOW, RequestRoute.SUBSCRIPTION_CANCEL}:
             if self.requested_output is not RequestedOutput.WORKFLOW:
-                raise ValueError("Transfer workflow must request workflow output")
+                raise ValueError("Workflow routes must request workflow output")
             return self
         if (
             self.route is not RequestRoute.FINANCIAL_ANALYSIS
@@ -31,5 +33,5 @@ class RouteDecision(BaseModel):
         ):
             raise ValueError("Only financial analysis can request a monthly report")
         if self.requested_output is RequestedOutput.WORKFLOW:
-            raise ValueError("Only transfer route can request workflow output")
+            raise ValueError("Only workflow routes can request workflow output")
         return self

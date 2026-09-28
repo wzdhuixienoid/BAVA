@@ -7,6 +7,7 @@ from banking_api.api.dependencies import (
     EventBusDependency,
     PrincipalDependency,
     SessionDependency,
+    SubscriptionWorkflowEngineDependency,
     TransferWorkflowEngineDependency,
 )
 from banking_api.application.operation_service import (
@@ -39,9 +40,12 @@ async def get_operation(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
 ) -> OperationResource:
     try:
-        return await OperationService(session, bus, engine).get(
+        return await OperationService(
+            session, bus, engine, subscription_engine=subscription_engine
+        ).get(
             operation_id, user_id=principal.user_id
         )
     except OperationNotFoundError as exc:
@@ -56,9 +60,12 @@ async def reconcile_operation(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
 ) -> OperationResource:
     try:
-        return await OperationService(session, bus, engine).reconcile(
+        return await OperationService(
+            session, bus, engine, subscription_engine=subscription_engine
+        ).reconcile(
             operation_id,
             user_id=principal.user_id,
             expected_version=body.expected_version,

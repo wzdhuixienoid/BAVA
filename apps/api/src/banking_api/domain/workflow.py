@@ -14,6 +14,7 @@ from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
 
 class WorkflowType(StrEnum):
     TRANSFER = "TRANSFER"
+    SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
 
 
 class Workflow(BaseModel):

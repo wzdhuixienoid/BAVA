@@ -9,6 +9,8 @@ type ReportListItem = components["schemas"]["ReportListItem"];
 type ReportResponse = components["schemas"]["ReportResponse"];
 type Workflow = components["schemas"]["Workflow"];
 type OperationResource = components["schemas"]["OperationResource"];
+type SubscriptionAnalysisSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
+type SubscriptionItem = components["schemas"]["SubscriptionItem"];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -156,4 +158,37 @@ export const api = {
   },
   getReport: (reportId: string) =>
     request<ReportResponse>(`/api/v1/reports/${encodeURIComponent(reportId)}`),
+  listSubscriptions: (upcomingDays = 7) =>
+    request<SubscriptionAnalysisSnapshot>(
+      `/api/v1/subscriptions?upcoming_days=${encodeURIComponent(String(upcomingDays))}`,
+    ),
+  getSubscription: (subscriptionId: string) =>
+    request<SubscriptionItem>(
+      `/api/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    ),
+  selectSubscription: (
+    workflowId: string,
+    subscriptionId: string,
+    expectedVersion: number,
+  ) =>
+    request<Workflow>(
+      `/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/select-subscription`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          subscription_id: subscriptionId,
+          expected_version: expectedVersion,
+        }),
+      },
+    ),
+  approveWorkflow: (workflowId: string, expectedVersion: number) =>
+    request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/approve`, {
+      method: "POST",
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }),
+  commitWorkflow: (workflowId: string, expectedVersion: number) =>
+    request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/commit`, {
+      method: "POST",
+      body: JSON.stringify({ expected_version: expectedVersion }),
+    }),
 };

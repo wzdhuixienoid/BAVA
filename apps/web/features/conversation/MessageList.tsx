@@ -13,7 +13,7 @@ export function MessageList({ messages }: { messages: Message[] }) {
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-6">
       {messages.length === 0 && (
         <div className="m-auto max-w-md text-center text-sm text-slate-500">
-          试试询问“我有哪些账户？”“我的工资卡余额是多少？”或“分析一下 8 月份消费”。
+          试试询问“我有哪些账户？”“分析一下 8 月份消费”或“我有哪些订阅？”。
         </div>
       )}
       {messages.map((message) => {

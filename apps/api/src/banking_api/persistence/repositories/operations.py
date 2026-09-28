@@ -41,12 +41,42 @@ class OperationRepository:
         payload_hash: str,
         idempotency_key: UUID,
         next_reconcile_at: datetime,
+        risk_business_date=None,  # type: ignore[no-untyped-def]
     ) -> OperationModel:
         model = OperationModel(
             user_id=user_id,
             workflow_id=workflow_id,
             approval_id=approval_id,
             operation_type=OperationType.TRANSFER,
+            payload_json=payload,
+            payload_hash=payload_hash,
+            idempotency_key=idempotency_key,
+            risk_business_date=risk_business_date,
+            status=OperationStatus.CREATED,
+            version=1,
+            next_reconcile_at=next_reconcile_at,
+            reconcile_attempts=0,
+        )
+        self.session.add(model)
+        await self.session.flush()
+        return model
+
+    async def create_subscription_cancel(
+        self,
+        *,
+        user_id: str,
+        workflow_id: UUID,
+        approval_id: UUID,
+        payload: dict[str, Any],
+        payload_hash: str,
+        idempotency_key: UUID,
+        next_reconcile_at: datetime,
+    ) -> OperationModel:
+        model = OperationModel(
+            user_id=user_id,
+            workflow_id=workflow_id,
+            approval_id=approval_id,
+            operation_type=OperationType.SUBSCRIPTION_CANCEL,
             payload_json=payload,
             payload_hash=payload_hash,
             idempotency_key=idempotency_key,
@@ -142,7 +172,6 @@ class OperationRepository:
             select(OperationModel).where(
                 OperationModel.workflow_id == workflow_id,
                 OperationModel.user_id == user_id,
-                OperationModel.operation_type == OperationType.TRANSFER,
             )
         )
         return result.scalar_one_or_none()

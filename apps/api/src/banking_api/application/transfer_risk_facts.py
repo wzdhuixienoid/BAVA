@@ -37,14 +37,21 @@ class TransferRiskFactsService:
         start = datetime.combine(local_date, time.min, self.timezone).astimezone(UTC)
         end = datetime.combine(local_date, time.max, self.timezone).astimezone(UTC)
 
+        risk_date_by_key = dict(
+            (
+                await self.session.execute(
+                    select(OperationModel.idempotency_key, OperationModel.risk_business_date).where(
+                        OperationModel.operation_type == OperationType.TRANSFER
+                    )
+                )
+            ).all()
+        )
         provider_rows = list(
             (
                 await self.session.execute(
                     select(MockBankTransferModel).where(
                         MockBankTransferModel.user_id == user_id,
                         MockBankTransferModel.currency == currency,
-                        MockBankTransferModel.created_at >= start,
-                        MockBankTransferModel.created_at <= end,
                     )
                 )
             ).scalars()
@@ -55,12 +62,21 @@ class TransferRiskFactsService:
                 for row in provider_rows
                 if row.status == "SUCCEEDED"
                 and row.applied_at is not None
-                and start <= self._as_utc(row.applied_at) <= end
+                and (
+                    risk_date_by_key.get(row.idempotency_key) == local_date
+                    or (
+                        row.idempotency_key not in risk_date_by_key
+                        and start <= self._as_utc(row.applied_at) <= end
+                    )
+                )
             ),
             Decimal("0"),
         )
         provider_terminal_keys = {
-            row.idempotency_key for row in provider_rows if row.status in {"SUCCEEDED", "FAILED"}
+            row.idempotency_key
+            for row in provider_rows
+            if row.status in {"SUCCEEDED", "FAILED"}
+            and risk_date_by_key.get(row.idempotency_key) == local_date
         }
 
         operations = list(
@@ -76,8 +92,7 @@ class TransferRiskFactsService:
                                 OperationStatus.UNKNOWN,
                             )
                         ),
-                        OperationModel.created_at >= start,
-                        OperationModel.created_at <= end,
+                        OperationModel.risk_business_date == local_date,
                     )
                 )
             ).scalars()

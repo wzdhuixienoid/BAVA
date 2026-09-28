@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.application.transfer_risk_facts import TransferRiskFactsService
 from banking_api.config.settings import get_settings
-from banking_api.domain.approval import ApprovalSummary
+from banking_api.domain.approval import ApprovalSummary, ApprovalType
 from banking_api.domain.enums import (
     ApprovalStatus,
     ReauthenticationStatus,
@@ -33,6 +33,18 @@ from banking_api.security.reauthentication.mock_provider import (
     MockReauthenticationProvider,
 )
 from banking_api.security.reauthentication.provider import ReauthenticationProvider
+from banking_api.workflows.subscription_cancel.authorization import (
+    canonicalize_subscription_cancel_payload,
+    subscription_cancel_payload_hash,
+)
+from banking_api.workflows.subscription_cancel.engine import (
+    SubscriptionCancellationWorkflow,
+)
+from banking_api.workflows.subscription_cancel.models import (
+    SubscriptionCancelAuthorization,
+    SubscriptionCancelIntent,
+    SubscriptionCancelWorkflowState,
+)
 from banking_api.workflows.transfer.authorization import (
     canonicalize_transfer_payload,
     transfer_payload_hash,
@@ -81,6 +93,7 @@ class WorkflowService:
         bus: EventBus,
         engine: TransferWorkflowEngine,
         *,
+        subscription_engine: SubscriptionCancellationWorkflow | None = None,
         reauth_provider: ReauthenticationProvider | None = None,
         clock: Clock = _utc_now,
         approval_ttl_seconds: int | None = None,
@@ -95,6 +108,7 @@ class WorkflowService:
         self.reauthentications = ReauthenticationRepository(session)
         self.publisher = EventPublisher(session)
         self.engine = engine
+        self.subscription_engine = subscription_engine
         self.reauth_provider = reauth_provider or MockReauthenticationProvider(
             settings.mock_reauth_code
         )
@@ -187,6 +201,94 @@ class WorkflowService:
         await self.session.commit()
         return await self._to_workflow(updated)
 
+    async def create_subscription_cancel(
+        self,
+        *,
+        user_id: str,
+        conversation_id: UUID,
+        source_task_id: UUID,
+        intent: SubscriptionCancelIntent,
+    ) -> Workflow:
+        if self.subscription_engine is None:
+            raise WorkflowActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")
+        initial = SubscriptionCancelWorkflowState(draft=intent.model_dump())
+        model = await self.workflows.create(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            source_task_id=source_task_id,
+            workflow_type=WorkflowType.SUBSCRIPTION_CANCEL,
+            status=WorkflowStatus.DRAFT,
+            state=initial.model_dump(mode="json"),
+        )
+        await self.publisher.persist(
+            event_type="workflow.created",
+            conversation_id=conversation_id,
+            task_id=source_task_id,
+            data=self._event_data(model),
+        )
+        status, state = await self.subscription_engine.advance(
+            initial, principal=ExecutionPrincipal.for_workflow(user_id)
+        )
+        updated = await self.workflows.update_if_version(
+            workflow_id=model.workflow_id,
+            user_id=user_id,
+            expected_version=model.version,
+            status=status,
+            state=state.model_dump(mode="json"),
+        )
+        if updated is None:
+            raise WorkflowVersionConflictError
+        await self.publisher.persist(
+            event_type=self._workflow_event_type(status),
+            conversation_id=conversation_id,
+            task_id=source_task_id,
+            data=self._event_data(updated),
+        )
+        await self.session.commit()
+        return await self._to_workflow(updated)
+
+    async def select_subscription(
+        self,
+        workflow_id: UUID,
+        *,
+        user_id: str,
+        subscription_id: str,
+        expected_version: int,
+    ) -> Workflow:
+        model, state = await self._load_subscription_action(
+            workflow_id, user_id, expected_version
+        )
+        if model.status is not WorkflowStatus.WAITING_FOR_INPUT:
+            raise WorkflowActionError("WORKFLOW_NOT_WAITING_FOR_SUBSCRIPTION")
+        if subscription_id not in {
+            candidate.subscription_id
+            for candidate in state.candidates
+            if candidate.subscription_id is not None
+        }:
+            raise WorkflowActionError("SUBSCRIPTION_SELECTION_INVALID")
+        state.draft.subscription_id = subscription_id
+        assert self.subscription_engine is not None
+        status, state = await self.subscription_engine.advance(
+            state, principal=ExecutionPrincipal.for_workflow(user_id)
+        )
+        updated = await self.workflows.update_if_version(
+            workflow_id=workflow_id,
+            user_id=user_id,
+            expected_version=expected_version,
+            status=status,
+            state=state.model_dump(mode="json"),
+        )
+        if updated is None:
+            raise WorkflowVersionConflictError
+        await self.publisher.persist(
+            event_type=self._workflow_event_type(status),
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
+            data=self._event_data(updated),
+        )
+        await self.session.commit()
+        return await self._to_workflow(updated)
+
     async def set_recipient_query(
         self,
         workflow_id: UUID,
@@ -255,6 +357,11 @@ class WorkflowService:
         return await self._mutate_and_advance(model, state, expected_version)
 
     async def approve(self, workflow_id: UUID, *, user_id: str, expected_version: int) -> Workflow:
+        workflow = await self.workflows.get_for_user(workflow_id, user_id)
+        if workflow is None:
+            raise WorkflowNotFoundError
+        if workflow.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL:
+            return await self._approve_subscription(workflow, user_id, expected_version)
         model, state = await self._load_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
             raise WorkflowActionError("WORKFLOW_NOT_READY_FOR_APPROVAL")
@@ -475,6 +582,38 @@ class WorkflowService:
         return await self._to_workflow(updated)
 
     async def cancel(self, workflow_id: UUID, *, user_id: str, expected_version: int) -> Workflow:
+        workflow = await self.workflows.get_for_user(workflow_id, user_id)
+        if workflow is None:
+            raise WorkflowNotFoundError
+        if workflow.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL:
+            model, state = await self._load_subscription_action(
+                workflow_id, user_id, expected_version
+            )
+            if model.status not in {
+                WorkflowStatus.WAITING_FOR_INPUT,
+                WorkflowStatus.READY_FOR_REVIEW,
+                WorkflowStatus.READY_FOR_COMMIT,
+            }:
+                raise WorkflowActionError("WORKFLOW_CANNOT_BE_CANCELLED")
+            await self._invalidate_authorization(model, _as_utc(self.clock()))
+            state.authorization = None
+            updated = await self.workflows.update_if_version(
+                workflow_id=workflow_id,
+                user_id=user_id,
+                expected_version=expected_version,
+                status=WorkflowStatus.CANCELLED,
+                state=state.model_dump(mode="json"),
+            )
+            if updated is None:
+                raise WorkflowVersionConflictError
+            await self.publisher.persist(
+                event_type="workflow.cancelled",
+                conversation_id=model.conversation_id,
+                task_id=model.source_task_id,
+                data=self._event_data(updated),
+            )
+            await self.session.commit()
+            return await self._to_workflow(updated)
         model, state = await self._load_action(workflow_id, user_id, expected_version)
         if model.status not in {
             WorkflowStatus.WAITING_FOR_INPUT,
@@ -556,6 +695,83 @@ class WorkflowService:
         }:
             raise WorkflowActionError("WORKFLOW_NO_LONGER_ACCEPTS_ACTIONS")
         return model, TransferWorkflowState.model_validate(model.state_json)
+
+    async def _load_subscription_action(
+        self, workflow_id: UUID, user_id: str, expected_version: int
+    ) -> tuple[WorkflowModel, SubscriptionCancelWorkflowState]:
+        model = await self.workflows.get_for_user(workflow_id, user_id)
+        if model is None:
+            raise WorkflowNotFoundError
+        if model.workflow_type is not WorkflowType.SUBSCRIPTION_CANCEL:
+            raise WorkflowActionError("WORKFLOW_TYPE_MISMATCH")
+        if model.version != expected_version:
+            raise WorkflowVersionConflictError
+        if model.status in {
+            WorkflowStatus.CANCELLED,
+            WorkflowStatus.FAILED,
+            WorkflowStatus.COMMITTING,
+            WorkflowStatus.SUCCEEDED,
+        }:
+            raise WorkflowActionError("WORKFLOW_NO_LONGER_ACCEPTS_ACTIONS")
+        return model, SubscriptionCancelWorkflowState.model_validate(model.state_json)
+
+    async def _approve_subscription(
+        self, model: WorkflowModel, user_id: str, expected_version: int
+    ) -> Workflow:
+        if model.version != expected_version:
+            raise WorkflowVersionConflictError
+        if model.status is not WorkflowStatus.READY_FOR_REVIEW:
+            raise WorkflowActionError("WORKFLOW_NOT_READY_FOR_APPROVAL")
+        if self.subscription_engine is None:
+            raise WorkflowActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")
+        state = SubscriptionCancelWorkflowState.model_validate(model.state_json)
+        status, state = await self.subscription_engine.advance(
+            state, principal=ExecutionPrincipal.for_workflow(user_id)
+        )
+        if status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
+            raise WorkflowActionError("SUBSCRIPTION_REVALIDATION_FAILED")
+        now = _as_utc(self.clock())
+        await self._invalidate_authorization(model, now)
+        payload_hash = subscription_cancel_payload_hash(state.review_payload)
+        approval = await self.approvals.create_pending(
+            user_id=user_id,
+            workflow_id=model.workflow_id,
+            payload=canonicalize_subscription_cancel_payload(state.review_payload),
+            payload_hash=payload_hash,
+            expires_at=now + self.approval_ttl,
+            approval_type=ApprovalType.SUBSCRIPTION_CANCEL,
+        )
+        approval.status = ApprovalStatus.APPROVED
+        approval.approved_at = now
+        state.authorization = SubscriptionCancelAuthorization(
+            approval_id=approval.approval_id,
+            approval_payload_hash=payload_hash,
+            approval_expires_at=approval.expires_at,
+        )
+        updated = await self.workflows.update_if_version(
+            workflow_id=model.workflow_id,
+            user_id=user_id,
+            expected_version=expected_version,
+            status=WorkflowStatus.READY_FOR_COMMIT,
+            state=state.model_dump(mode="json"),
+        )
+        if updated is None:
+            raise WorkflowVersionConflictError
+        await self._persist_authorization_event(
+            updated,
+            "approval.approved",
+            approval_id=approval.approval_id,
+            status=approval.status.value,
+            expires_at=approval.expires_at,
+        )
+        await self.publisher.persist(
+            event_type="workflow.ready_for_commit",
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
+            data=self._event_data(updated),
+        )
+        await self.session.commit()
+        return await self._to_workflow(updated)
 
     async def _require_current_approval(
         self, model: WorkflowModel, state: TransferWorkflowState
@@ -718,7 +934,11 @@ class WorkflowService:
         await self.session.commit()
 
     async def _to_workflow(self, model: WorkflowModel) -> Workflow:
-        state = TransferWorkflowState.model_validate(model.state_json)
+        transfer_state = (
+            TransferWorkflowState.model_validate(model.state_json)
+            if model.workflow_type is WorkflowType.TRANSFER
+            else None
+        )
         approval = await self.approvals.latest_for_workflow(model.workflow_id, model.user_id)
         reauth = await self.reauthentications.latest_for_workflow(model.workflow_id, model.user_id)
         operation = await self.operations.get_for_workflow(model.workflow_id, model.user_id)
@@ -731,8 +951,14 @@ class WorkflowService:
             status=model.status,
             version=model.version,
             state=model.state_json,
-            risk_level=(state.risk_decision.level if state.risk_decision is not None else None),
-            risk_decision=state.risk_decision,
+            risk_level=(
+                transfer_state.risk_decision.level
+                if transfer_state is not None and transfer_state.risk_decision is not None
+                else BusinessRiskLevel.YELLOW
+                if model.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL
+                else None
+            ),
+            risk_decision=(transfer_state.risk_decision if transfer_state is not None else None),
             approval_summary=(
                 ApprovalSummary(
                     approval_id=approval.approval_id,

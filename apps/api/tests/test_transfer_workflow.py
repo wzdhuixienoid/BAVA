@@ -331,17 +331,19 @@ async def test_engine_validation_and_resolution_rules(app) -> None:
         assert status.value == "FAILED"
         assert invalid.validation.issues[0].code == "INVALID_TRANSFER_AMOUNT"  # type: ignore[union-attr]
 
-    status, mismatch = await engine.start(
-        TransferIntent(
-            recipient_query="李小雨",
-            amount=Decimal("10"),
-            currency="USD",
-            source_account_hint="工资卡",
-        ),
-        principal=TEST_EXECUTION_PRINCIPAL,
-    )
-    assert status.value == "FAILED"
-    assert mismatch.validation.issues[0].code == "CURRENCY_MISMATCH"  # type: ignore[union-attr]
+    for amount, currency in (("100", "USD"), ("1000", "USD"), ("500", "EUR")):
+        status, mismatch = await engine.start(
+            TransferIntent(
+                recipient_query="李小雨",
+                amount=Decimal(amount),
+                currency=currency,
+                source_account_hint="工资卡",
+            ),
+            principal=TEST_EXECUTION_PRINCIPAL,
+        )
+        assert status.value == "FAILED"
+        assert mismatch.risk_decision is None
+        assert mismatch.validation.issues[0].code == "CURRENCY_MISMATCH"  # type: ignore[union-attr]
 
     status, insufficient = await engine.start(
         TransferIntent(

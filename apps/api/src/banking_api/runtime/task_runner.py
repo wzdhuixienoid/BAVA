@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.models import AgentDefinition
+from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT_ID
 from banking_api.application.conversation_service import to_message
 from banking_api.application.report_service import (
     ReportPersistenceError,
@@ -59,6 +60,11 @@ from banking_api.skills.models import SkillDefinition
 from banking_api.skills.monthly_spending_report import (
     MONTHLY_SPENDING_REPORT_SKILL_ID,
 )
+from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
+from banking_api.workflows.subscription_cancel.intent_extractor import (
+    SubscriptionCancelIntentExtractionError,
+    SubscriptionCancelIntentExtractor,
+)
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.intent_extractor import (
     TransferIntentExtractionError,
@@ -72,8 +78,10 @@ UNSUPPORTED_MESSAGE = (
 ROUTE_AGENT_IDS = {
     RequestRoute.MINIMAL_BANKING: MINIMAL_BANKING_AGENT.agent_id,
     RequestRoute.FINANCIAL_ANALYSIS: FINANCIAL_ANALYSIS_AGENT_ID,
+    RequestRoute.SUBSCRIPTION_ANALYSIS: SUBSCRIPTION_ANALYSIS_AGENT_ID,
 }
 TRANSFER_WORKFLOW_ID = "workflow:transfer"
+SUBSCRIPTION_WORKFLOW_ID = "workflow:subscription-cancel"
 
 REPORT_SOURCE_INSTRUCTIONS = """
 本次请求的产品输出是月度消费报告数据源。
@@ -106,6 +114,8 @@ class InProcessTaskRunner:
         skill_executor: SkillExecutor | None = None,
         transfer_intent_extractor: TransferIntentExtractor | None = None,
         transfer_workflow_engine: TransferWorkflowEngine | None = None,
+        subscription_intent_extractor: SubscriptionCancelIntentExtractor | None = None,
+        subscription_workflow_engine: SubscriptionCancellationWorkflow | None = None,
         clock=_now,  # type: ignore[no-untyped-def]
     ) -> None:
         self.session_factory = session_factory
@@ -118,6 +128,8 @@ class InProcessTaskRunner:
         self.skill_executor = skill_executor
         self.transfer_intent_extractor = transfer_intent_extractor
         self.transfer_workflow_engine = transfer_workflow_engine
+        self.subscription_intent_extractor = subscription_intent_extractor
+        self.subscription_workflow_engine = subscription_workflow_engine
         self.clock = clock
 
     async def run(self, task_id: UUID) -> None:
@@ -216,6 +228,8 @@ class InProcessTaskRunner:
             executor_id = (
                 TRANSFER_WORKFLOW_ID
                 if decision.route is RequestRoute.TRANSFER_WORKFLOW
+                else SUBSCRIPTION_WORKFLOW_ID
+                if decision.route is RequestRoute.SUBSCRIPTION_CANCEL
                 else ROUTE_AGENT_IDS.get(decision.route)
             )
             if durable_executor_id is None:
@@ -236,6 +250,14 @@ class InProcessTaskRunner:
                 return
             if decision.route is RequestRoute.TRANSFER_WORKFLOW:
                 await self._run_transfer_workflow(
+                    claim=claim,
+                    conversation_id=conversation_id,
+                    user_id=user_id,
+                    user_request=current_task,
+                )
+                return
+            if decision.route is RequestRoute.SUBSCRIPTION_CANCEL:
+                await self._run_subscription_workflow(
                     claim=claim,
                     conversation_id=conversation_id,
                     user_id=user_id,
@@ -357,6 +379,18 @@ class InProcessTaskRunner:
                 },
                 policy=policy,
             )
+        except SubscriptionCancelIntentExtractionError:
+            await self._fail(
+                claim,
+                conversation_id,
+                {
+                    "category": "INPUT",
+                    "code": "SUBSCRIPTION_INTENT_EXTRACTION_FAILED",
+                    "message": "Subscription cancellation intent extraction failed",
+                    "retryable": False,
+                },
+                policy=policy,
+            )
         except AgentRuntimeError as exc:
             await self._fail(claim, conversation_id, exc.as_dict(), policy=policy)
         except SkillExecutionError as exc:
@@ -416,8 +450,15 @@ class InProcessTaskRunner:
     ) -> RouteDecision | None:
         if executor_id is None or requested_output is None:
             return None
-        if executor_type is ExecutorType.WORKFLOW and executor_id == TRANSFER_WORKFLOW_ID:
-            route = RequestRoute.TRANSFER_WORKFLOW
+        if executor_type is ExecutorType.WORKFLOW and executor_id in {
+            TRANSFER_WORKFLOW_ID,
+            SUBSCRIPTION_WORKFLOW_ID,
+        }:
+            route = (
+                RequestRoute.TRANSFER_WORKFLOW
+                if executor_id == TRANSFER_WORKFLOW_ID
+                else RequestRoute.SUBSCRIPTION_CANCEL
+            )
         else:
             route = next(
                 (
@@ -459,7 +500,7 @@ class InProcessTaskRunner:
             publisher = EventPublisher(session)
             task = await self._get_owned(tasks, claim, for_update=True)
             executor_type = None
-            if route is RequestRoute.TRANSFER_WORKFLOW:
+            if route in {RequestRoute.TRANSFER_WORKFLOW, RequestRoute.SUBSCRIPTION_CANCEL}:
                 executor_type = ExecutorType.WORKFLOW
             elif executor_id is not None:
                 executor_type = ExecutorType.AGENT
@@ -600,6 +641,92 @@ class InProcessTaskRunner:
             )
             await session.commit()
 
+    async def _run_subscription_workflow(
+        self,
+        *,
+        claim: TaskExecutionClaim,
+        conversation_id: UUID,
+        user_id: str,
+        user_request: str,
+    ) -> None:
+        if (
+            self.subscription_intent_extractor is None
+            or self.subscription_workflow_engine is None
+            or self.transfer_workflow_engine is None
+        ):
+            raise AgentRuntimeError(
+                "SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED",
+                "Subscription cancellation workflow is not configured",
+            )
+        async with self.session_factory() as session:
+            service = WorkflowService(
+                session,
+                self.bus,
+                self.transfer_workflow_engine,
+                subscription_engine=self.subscription_workflow_engine,
+            )
+            workflow = await service.get_by_source_task(claim.task_id, user_id=user_id)
+        if workflow is None:
+            intent = await self.subscription_intent_extractor.extract(user_request)
+            async with self.session_factory() as session:
+                tasks = TaskRepository(session)
+                await self._get_owned(tasks, claim, for_update=True)
+                service = WorkflowService(
+                    session,
+                    self.bus,
+                    self.transfer_workflow_engine,
+                    subscription_engine=self.subscription_workflow_engine,
+                )
+                workflow = await service.get_by_source_task(claim.task_id, user_id=user_id)
+                if workflow is None:
+                    workflow = await service.create_subscription_cancel(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        source_task_id=claim.task_id,
+                        intent=intent,
+                    )
+        state = workflow.state
+        message = (
+            str(state.get("error_message"))
+            if workflow.status is WorkflowStatus.FAILED and state.get("error_message")
+            else "找到多个订阅，请在取消卡片中明确选择。"
+            if workflow.status is WorkflowStatus.WAITING_FOR_INPUT
+            else "订阅取消信息已准备，需要用户确认，尚未取消。"
+        )
+        async with self.session_factory() as session:
+            tasks = TaskRepository(session)
+            messages = MessageRepository(session)
+            publisher = EventPublisher(session)
+            task = await self._get_owned(tasks, claim, for_update=True)
+            assistant = await messages.create(
+                conversation_id=conversation_id,
+                role=MessageRole.ASSISTANT,
+                content=message,
+            )
+            await tasks.transition(
+                task,
+                TaskStatus.COMPLETED,
+                output={
+                    "route": RequestRoute.SUBSCRIPTION_CANCEL.value,
+                    "requested_output": RequestedOutput.WORKFLOW.value,
+                    "workflow_id": str(workflow.workflow_id),
+                    "assistant_message_id": str(assistant.message_id),
+                },
+            )
+            await publisher.persist(
+                event_type="task.completed",
+                conversation_id=conversation_id,
+                task_id=claim.task_id,
+                data={"status": task.status.value, "version": task.version},
+            )
+            await publisher.persist(
+                event_type="conversation.message.completed",
+                conversation_id=conversation_id,
+                task_id=claim.task_id,
+                data={"message_id": str(assistant.message_id), "role": assistant.role.value},
+            )
+            await session.commit()
+
     @staticmethod
     def _build_task_output(
         *,
@@ -621,6 +748,17 @@ class InProcessTaskRunner:
             output["analysis_snapshot"] = build_financial_analysis_snapshot(
                 successful_tool_results
             ).model_dump(mode="json")
+        if agent_id == SUBSCRIPTION_ANALYSIS_AGENT_ID:
+            result = next(
+                (
+                    item
+                    for item in successful_tool_results
+                    if item.capability_id == "subscription.analyze"
+                ),
+                None,
+            )
+            if result is not None and "snapshot" in result.output:
+                output["subscription_analysis_snapshot"] = result.output["snapshot"]
         return output
 
     @staticmethod

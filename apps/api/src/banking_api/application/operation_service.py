@@ -15,9 +15,10 @@ from banking_api.domain.enums import (
     ReauthenticationStatus,
     WorkflowStatus,
 )
-from banking_api.domain.operation import OperationResource
+from banking_api.domain.operation import OperationResource, OperationType
 from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
+from banking_api.domain.workflow import WorkflowType
 from banking_api.persistence.models import OperationModel, WorkflowModel
 from banking_api.persistence.repositories.approvals import ApprovalRepository
 from banking_api.persistence.repositories.operations import OperationRepository
@@ -27,6 +28,15 @@ from banking_api.persistence.repositories.reauthentications import (
 from banking_api.persistence.repositories.workflows import WorkflowRepository
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
+from banking_api.workflows.subscription_cancel.authorization import (
+    canonicalize_subscription_cancel_payload,
+    subscription_cancel_payload_hash,
+)
+from banking_api.workflows.subscription_cancel.engine import (
+    SubscriptionCancellationWorkflow,
+    SubscriptionCancellationWorkflowError,
+)
+from banking_api.workflows.subscription_cancel.models import SubscriptionCancelWorkflowState
 from banking_api.workflows.transfer.authorization import (
     canonicalize_transfer_payload,
     transfer_payload_hash,
@@ -82,12 +92,14 @@ class OperationService:
         bus: EventBus,
         engine: TransferWorkflowEngine,
         *,
+        subscription_engine: SubscriptionCancellationWorkflow | None = None,
         clock=_now,  # type: ignore[no-untyped-def]
         recovery_policy: OperationRecoveryPolicy | None = None,
     ) -> None:
         self.session = session
         self.bus = bus
         self.engine = engine
+        self.subscription_engine = subscription_engine
         self.clock = clock
         self.recovery_policy = recovery_policy or OperationRecoveryPolicy.from_settings()
         self.workflows = WorkflowRepository(session)
@@ -110,8 +122,17 @@ class OperationService:
     async def commit_workflow(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
-        operation = await self.prepare_transfer(
-            workflow_id, user_id=user_id, expected_version=expected_version
+        workflow = await self.workflows.get_for_user(workflow_id, user_id)
+        if workflow is None:
+            raise OperationNotFoundError
+        operation = (
+            await self.prepare_subscription_cancel(
+                workflow_id, user_id=user_id, expected_version=expected_version
+            )
+            if workflow.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL
+            else await self.prepare_transfer(
+                workflow_id, user_id=user_id, expected_version=expected_version
+            )
         )
         return await self.reconcile(
             operation.operation_id,
@@ -219,6 +240,7 @@ class OperationService:
             payload_hash=current_hash,
             idempotency_key=uuid4(),
             next_reconcile_at=now,
+            risk_business_date=state.risk_decision.business_date,
         )
         approval.status = ApprovalStatus.CONSUMED
         approval.consumed_at = now
@@ -235,6 +257,78 @@ class OperationService:
             raise OperationVersionConflictError
         await self._operation_event(operation, "operation.created")
         await self._risk_event(updated, risk, escalated=escalated)
+        await self.publisher.persist(
+            event_type="workflow.committing",
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+            data=self._workflow_event_data(updated),
+        )
+        await self.session.commit()
+        return self._resource(operation)
+
+    async def prepare_subscription_cancel(
+        self, workflow_id: UUID, *, user_id: str, expected_version: int
+    ) -> OperationResource:
+        if self.subscription_engine is None:
+            raise OperationActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")
+        workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
+        if workflow is None:
+            raise OperationNotFoundError
+        if workflow.workflow_type is not WorkflowType.SUBSCRIPTION_CANCEL:
+            raise OperationActionError("WORKFLOW_TYPE_MISMATCH")
+        if workflow.version != expected_version:
+            raise OperationVersionConflictError
+        if workflow.status is not WorkflowStatus.READY_FOR_COMMIT:
+            raise OperationActionError("WORKFLOW_NOT_READY_FOR_COMMIT")
+        if await self.operations.get_for_workflow(workflow_id, user_id) is not None:
+            raise OperationActionError("SUBSCRIPTION_OPERATION_ALREADY_EXISTS")
+        state = SubscriptionCancelWorkflowState.model_validate(workflow.state_json)
+        if state.authorization is None or state.review_payload is None:
+            raise OperationActionError("SUBSCRIPTION_AUTHORIZATION_MISSING")
+        approval = await self.approvals.get_for_workflow_user_for_update(
+            state.authorization.approval_id, workflow_id, user_id
+        )
+        if approval is None or approval.status is not ApprovalStatus.APPROVED:
+            raise OperationActionError("APPROVAL_NOT_CONSUMABLE")
+        now = _as_utc(self.clock())
+        if _as_utc(approval.expires_at) <= now:
+            raise OperationActionError("APPROVAL_EXPIRED")
+        expected_hash = subscription_cancel_payload_hash(state.review_payload)
+        if (
+            approval.payload_hash != expected_hash
+            or state.authorization.approval_payload_hash != expected_hash
+        ):
+            raise OperationActionError("APPROVAL_PAYLOAD_MISMATCH")
+        validation_status, state = await self.subscription_engine.advance(
+            state, principal=ExecutionPrincipal.for_workflow(user_id)
+        )
+        if validation_status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
+            raise OperationActionError(state.error_code or "SUBSCRIPTION_REVALIDATION_FAILED")
+        if subscription_cancel_payload_hash(state.review_payload) != approval.payload_hash:
+            raise OperationActionError("APPROVAL_PAYLOAD_MISMATCH")
+        operation = await self.operations.create_subscription_cancel(
+            user_id=user_id,
+            workflow_id=workflow_id,
+            approval_id=approval.approval_id,
+            payload=canonicalize_subscription_cancel_payload(state.review_payload),
+            payload_hash=expected_hash,
+            idempotency_key=uuid4(),
+            next_reconcile_at=now,
+        )
+        approval.status = ApprovalStatus.CONSUMED
+        approval.consumed_at = now
+        approval.consumed_by_operation_id = operation.operation_id
+        updated = await self.workflows.update_if_version(
+            workflow_id=workflow_id,
+            user_id=user_id,
+            expected_version=expected_version,
+            status=WorkflowStatus.COMMITTING,
+            state=state.model_dump(mode="json"),
+        )
+        if updated is None:
+            await self.session.rollback()
+            raise OperationVersionConflictError
+        await self._operation_event(operation, "operation.created")
         await self.publisher.persist(
             event_type="workflow.committing",
             conversation_id=workflow.conversation_id,
@@ -361,11 +455,12 @@ class OperationService:
     ) -> OperationModel:
         now = _as_utc(self.clock())
         try:
-            output = await self.engine.submit_operation(
+            operation_engine = self._operation_engine(operation.operation_type)
+            output = await operation_engine.submit_operation(
                 operation.operation_id,
                 principal=ExecutionPrincipal.for_recovery(operation.user_id),
             )
-        except TransferWorkflowEngineError:
+        except (TransferWorkflowEngineError, SubscriptionCancellationWorkflowError):
             logger.warning(
                 "provider submission unavailable operation_id=%s", operation.operation_id
             )
@@ -403,11 +498,12 @@ class OperationService:
         self, operation: OperationModel, *, lease_owner: str
     ) -> OperationResource:
         try:
-            output = await self.engine.query_operation_status(
+            operation_engine = self._operation_engine(operation.operation_type)
+            output = await operation_engine.query_operation_status(
                 operation.operation_id,
                 principal=ExecutionPrincipal.for_recovery(operation.user_id),
             )
-        except TransferWorkflowEngineError:
+        except (TransferWorkflowEngineError, SubscriptionCancellationWorkflowError):
             logger.warning(
                 "provider status query unavailable operation_id=%s", operation.operation_id
             )
@@ -547,6 +643,13 @@ class OperationService:
                 updated_operation.next_reconcile_at,
             )
         return updated_operation
+
+    def _operation_engine(self, operation_type: OperationType):  # type: ignore[no-untyped-def]
+        if operation_type is OperationType.TRANSFER:
+            return self.engine
+        if operation_type is OperationType.SUBSCRIPTION_CANCEL and self.subscription_engine:
+            return self.subscription_engine
+        raise OperationActionError("OPERATION_TYPE_NOT_CONFIGURED")
 
     async def _expire_approval(self, workflow, state, approval) -> None:  # type: ignore[no-untyped-def]
         approval.status = ApprovalStatus.EXPIRED

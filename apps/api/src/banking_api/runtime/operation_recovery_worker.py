@@ -17,6 +17,7 @@ from banking_api.persistence.repositories.operations import (
     OperationRepository,
 )
 from banking_api.runtime.event_bus import EventBus
+from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class OperationRecoveryWorker:
         bus: EventBus,
         engine: TransferWorkflowEngine,
         *,
+        subscription_engine: SubscriptionCancellationWorkflow | None = None,
         policy: OperationRecoveryPolicy,
         poll_interval_seconds: float,
         batch_size: int,
@@ -44,6 +46,7 @@ class OperationRecoveryWorker:
         self._session_factory = session_factory
         self._bus = bus
         self._engine = engine
+        self._subscription_engine = subscription_engine
         self._policy = policy
         self._poll_interval_seconds = poll_interval_seconds
         self._batch_size = batch_size
@@ -118,6 +121,7 @@ class OperationRecoveryWorker:
                     session,
                     self._bus,
                     self._engine,
+                    subscription_engine=self._subscription_engine,
                     clock=self._clock,
                     recovery_policy=self._policy,
                 ).reconcile_claimed(

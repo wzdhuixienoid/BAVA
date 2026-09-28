@@ -52,6 +52,12 @@ export default function HomePage() {
         >
           查看历史报告
         </Link>
+        <Link
+          href="/subscriptions"
+          className="mb-6 block w-full rounded-lg border border-cyan-700 px-4 py-2.5 text-center text-sm font-semibold text-cyan-100 hover:bg-slate-900"
+        >
+          订阅与代扣总览
+        </Link>
         <div className="mb-6 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-400">
           <span>{auth.development ? "Development Principal" : "OIDC 已认证"}</span>
           {!auth.development && (
@@ -86,7 +92,7 @@ export default function HomePage() {
           <ConversationPanel conversationId={selectedId} />
         ) : (
           <div className="grid min-h-screen place-items-center p-8 text-center text-slate-500">
-            新建一个对话，查询账户信息或分析月度消费。
+            新建一个对话，查询账户、分析消费或管理订阅。
           </div>
         )}
       </section>

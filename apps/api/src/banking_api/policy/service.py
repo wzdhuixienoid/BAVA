@@ -37,8 +37,11 @@ class PolicyService:
         commit_allowed = (
             common
             and spec is not None
-            and caller == "workflow:transfer"
-            and spec.capability_id == "transfer.commit"
+            and (caller, spec.capability_id)
+            in {
+                ("workflow:transfer", "transfer.commit"),
+                ("workflow:subscription-cancel", "subscription.cancel"),
+            }
             and spec.risk_level is RiskLevel.R4_FINANCIAL_COMMIT
             and spec.side_effect
         )

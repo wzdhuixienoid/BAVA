@@ -9,7 +9,7 @@ def test_committed_mock_data_is_valid() -> None:
 
     assert validator() == {
         "accounts": 4,
-        "transactions": 138,
+        "transactions": 140,
         "payees": 6,
         "subscriptions": 5,
     }

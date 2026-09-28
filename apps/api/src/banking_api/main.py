@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
 from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
@@ -36,6 +37,7 @@ from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.security.authentication import AuthenticationService
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
+from banking_api.subscriptions.provider import MockSubscriptionProvider
 from banking_api.tools.banking import (
     build_commit_transfer_tool,
     build_compare_spending_periods_tool,
@@ -48,7 +50,16 @@ from banking_api.tools.banking import (
     build_search_payees_tool,
 )
 from banking_api.tools.executor import ToolExecutor
+from banking_api.tools.subscriptions import (
+    build_subscription_analyze_tool,
+    build_subscription_cancel_tool,
+    build_subscription_status_tool,
+)
 from banking_api.transfers.mock_provider import MockTransferProvider
+from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
+from banking_api.workflows.subscription_cancel.intent_extractor import (
+    SubscriptionCancelIntentExtractor,
+)
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.intent_extractor import TransferIntentExtractor
 
@@ -104,6 +115,7 @@ def create_app() -> FastAPI:
                 session_factory,
                 bus,
                 transfer_engine,
+                subscription_engine=subscription_engine,
                 policy=OperationRecoveryPolicy.from_settings(settings),
                 poll_interval_seconds=settings.operation_recovery_poll_interval_seconds,
                 batch_size=settings.operation_recovery_batch_size,
@@ -134,7 +146,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.7.1",
+        version="0.7.2",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -154,6 +166,7 @@ def create_app() -> FastAPI:
     )
     bank = MockBankService()
     transfer_provider = MockTransferProvider(session_factory, bank)
+    subscription_provider = MockSubscriptionProvider(session_factory, bank)
     analytics = FinancialAnalyticsService(bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
@@ -165,11 +178,16 @@ def create_app() -> FastAPI:
     registry.register(build_search_payees_tool(bank))
     registry.register(build_commit_transfer_tool(session_factory, transfer_provider))
     registry.register(build_get_transfer_status_tool(session_factory, transfer_provider))
+    registry.register(build_subscription_analyze_tool(session_factory, bank))
+    registry.register(build_subscription_cancel_tool(session_factory, subscription_provider))
+    registry.register(build_subscription_status_tool(session_factory, subscription_provider))
     executor = ToolExecutor(registry, PolicyService())
     transfer_engine = TransferWorkflowEngine(executor)
+    subscription_engine = SubscriptionCancellationWorkflow(executor)
     agent_registry = AgentRegistry()
     agent_registry.register(MINIMAL_BANKING_AGENT)
     agent_registry.register(FINANCIAL_ANALYSIS_AGENT)
+    agent_registry.register(SUBSCRIPTION_ANALYSIS_AGENT)
     skill_registry = SkillRegistry()
     skill_registry.register(MonthlySpendingReportSkill.definition)
     router = RequestRouter(provider)
@@ -191,7 +209,10 @@ def create_app() -> FastAPI:
     application.state.request_router = router
     application.state.runtime_factory = runtime_factory
     application.state.transfer_workflow_engine = transfer_engine
+    application.state.subscription_workflow_engine = subscription_engine
     application.state.transfer_provider = transfer_provider
+    application.state.subscription_provider = subscription_provider
+    application.state.mock_bank = bank
     task_runner = InProcessTaskRunner(
         session_factory,
         bus,
@@ -203,6 +224,8 @@ def create_app() -> FastAPI:
         skill_executor=SkillExecutor(provider),
         transfer_intent_extractor=TransferIntentExtractor(provider),
         transfer_workflow_engine=transfer_engine,
+        subscription_intent_extractor=SubscriptionCancelIntentExtractor(provider),
+        subscription_workflow_engine=subscription_engine,
     )
     application.state.task_runner = task_runner
     application.include_router(health_router)

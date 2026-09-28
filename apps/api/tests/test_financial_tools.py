@@ -65,6 +65,9 @@ def test_application_registry_adds_financial_tools_without_expanding_minimal_age
         "payee.search",
         "transfer.commit",
         "transfer.get_status",
+        "subscription.analyze",
+        "subscription.cancel",
+        "subscription.get_status",
         *FINANCIAL_CAPABILITIES,
     }
     assert [

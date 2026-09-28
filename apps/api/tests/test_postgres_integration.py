@@ -217,6 +217,16 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
+        subscription_cancellation_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'mock_subscription_cancellations'"
+                    )
+                )
+            ).scalars()
+        )
         outbox_columns = set(
             (
                 await session.execute(
@@ -249,7 +259,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0013"
+        assert revision == "0014"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -335,6 +345,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "lease_expires_at",
             "created_at",
             "updated_at",
+            "risk_business_date",
         }.issubset(operation_columns)
         assert {
             "provider_reference",
@@ -349,6 +360,16 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "error_message",
             "applied_at",
         }.issubset(provider_ledger_columns)
+        assert {
+            "provider_reference",
+            "user_id",
+            "subscription_id",
+            "idempotency_key",
+            "status",
+            "error_code",
+            "created_at",
+            "completed_at",
+        }.issubset(subscription_cancellation_columns)
         assert {
             "id",
             "event_id",

@@ -1,10 +1,18 @@
 # AI Banking Agent
 
-当前版本：`v0.7.1`
+当前版本：`v0.7.2`
 
-面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，并通过持久化 Transfer Workflow 完成风险评估、用户确认、按需强验证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
+面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账，以及确定性订阅识别、成本/涨价/续费分析和可管理订阅取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
+
+核心场景覆盖：
+
+1. 智能转账        `COMPLETE`
+2. 账单分析        `COMPLETE`
+5. 订阅 / 代扣管理 `COMPLETE`
+
+已达到赛题“至少 3 个核心场景”的要求。
 
 ## 当前能力
 
@@ -13,6 +21,9 @@
 | 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
+| 订阅分析 | `agent:subscription-analysis` | 自动识别周期扣费、按币种成本、涨价、即将续费 |
+| 订阅管理分类 | deterministic Subscription service | `MANAGED` / `DETECTED_ONLY`，仅合同可管理者允许取消 |
+| 安全取消订阅 | `workflow:subscription-cancel` | YELLOW → Approval → Operation → MockSubscriptionProvider |
 | 动态风险分级 | deterministic Risk Policy | GREEN 查询自动执行；YELLOW 转账确认；RED 转账确认 + 强验证 |
 | 转账全链路 | `workflow:transfer` | Draft → Validation → Risk → Approval → conditional Reauthentication → Operation |
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
@@ -25,6 +36,7 @@
 ```text
 Financial Analysis Vertical Slice: COMPLETE
 Transfer Vertical Slice: COMPLETE
+Subscription Management Vertical Slice: COMPLETE
 Durable Operation Recovery: COMPLETE
 Cross-Process Financial Concurrency: COMPLETE
 Transactional Outbox: COMPLETE
@@ -38,10 +50,13 @@ Durable Task Execution: COMPLETE
 | 业务风险 | 确定性规则 | 用户控制 |
 |---|---|---|
 | GREEN（绿色） | 纯查询 / read-only financial tools | 自动执行，无 Approval，无 Reauthentication |
+| YELLOW（黄色） | 可管理订阅取消 | Approval，无 Reauthentication |
 | YELLOW（黄色） | 当日已成功 + 执行中 + 本笔 `<= 1000.00 CNY` | Approval |
 | RED（红色） | 当日已成功 + 执行中 + 本笔 `> 1000.00 CNY` | Approval + Reauthentication |
 
 Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINESS_TIMEZONE` 的自然日计算，默认时区为 `Asia/Shanghai`。执行中 exposure 包含 `CREATED / SUBMITTED / UNKNOWN` Operation，排除 `FAILED`；Provider 已成功的同一笔 Operation 不会重复计算。
+
+订阅查询为 GREEN；订阅取消固定为 YELLOW，必须 Approval，不需要 Reauthentication，也不会因订阅金额升级为 RED。
 
 用户可以直接输入：
 
@@ -51,6 +66,8 @@ Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINE
 为什么2026年8月花这么多？
 分析一下工资卡2026年8月的消费
 生成一份2026年8月份消费报告
+我有哪些订阅？最近有没有涨价的？
+取消星幕视频
 ```
 
 报告生成后可在 Conversation 中通过 ReportCard 打开，也可以从 `/reports` 查看历史报告。
@@ -65,15 +82,19 @@ User Message
     → Message + durable Task + Event/Outbox atomic commit
     → PostgreSQL Task claim/lease + heartbeat
     → RequestRouter
-    → AgentRegistry / TransferWorkflow
+    → AgentRegistry / deterministic Workflow
         ├─ MinimalBankingAgent
-        └─ FinancialAnalysisAgent
+        ├─ FinancialAnalysisAgent
+        ├─ SubscriptionAnalysisAgent → bounded SubscriptionAnalysisSnapshot
+        └─ SubscriptionCancellationWorkflow
     → LangGraphAgentRuntime
     → ToolRegistry → PolicyService → ToolExecutor
-        └─ transfer.commit (R4) / transfer.get_status (R1)
+        ├─ transfer.commit (R4) / transfer.get_status (R1)
+        └─ subscription.analyze (R1) / subscription.cancel (R4)
     → TransferRiskPolicy → persisted RiskDecision
         → user advisory lock → commit-time risk re-evaluation
     → persistent Operation → MockTransferProvider idempotency ledger
+或  → persistent Operation → MockSubscriptionProvider cancellation ledger
         → PostgreSQL account advisory lock → authoritative balance decision
     → PostgreSQL claim/lease → automatic Operation recovery
     → durable Event + Outbox intent → OutboxPublisher → EventBus/SSE
@@ -148,8 +169,10 @@ User Message
 
 - `agent:minimal-banking`：允许 `account.list`、`account.get_balance`。
 - `agent:financial-analysis`：允许 `account.list` 和四个 Financial Tools，不允许余额、转账、卡片或其他写能力。
+- `agent:subscription-analysis`：只允许 `subscription.analyze`，不允许 `subscription.cancel`、Operation/Approval 写入。
 - `skill:monthly-spending-report`：`allowed_tools=[]`，只能消费 `FinancialAnalysisSnapshot`。
 - `workflow:transfer`：允许三项 R1 读能力，以及仅接受持久化 `operation_id` 的 `transfer.commit` (`R4_FINANCIAL_COMMIT`) 和 `transfer.get_status` (R1)。
+- `workflow:subscription-cancel`：允许有界订阅读取、仅接受持久化 `operation_id` 的 `subscription.cancel` 和状态查询。
 - Recovery worker 不是新的 Tool caller，也不扩大 `transfer.commit` allowlist；它只能 claim 已有 Operation，并调用与手工 reconcile 相同的 `OperationService` 状态转移。
 - 任何 Agent 或 Skill 都看不到、也无权调用 `transfer.commit`；LLM 在意图提取后完全退出执行路径。
 - Reports API 只有 GET list/detail，没有 POST、PUT、PATCH 或 DELETE。
@@ -327,9 +350,11 @@ GET  /api/v1/tasks/{task_id}
 GET  /api/v1/tasks/{task_id}/events
 GET  /api/v1/reports
 GET  /api/v1/reports/{report_id}
+GET  /api/v1/subscriptions
+GET  /api/v1/subscriptions/{subscription_id}
 GET  /api/v1/workflows/{workflow_id}
 GET  /api/v1/workflows?conversation_id=...
-POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|approve|start-reauth|verify-reauth|commit|cancel}
+POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|select-subscription|approve|start-reauth|verify-reauth|commit|cancel}
 GET  /api/v1/operations/{operation_id}
 POST /api/v1/operations/{operation_id}/actions/reconcile
 ```
@@ -338,6 +363,7 @@ POST /api/v1/operations/{operation_id}/actions/reconcile
 /                    Conversation Workspace
 /reports             Report history
 /reports/{reportId}  Structured monthly report
+/subscriptions       Subscription overview
 ```
 
 SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。`business state + Event + Outbox intent` 在同一 PostgreSQL transaction 内提交；Outbox Publisher 使用 `SKIP LOCKED` + durable lease 向现有 EventBus 做 at-least-once 发布。发布成功后、`published_at` 写回前崩溃可能导致重复通知，但不会重复业务副作用。
@@ -366,13 +392,15 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.7.1](docs/implementation-report-v0.7.1.md)
-- [Repository Tree v0.7.1](docs/repository-tree-v0.7.1.md)
-- [Test Results v0.7.1](docs/test-results-v0.7.1.md)
+- [Implementation Report v0.7.2](docs/implementation-report-v0.7.2.md)
+- [Repository Tree v0.7.2](docs/repository-tree-v0.7.2.md)
+- [Test Results v0.7.2](docs/test-results-v0.7.2.md)
 
 ## 当前限制
 
-当前资金写入仅限持久化 `MockTransferProvider`，RED 强验证使用 `MockReauthenticationProvider`。OIDC/JWT 边界已实现，但本次交付没有连接真实外部 IdP、银行 Provider、短信、人脸或 U 盾做产品 smoke。
+当前写入仅限比赛 synthetic banking environment 中的持久化 `MockTransferProvider` 和正式 `MockSubscriptionProvider`；未连接真实商户订阅 API。RED 强验证使用 `MockReauthenticationProvider`。
+
+订阅检测当前只支持固定的月度/年度 cadence 窗口和 fixture alias；不做 FX、不根据商户类型主观判断“重复”，不推断用户是否真正使用某项订阅，也未实现主动通知调度。
 
 当前 Risk Policy 只覆盖产品已存在的纯查询与 CNY 转账日累计门槛。未实现异常交易检测、Fraud Engine、连续失败熔断、通用 Rule Engine/DSL 或机器学习风控。
 

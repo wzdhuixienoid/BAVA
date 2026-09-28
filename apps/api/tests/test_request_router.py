@@ -42,6 +42,16 @@ from banking_api.routing.request_router import RequestRouter, RoutingError
             RequestRoute.TRANSFER_WORKFLOW,
             RequestedOutput.WORKFLOW,
         ),
+        (
+            "我有哪些订阅？最近有没有涨价的？",
+            RequestRoute.SUBSCRIPTION_ANALYSIS,
+            RequestedOutput.ANSWER,
+        ),
+        (
+            "取消星幕视频",
+            RequestRoute.SUBSCRIPTION_CANCEL,
+            RequestedOutput.WORKFLOW,
+        ),
     ],
 )
 async def test_router_validates_structured_classification(

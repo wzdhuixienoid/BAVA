@@ -2,46 +2,56 @@
   {
     "subscription_id": "sub_video",
     "merchant": "星幕视频",
-    "monthly_amount": "28.00",
+    "plan_name": "标准会员",
+    "amount": "28.00",
     "currency": "CNY",
-    "billing_day": 8,
+    "billing_interval": "MONTHLY",
+    "next_billing_at": "2026-10-08T12:00:00Z",
     "status": "ACTIVE",
-    "last_used_at": "2026-09-18T12:00:00Z"
+    "cancellable": true
   },
   {
     "subscription_id": "sub_music",
     "merchant": "海浪音乐",
-    "monthly_amount": "15.00",
+    "plan_name": "个人会员",
+    "amount": "15.00",
     "currency": "CNY",
-    "billing_day": 12,
+    "billing_interval": "MONTHLY",
+    "next_billing_at": "2026-10-12T12:00:00Z",
     "status": "ACTIVE",
-    "last_used_at": "2026-09-19T08:00:00Z"
+    "cancellable": true
   },
   {
     "subscription_id": "sub_cloud",
     "merchant": "云笺存储",
-    "monthly_amount": "18.00",
+    "plan_name": "50 GB",
+    "amount": "18.00",
     "currency": "CNY",
-    "billing_day": 16,
+    "billing_interval": "MONTHLY",
+    "next_billing_at": "2026-10-16T12:00:00Z",
     "status": "ACTIVE",
-    "last_used_at": "2025-11-03T10:00:00Z"
+    "cancellable": true
   },
   {
     "subscription_id": "sub_design",
     "merchant": "像素设计",
-    "monthly_amount": "88.00",
+    "plan_name": "专业版",
+    "amount": "88.00",
     "currency": "CNY",
-    "billing_day": 20,
+    "billing_interval": "MONTHLY",
+    "next_billing_at": "2026-10-20T12:00:00Z",
     "status": "ACTIVE",
-    "last_used_at": "2026-06-12T09:00:00Z"
+    "cancellable": true
   },
   {
     "subscription_id": "sub_fitness",
     "merchant": "活力健身",
-    "monthly_amount": "128.00",
+    "plan_name": "月卡",
+    "amount": "128.00",
     "currency": "CNY",
-    "billing_day": 3,
+    "billing_interval": "MONTHLY",
+    "next_billing_at": null,
     "status": "CANCELLED",
-    "last_used_at": "2026-03-20T18:00:00Z"
+    "cancellable": false
   }
 ]

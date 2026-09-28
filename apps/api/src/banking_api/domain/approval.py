@@ -10,10 +10,11 @@ from banking_api.domain.enums import ApprovalStatus
 
 class ApprovalType(StrEnum):
     TRANSFER = "TRANSFER"
+    SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
 
 
 class Approval(BaseModel):
-    """Single transfer-payload approval with atomic operation consumption."""
+    """Single canonical-payload approval with atomic operation consumption."""
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

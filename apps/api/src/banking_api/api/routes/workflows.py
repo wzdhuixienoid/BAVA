@@ -7,6 +7,7 @@ from banking_api.api.dependencies import (
     EventBusDependency,
     PrincipalDependency,
     SessionDependency,
+    SubscriptionWorkflowEngineDependency,
     TransferWorkflowEngineDependency,
 )
 from banking_api.application.operation_service import (
@@ -23,6 +24,7 @@ from banking_api.application.workflow_service import (
     WorkflowVersionConflictError,
 )
 from banking_api.domain.workflow import Workflow
+from banking_api.workflows.subscription_cancel.models import SelectSubscriptionAction
 from banking_api.workflows.transfer.models import (
     ApproveTransferAction,
     CancelWorkflowAction,
@@ -38,8 +40,8 @@ from banking_api.workflows.transfer.models import (
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
 
-def _service(session, bus, engine) -> WorkflowService:  # type: ignore[no-untyped-def]
-    return WorkflowService(session, bus, engine)
+def _service(session, bus, engine, subscription_engine=None) -> WorkflowService:  # type: ignore[no-untyped-def]
+    return WorkflowService(session, bus, engine, subscription_engine=subscription_engine)
 
 
 def _raise_action_error(exc: Exception) -> NoReturn:
@@ -66,9 +68,10 @@ async def list_workflows(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
     conversation_id: Annotated[UUID | None, Query()] = None,
 ) -> list[Workflow]:
-    return await _service(session, bus, engine).list(
+    return await _service(session, bus, engine, subscription_engine).list(
         user_id=principal.user_id, conversation_id=conversation_id
     )
 
@@ -80,9 +83,12 @@ async def get_workflow(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
 ) -> Workflow:
     try:
-        return await _service(session, bus, engine).get(workflow_id, user_id=principal.user_id)
+        return await _service(session, bus, engine, subscription_engine).get(
+            workflow_id, user_id=principal.user_id
+        )
     except WorkflowNotFoundError as exc:
         _raise_action_error(exc)
 
@@ -175,9 +181,10 @@ async def cancel_workflow(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
 ) -> Workflow:
     try:
-        return await _service(session, bus, engine).cancel(
+        return await _service(session, bus, engine, subscription_engine).cancel(
             workflow_id,
             user_id=principal.user_id,
             expected_version=body.expected_version,
@@ -194,9 +201,10 @@ async def approve_transfer(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
 ) -> Workflow:
     try:
-        return await _service(session, bus, engine).approve(
+        return await _service(session, bus, engine, subscription_engine).approve(
             workflow_id,
             user_id=principal.user_id,
             expected_version=body.expected_version,
@@ -253,14 +261,17 @@ async def commit_transfer(
     principal: PrincipalDependency,
     bus: EventBusDependency,
     engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
 ) -> Workflow:
     try:
-        await OperationService(session, bus, engine).commit_workflow(
+        await OperationService(
+            session, bus, engine, subscription_engine=subscription_engine
+        ).commit_workflow(
             workflow_id,
             user_id=principal.user_id,
             expected_version=body.expected_version,
         )
-        return await _service(session, bus, engine).get(
+        return await _service(session, bus, engine, subscription_engine).get(
             workflow_id, user_id=principal.user_id
         )
     except (
@@ -269,4 +280,25 @@ async def commit_transfer(
         OperationLeaseLostError,
         OperationActionError,
     ) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/select-subscription", response_model=Workflow)
+async def select_subscription(
+    workflow_id: UUID,
+    body: SelectSubscriptionAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+    subscription_engine: SubscriptionWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        return await _service(session, bus, engine, subscription_engine).select_subscription(
+            workflow_id,
+            user_id=principal.user_id,
+            subscription_id=body.subscription_id,
+            expected_version=body.expected_version,
+        )
+    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
         _raise_action_error(exc)

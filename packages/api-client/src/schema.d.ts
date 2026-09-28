@@ -362,6 +362,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/{workflow_id}/actions/select-subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select Subscription */
+        post: operations["select_subscription_api_v1_workflows__workflow_id__actions_select_subscription_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operations/{operation_id}": {
         parameters: {
             query?: never;
@@ -396,6 +413,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Subscriptions */
+        get: operations["list_subscriptions_api_v1_subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Subscription */
+        get: operations["get_subscription_api_v1_subscriptions__subscription_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -424,6 +475,11 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /**
+         * BillingInterval
+         * @enum {string}
+         */
+        BillingInterval: "MONTHLY" | "ANNUAL";
         /**
          * BusinessRiskLevel
          * @description Per-request business risk, separate from static Tool permissions.
@@ -494,11 +550,25 @@ export interface components {
             /** Messages */
             messages: components["schemas"]["Message"][];
         };
+        /** CurrencyCost */
+        CurrencyCost: {
+            /** Currency */
+            currency: string;
+            /** Amount */
+            amount: string;
+        };
         /**
          * DataQualityStatus
          * @enum {string}
          */
         DataQualityStatus: "COMPLETE" | "PARTIAL";
+        /** DuplicateCandidate */
+        DuplicateCandidate: {
+            /** Merchant */
+            merchant: string;
+            /** Subscription Ids */
+            subscription_ids: string[];
+        };
         /** Event */
         Event: {
             /**
@@ -683,7 +753,7 @@ export interface components {
          * OperationType
          * @enum {string}
          */
-        OperationType: "TRANSFER";
+        OperationType: "TRANSFER" | "SUBSCRIPTION_CANCEL";
         /**
          * ReauthenticationMethod
          * @enum {string}
@@ -921,6 +991,13 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** SelectSubscriptionAction */
+        SelectSubscriptionAction: {
+            /** Subscription Id */
+            subscription_id: string;
+            /** Expected Version */
+            expected_version: number;
+        };
         /** SetAmountAction */
         SetAmountAction: {
             /** Amount */
@@ -940,6 +1017,71 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** SubscriptionAnalysisSnapshot */
+        SubscriptionAnalysisSnapshot: {
+            /** Subscriptions */
+            subscriptions: components["schemas"]["SubscriptionItem"][];
+            /** Monthly Cost By Currency */
+            monthly_cost_by_currency: components["schemas"]["CurrencyCost"][];
+            /** Annual Projected Cost By Currency */
+            annual_projected_cost_by_currency: components["schemas"]["CurrencyCost"][];
+            /** Upcoming Renewals */
+            upcoming_renewals: components["schemas"]["SubscriptionItem"][];
+            /** Price Changes */
+            price_changes: components["schemas"]["SubscriptionItem"][];
+            /** Duplicate Candidates */
+            duplicate_candidates: components["schemas"]["DuplicateCandidate"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /** SubscriptionItem */
+        SubscriptionItem: {
+            /** Subscription Id */
+            subscription_id?: string | null;
+            /** Merchant */
+            merchant: string;
+            /** Plan Name */
+            plan_name?: string | null;
+            management_type: components["schemas"]["SubscriptionManagementType"];
+            status: components["schemas"]["SubscriptionStatus"];
+            billing_interval: components["schemas"]["BillingInterval"];
+            /** Last Charge Amount */
+            last_charge_amount: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Last Charge Date
+             * Format: date
+             */
+            last_charge_date: string;
+            /** Next Billing At */
+            next_billing_at?: string | null;
+            /** Next Billing Is Estimated */
+            next_billing_is_estimated: boolean;
+            /** Evidence Count */
+            evidence_count: number;
+            /** Evidence Transaction Ids */
+            evidence_transaction_ids: string[];
+            /** Price Change Amount */
+            price_change_amount?: string | null;
+            /** Price Change Percent */
+            price_change_percent?: string | null;
+            /** Cancellable */
+            cancellable: boolean;
+        };
+        /**
+         * SubscriptionManagementType
+         * @enum {string}
+         */
+        SubscriptionManagementType: "MANAGED" | "DETECTED_ONLY";
+        /**
+         * SubscriptionStatus
+         * @enum {string}
+         */
+        SubscriptionStatus: "ACTIVE" | "CANCELLED";
         /** Task */
         Task: {
             /**
@@ -1104,7 +1246,7 @@ export interface components {
          * WorkflowType
          * @enum {string}
          */
-        WorkflowType: "TRANSFER";
+        WorkflowType: "TRANSFER" | "SUBSCRIPTION_CANCEL";
     };
     responses: never;
     parameters: never;
@@ -1820,6 +1962,41 @@ export interface operations {
             };
         };
     };
+    select_subscription_api_v1_workflows__workflow_id__actions_select_subscription_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectSubscriptionAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_operation_api_v1_operations__operation_id__get: {
         parameters: {
             query?: never;
@@ -1873,6 +2050,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationResource"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subscriptions_api_v1_subscriptions_get: {
+        parameters: {
+            query?: {
+                upcoming_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionAnalysisSnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_subscription_api_v1_subscriptions__subscription_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionItem"];
                 };
             };
             /** @description Validation Error */
