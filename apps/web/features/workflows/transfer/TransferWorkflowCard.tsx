@@ -5,6 +5,7 @@ import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
 
 type Workflow = components["schemas"]["Workflow"];
+type TransferRiskDecision = components["schemas"]["TransferRiskDecision"];
 
 type PayeeOption = {
   payee_id: string;
@@ -89,6 +90,46 @@ function ReviewDetails({ state }: { state: TransferState }) {
   );
 }
 
+function RiskDetails({ risk }: { risk: TransferRiskDecision }) {
+  const red = risk.level === "RED";
+  const escalated = risk.reason_codes.includes("RISK_ESCALATED_AT_COMMIT");
+  return (
+    <div
+      className={`mt-3 rounded-md border p-3 ${
+        red ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className={`text-sm font-bold ${red ? "text-red-800" : "text-amber-800"}`}>
+          风险等级：{red ? "红色" : "黄色"}
+        </p>
+        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold">
+          {red ? "强验证" : "用户确认"}
+        </span>
+      </div>
+      {escalated && (
+        <p className="mt-2 rounded bg-red-100 p-2 text-xs font-semibold leading-5 text-red-800">
+          风险等级已升级：今日累计转账金额发生变化，本次操作现在需要强验证。
+        </p>
+      )}
+      <dl className="mt-3 grid grid-cols-[112px_1fr] gap-y-1 text-xs">
+        <dt className="text-slate-500">本笔转账</dt>
+        <dd>{money(risk.requested_amount, risk.currency)}</dd>
+        <dt className="text-slate-500">今日已成功</dt>
+        <dd>{money(risk.daily_successful_total, risk.currency)}</dd>
+        <dt className="text-slate-500">今日执行中</dt>
+        <dd>{money(risk.daily_in_flight_exposure, risk.currency)}</dd>
+        <dt className="text-slate-500">预计日累计</dt>
+        <dd className="font-semibold">{money(risk.projected_daily_total, risk.currency)}</dd>
+      </dl>
+      <div className="mt-3 space-y-1 text-xs text-slate-700">
+        <p>✓ 需要用户确认</p>
+        <p>{risk.required_reauthentication ? "✓ 需要强身份验证（模拟）" : "○ 无需强验证"}</p>
+      </div>
+    </div>
+  );
+}
+
 export function TransferWorkflowCard({
   workflow,
   onRefresh,
@@ -152,6 +193,8 @@ export function TransferWorkflowCard({
           {workflow.status}
         </span>
       </div>
+
+      {workflow.risk_decision && <RiskDetails risk={workflow.risk_decision} />}
 
       {workflow.status === "WAITING_FOR_INPUT" && required?.type === "RECIPIENT_QUERY" && (
         <div className="mt-3">
@@ -291,7 +334,7 @@ export function TransferWorkflowCard({
       {workflow.status === "REAUTH_REQUIRED" && state.review_payload && (
         <div className="mt-3 rounded-md border border-blue-200 bg-white p-3">
           <p className="text-sm font-semibold text-blue-900">转账信息已确认</p>
-          <p className="mt-1 text-xs text-slate-600">需要重新验证身份后才能继续</p>
+          <p className="mt-1 text-xs text-slate-600">需要完成强身份验证（模拟）后才能继续</p>
           <ReviewDetails state={state} />
           {workflow.approval_summary?.expires_at && (
             <p className="mt-2 text-[11px] text-slate-500">
@@ -350,13 +393,17 @@ export function TransferWorkflowCard({
       {workflow.status === "READY_FOR_COMMIT" && state.review_payload && (
         <div className="mt-3 rounded-md border border-indigo-200 bg-white p-3">
           <p className="text-sm font-semibold text-indigo-900">转账信息已确认</p>
-          <p className="mt-1 text-sm font-semibold text-emerald-700">身份验证已完成</p>
+          <p className="mt-1 text-sm font-semibold text-emerald-700">
+            {workflow.risk_decision?.required_reauthentication
+              ? "强身份验证已完成"
+              : "用户确认已完成，无需强验证"}
+          </p>
           <ReviewDetails state={state} />
           <p className="mt-3 rounded bg-amber-50 p-2 text-xs font-semibold text-amber-800">
             尚未提交转账
           </p>
           <p className="mt-2 text-[11px] leading-5 text-slate-500">
-            READY_FOR_COMMIT 只表示当前 payload 已批准并完成身份验证。提交前后请勿重复操作。
+            READY_FOR_COMMIT 表示当前 payload 已批准并满足当前风险所需的安全控制。提交前会再次评估风险。
           </p>
           <p className="mt-3 text-xs font-semibold text-red-700">
             这一步将真正提交资金转账

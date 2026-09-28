@@ -424,6 +424,12 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /**
+         * BusinessRiskLevel
+         * @description Per-request business risk, separate from static Tool permissions.
+         * @enum {string}
+         */
+        BusinessRiskLevel: "GREEN" | "YELLOW" | "RED";
         /** CancelWorkflowAction */
         CancelWorkflowAction: {
             /** Expected Version */
@@ -892,6 +898,11 @@ export interface components {
          */
         RequestedOutput: "ANSWER" | "MONTHLY_REPORT" | "WORKFLOW";
         /**
+         * RiskReasonCode
+         * @enum {string}
+         */
+        RiskReasonCode: "READ_ONLY_AUTOMATIC" | "DAILY_TRANSFER_WITHIN_LIMIT" | "DAILY_TRANSFER_LIMIT_EXCEEDED" | "RISK_ESCALATED_AT_COMMIT" | "RISK_NOT_DOWNGRADED";
+        /**
          * RuntimeBackend
          * @enum {string}
          */
@@ -981,6 +992,38 @@ export interface components {
          * @enum {string}
          */
         TaskStatus: "PENDING" | "RUNNING" | "INTERRUPTED" | "WAITING_USER" | "WAITING_EXTERNAL" | "COMPLETED" | "FAILED" | "CANCELLED" | "SKIPPED";
+        /** TransferRiskDecision */
+        TransferRiskDecision: {
+            level: components["schemas"]["BusinessRiskLevel"];
+            /** Required Approval */
+            required_approval: boolean;
+            /** Required Reauthentication */
+            required_reauthentication: boolean;
+            /** Reason Codes */
+            reason_codes: components["schemas"]["RiskReasonCode"][];
+            /**
+             * Business Date
+             * Format: date
+             */
+            business_date: string;
+            /** Currency */
+            currency: string;
+            /** Daily Successful Total */
+            daily_successful_total: string;
+            /** Daily In Flight Exposure */
+            daily_in_flight_exposure: string;
+            /** Requested Amount */
+            requested_amount: string;
+            /** Projected Daily Total */
+            projected_daily_total: string;
+            /** Threshold */
+            threshold: string;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1036,6 +1079,8 @@ export interface components {
             state: {
                 [key: string]: unknown;
             };
+            risk_level?: components["schemas"]["BusinessRiskLevel"] | null;
+            risk_decision?: components["schemas"]["TransferRiskDecision"] | null;
             approval_summary?: components["schemas"]["ApprovalSummary"] | null;
             reauth_summary?: components["schemas"]["ReauthenticationSummary"] | null;
             operation_summary?: components["schemas"]["OperationSummary"] | null;

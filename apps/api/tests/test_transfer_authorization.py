@@ -253,7 +253,13 @@ def transfer_dependencies():  # type: ignore[no-untyped-def]
     return bank, registry, engine
 
 
-async def create_ready_workflow(app, bus, engine, user_id="authorization-user"):  # type: ignore[no-untyped-def]
+async def create_ready_workflow(
+    app,
+    bus,
+    engine,
+    user_id="authorization-user",
+    amount=Decimal("2000.00"),
+):  # type: ignore[no-untyped-def]
     async with app.state.test_session_factory() as session:
         conversation = await ConversationService(session, bus).create(
             user_id=user_id, title="Authorization test"
@@ -262,14 +268,14 @@ async def create_ready_workflow(app, bus, engine, user_id="authorization-user"):
         accepted = await ConversationService(session, bus).accept_message(
             conversation_id=conversation.conversation_id,
             user_id=user_id,
-            content="给张三转2000",
+            content=f"给张三转{amount}",
         )
     async with app.state.test_session_factory() as session:
         workflow = await WorkflowService(session, bus, engine).create_transfer(
             user_id=user_id,
             conversation_id=conversation.conversation_id,
             source_task_id=accepted.task_id,
-            intent=TransferIntent(recipient_query="张三", amount=Decimal("2000.00")),
+            intent=TransferIntent(recipient_query="张三", amount=amount),
         )
     async with app.state.test_session_factory() as session:
         workflow = await WorkflowService(session, bus, engine).select_payee(

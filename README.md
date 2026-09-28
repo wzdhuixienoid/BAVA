@@ -1,8 +1,8 @@
 # AI Banking Agent
 
-当前版本：`v0.6.1`
+当前版本：`v0.7.1`
 
-面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及通过持久化 Transfer Workflow 完成草稿、校验、审批、重新认证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
+面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，并通过持久化 Transfer Workflow 完成风险评估、用户确认、按需强验证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
 
@@ -13,9 +13,11 @@
 | 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
-| 转账全链路 | `workflow:transfer` | Draft → Validation → Approval → Reauthentication → Operation → Verification |
+| 动态风险分级 | deterministic Risk Policy | GREEN 查询自动执行；YELLOW 转账确认；RED 转账确认 + 强验证 |
+| 转账全链路 | `workflow:transfer` | Draft → Validation → Risk → Approval → conditional Reauthentication → Operation |
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
 | 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
+| 并发转账认证安全 | Application Risk Gate | user-scoped advisory lock → fresh daily exposure → controls → Operation |
 | 持久事件发布 | Transactional Outbox | Event + Outbox atomic commit → leased publisher → EventBus/SSE |
 | 持久 Task 执行 | PostgreSQL-backed Task worker | due scan → `SKIP LOCKED` claim → lease/heartbeat/fencing → retry/terminal |
 | 生产身份认证与 Principal | provider-neutral OIDC/OAuth 2.0 | verified JWT → identity mapping → Principal → ownership/tool scope |
@@ -28,7 +30,18 @@ Cross-Process Financial Concurrency: COMPLETE
 Transactional Outbox: COMPLETE
 Durable Task Execution: COMPLETE
 生产身份认证与 Principal：COMPLETE
+动态风险分级：COMPLETE
 ```
+
+### GREEN / YELLOW / RED
+
+| 业务风险 | 确定性规则 | 用户控制 |
+|---|---|---|
+| GREEN（绿色） | 纯查询 / read-only financial tools | 自动执行，无 Approval，无 Reauthentication |
+| YELLOW（黄色） | 当日已成功 + 执行中 + 本笔 `<= 1000.00 CNY` | Approval |
+| RED（红色） | 当日已成功 + 执行中 + 本笔 `> 1000.00 CNY` | Approval + Reauthentication |
+
+Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINESS_TIMEZONE` 的自然日计算，默认时区为 `Asia/Shanghai`。执行中 exposure 包含 `CREATED / SUBMITTED / UNKNOWN` Operation，排除 `FAILED`；Provider 已成功的同一笔 Operation 不会重复计算。
 
 用户可以直接输入：
 
@@ -58,6 +71,8 @@ User Message
     → LangGraphAgentRuntime
     → ToolRegistry → PolicyService → ToolExecutor
         └─ transfer.commit (R4) / transfer.get_status (R1)
+    → TransferRiskPolicy → persisted RiskDecision
+        → user advisory lock → commit-time risk re-evaluation
     → persistent Operation → MockTransferProvider idempotency ledger
         → PostgreSQL account advisory lock → authoritative balance decision
     → PostgreSQL claim/lease → automatic Operation recovery
@@ -125,7 +140,7 @@ User Message
 
 ## 权限边界
 
-默认仍是只读和最小权限；唯一例外是 04.3 新增的受控资金提交能力。
+默认仍是只读和最小权限。静态 Tool 权限等级回答“谁可以调用该能力”；GREEN / YELLOW / RED 业务风险等级回答“当前这一笔请求需要哪些用户控制”。两者独立，业务风险不会扩大 Agent 的 Tool authority。
 
 - 所有业务 API 都通过统一 `get_current_principal()` 认证；缺失/无效 credential 返回 401，未 provision 的合法外部身份返回 `403 IDENTITY_NOT_PROVISIONED`。
 - detail、action 和 SSE 在查询层按 `Principal.user_id` 限定，跨用户 UUID 访问统一表现为 404；list 查询直接在 repository 层按用户过滤。
@@ -182,6 +197,12 @@ NEXT_PUBLIC_AUTH_MODE=oidc
 NEXT_PUBLIC_OIDC_AUTHORITY=https://idp.example.com
 NEXT_PUBLIC_OIDC_CLIENT_ID=banking-web
 NEXT_PUBLIC_OIDC_SCOPE="openid profile"
+```
+
+转账日累计使用明确的业务时区：
+
+```env
+BANKING_BUSINESS_TIMEZONE=Asia/Shanghai
 ```
 
 前端使用 Authorization Code + PKCE；access token 仅由成熟 OIDC client 保存在内存中并通过 Bearer header 发送，SSE 使用 authenticated fetch streaming，不把 token 放入 URL。外部身份必须显式 provision，系统不会按 email/display name 猜测或自动继承 demo 银行数据：
@@ -323,7 +344,9 @@ SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢
 
 SSE connection 本身同样要求认证并先验证 Conversation ownership。OIDC 模式下浏览器通过 streaming `fetch` 在 `Authorization` header 携带 access token，不使用 query-string token。
 
-`READY_FOR_COMMIT` 只表示当前 payload 已审批并重新认证。Commit 仍会重新验证 Approval、Reauthentication、payload hash、Policy、payee、source account、balance 和 currency。`SUBMITTED` 不是成功；`UNKNOWN` 表示 Provider 可能已接收或执行，只能查询原 Operation，不得新建或换 key 重提。只有 `Operation SUCCEEDED` 才能展示“转账成功”。
+`READY_FOR_COMMIT` 表示当前 payload 已审批并满足当前 RiskDecision 要求的控制；YELLOW 不需要 Reauthentication，RED 必须有效 Reauthentication。Commit 会在 Operation 创建前重新读取日 exposure 并评估风险。如 YELLOW 升级为 RED，保留 payload 未变的 Approval，不创建 Operation，转入 `REAUTH_REQUIRED`。风险在 payload 不变时不自动降级。
+
+Commit 的 user risk advisory lock 只覆盖“重读 exposure → 风险评估 → 授权校验 → Operation 创建 → 事务提交”，不覆盖 Provider I/O。它保护用户级日认证门槛；Mock Provider 的 account lock 保护账户余额，两者彼此独立。`SUBMITTED` 不是成功；`UNKNOWN` 只能查询原 Operation，不得新建或换 key 重提。只有 `Operation SUCCEEDED` 才能展示“转账成功”。
 
 `CREATED / SUBMITTED / UNKNOWN` 会按持久化 `next_reconcile_at` 自动恢复。多个 API process 可各自运行 worker；PostgreSQL `FOR UPDATE SKIP LOCKED` 与有期 lease 保证同一 Operation 在有效 lease 内只有一个 claim。Provider/network I/O 不持有数据库行锁。
 
@@ -343,29 +366,17 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.5.1](docs/implementation-report-v0.5.1.md)
-- [Repository Tree v0.5.1](docs/repository-tree-v0.5.1.md)
-- [Test Results v0.5.1](docs/test-results-v0.5.1.md)
-- [Implementation Report v0.5.2](docs/implementation-report-v0.5.2.md)
-- [Repository Tree v0.5.2](docs/repository-tree-v0.5.2.md)
-- [Test Results v0.5.2](docs/test-results-v0.5.2.md)
-- [Implementation Report v0.5.3](docs/implementation-report-v0.5.3.md)
-- [Repository Tree v0.5.3](docs/repository-tree-v0.5.3.md)
-- [Test Results v0.5.3](docs/test-results-v0.5.3.md)
-- [Implementation Report v0.5.4](docs/implementation-report-v0.5.4.md)
-- [Repository Tree v0.5.4](docs/repository-tree-v0.5.4.md)
-- [Test Results v0.5.4](docs/test-results-v0.5.4.md)
-- [Implementation Report v0.6.1](docs/implementation-report-v0.6.1.md)
-- [Repository Tree v0.6.1](docs/repository-tree-v0.6.1.md)
-- [Test Results v0.6.1](docs/test-results-v0.6.1.md)
-
-旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
+- [Implementation Report v0.7.1](docs/implementation-report-v0.7.1.md)
+- [Repository Tree v0.7.1](docs/repository-tree-v0.7.1.md)
+- [Test Results v0.7.1](docs/test-results-v0.7.1.md)
 
 ## 当前限制
 
-当前资金写入仅限持久化 Mock Transfer Provider；OIDC 协议实现 production-capable，但本次未连接真实外部 IdP 做登录 smoke。当前不支持真实 step-up Reauthentication Provider、真实转账 Provider、KYC、MFA/Passkey enrollment、RBAC/ACL 平台、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP、Memory 或 Agent-to-Agent 调用。
+当前资金写入仅限持久化 `MockTransferProvider`，RED 强验证使用 `MockReauthenticationProvider`。OIDC/JWT 边界已实现，但本次交付没有连接真实外部 IdP、银行 Provider、短信、人脸或 U 盾做产品 smoke。
 
-登录 Authentication 只回答“是谁”，不会替代对 canonical payload 的 Approval，也不会替代高风险操作前的 Reauthentication。`MockReauthenticationProvider` 继续保留；真实 step-up authentication 属于 v0.6.2。
+当前 Risk Policy 只覆盖产品已存在的纯查询与 CNY 转账日累计门槛。未实现异常交易检测、Fraud Engine、连续失败熔断、通用 Rule Engine/DSL 或机器学习风控。
+
+登录 Authentication 只回答“是谁”，不替代 canonical payload Approval，也不替代 RED 在 commit 前要求的 Reauthentication。
 
 仍然没有 balance reservation/hold/capture 系统。TaskExecutionWorker、OperationRecoveryWorker 和 OutboxPublisher 是三个明确、独立的专用 loop，不是 Celery、Redis、Kafka、通用任务队列或 Generic Worker/Scheduler Framework。Task worker 仍由 API process 托管，未提供独立 worker deployment、优先级队列或 per-conversation ordering。
 

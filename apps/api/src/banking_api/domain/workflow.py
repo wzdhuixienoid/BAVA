@@ -9,6 +9,7 @@ from banking_api.domain.approval import ApprovalSummary
 from banking_api.domain.enums import WorkflowStatus
 from banking_api.domain.operation import OperationSummary
 from banking_api.domain.reauthentication import ReauthenticationSummary
+from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
 
 
 class WorkflowType(StrEnum):
@@ -28,6 +29,8 @@ class Workflow(BaseModel):
     status: WorkflowStatus
     version: int
     state: dict[str, Any]
+    risk_level: BusinessRiskLevel | None = None
+    risk_decision: TransferRiskDecision | None = None
     approval_summary: ApprovalSummary | None = None
     reauth_summary: ReauthenticationSummary | None = None
     operation_summary: OperationSummary | None = None

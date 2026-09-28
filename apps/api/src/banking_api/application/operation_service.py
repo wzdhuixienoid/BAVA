@@ -1,10 +1,14 @@
+import hashlib
 import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
+from banking_api.application.transfer_risk_facts import TransferRiskFactsService
+from banking_api.config.settings import get_settings
 from banking_api.domain.enums import (
     ApprovalStatus,
     OperationStatus,
@@ -13,6 +17,7 @@ from banking_api.domain.enums import (
 )
 from banking_api.domain.operation import OperationResource
 from banking_api.domain.principal import ExecutionPrincipal
+from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
 from banking_api.persistence.models import OperationModel, WorkflowModel
 from banking_api.persistence.repositories.approvals import ApprovalRepository
 from banking_api.persistence.repositories.operations import OperationRepository
@@ -31,6 +36,7 @@ from banking_api.workflows.transfer.engine import (
     TransferWorkflowEngineError,
 )
 from banking_api.workflows.transfer.models import TransferWorkflowState
+from banking_api.workflows.transfer.risk import TransferRiskPolicy
 
 
 class OperationNotFoundError(Exception):
@@ -60,6 +66,13 @@ def _as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
+def transfer_risk_lock_key(user_id: str) -> int:
+    """Map one Principal to a stable signed PostgreSQL advisory-lock key."""
+
+    digest = hashlib.sha256(f"transfer-risk:user:{user_id}".encode()).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=True)
+
+
 class OperationService:
     """TRANSFER-only operation preparation, submission, and reconciliation."""
 
@@ -82,6 +95,11 @@ class OperationService:
         self.reauthentications = ReauthenticationRepository(session)
         self.operations = OperationRepository(session)
         self.publisher = EventPublisher(session)
+        settings = get_settings()
+        self.risk_facts = TransferRiskFactsService(
+            session, business_timezone=settings.banking_business_timezone
+        )
+        self.risk_policy = TransferRiskPolicy()
 
     async def get(self, operation_id: UUID, *, user_id: str) -> OperationResource:
         model = await self.operations.get_for_user(operation_id, user_id)
@@ -104,6 +122,7 @@ class OperationService:
     async def prepare_transfer(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
+        await self._serialize_user_risk(user_id)
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
         if workflow is None:
             raise OperationNotFoundError
@@ -129,19 +148,6 @@ class OperationService:
         if _as_utc(approval.expires_at) <= now:
             await self._expire_approval(workflow, state, approval)
             raise OperationActionError("APPROVAL_EXPIRED")
-        if authorization.reauth_id is None:
-            raise OperationActionError("REAUTH_NOT_FOUND")
-        reauth = await self.reauthentications.get_for_workflow_user_for_update(
-            authorization.reauth_id, workflow_id, user_id
-        )
-        if reauth is None or reauth.approval_id != approval.approval_id:
-            raise OperationActionError("REAUTH_APPROVAL_MISMATCH")
-        if reauth.status is not ReauthenticationStatus.VERIFIED:
-            raise OperationActionError("REAUTH_NOT_VERIFIED")
-        if _as_utc(reauth.expires_at) <= now:
-            await self._expire_reauthentication(workflow, state, reauth)
-            raise OperationActionError("REAUTH_EXPIRED")
-
         initial_hash = transfer_payload_hash(state.review_payload)
         if (
             initial_hash != approval.payload_hash
@@ -166,6 +172,45 @@ class OperationService:
         if current_hash != approval.payload_hash:
             raise OperationActionError("APPROVAL_PAYLOAD_MISMATCH")
 
+        previous_level = state.risk_decision.level if state.risk_decision is not None else None
+        facts = await self.risk_facts.for_user(
+            user_id=user_id,
+            currency=state.review_payload.currency,
+            evaluated_at=now,
+        )
+        fresh_risk = self.risk_policy.evaluate(
+            requested_amount=state.review_payload.amount,
+            currency=state.review_payload.currency,
+            business_date=facts.business_date,
+            successful_transfer_total_today=facts.successful_total,
+            in_flight_transfer_exposure_today=facts.in_flight_exposure,
+            evaluated_at=now,
+        )
+        risk = self.risk_policy.retain_stricter(
+            state.risk_decision, fresh_risk, at_commit=True
+        )
+        state.risk_decision = risk
+        escalated = (
+            previous_level is BusinessRiskLevel.YELLOW
+            and risk.level is BusinessRiskLevel.RED
+        )
+        if risk.required_reauthentication:
+            if authorization.reauth_id is None:
+                await self._require_reauthentication_for_risk(
+                    workflow, state, risk, escalated=escalated
+                )
+                raise OperationActionError("TRANSFER_RISK_REAUTH_REQUIRED")
+            reauth = await self.reauthentications.get_for_workflow_user_for_update(
+                authorization.reauth_id, workflow_id, user_id
+            )
+            if reauth is None or reauth.approval_id != approval.approval_id:
+                raise OperationActionError("REAUTH_APPROVAL_MISMATCH")
+            if reauth.status is not ReauthenticationStatus.VERIFIED:
+                raise OperationActionError("REAUTH_NOT_VERIFIED")
+            if _as_utc(reauth.expires_at) <= now:
+                await self._expire_reauthentication(workflow, state, reauth)
+                raise OperationActionError("REAUTH_EXPIRED")
+
         operation = await self.operations.create_transfer(
             user_id=user_id,
             workflow_id=workflow_id,
@@ -189,6 +234,7 @@ class OperationService:
             await self.session.rollback()
             raise OperationVersionConflictError
         await self._operation_event(operation, "operation.created")
+        await self._risk_event(updated, risk, escalated=escalated)
         await self.publisher.persist(
             event_type="workflow.committing",
             conversation_id=workflow.conversation_id,
@@ -197,6 +243,58 @@ class OperationService:
         )
         await self.session.commit()
         return self._resource(operation)
+
+    async def _serialize_user_risk(self, user_id: str) -> None:
+        if self.session.get_bind().dialect.name != "postgresql":
+            return
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_key)"),
+            {"lock_key": transfer_risk_lock_key(user_id)},
+        )
+
+    async def _require_reauthentication_for_risk(
+        self,
+        workflow: WorkflowModel,
+        state: TransferWorkflowState,
+        decision: TransferRiskDecision,
+        *,
+        escalated: bool,
+    ) -> None:
+        updated = await self.workflows.update_if_version(
+            workflow_id=workflow.workflow_id,
+            user_id=workflow.user_id,
+            expected_version=workflow.version,
+            status=WorkflowStatus.REAUTH_REQUIRED,
+            state=state.model_dump(mode="json"),
+        )
+        if updated is None:
+            await self.session.rollback()
+            raise OperationVersionConflictError
+        await self._risk_event(updated, decision, escalated=escalated)
+        await self.publisher.persist(
+            event_type="workflow.reauth_required",
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+            data=self._workflow_event_data(updated),
+        )
+        await self.session.commit()
+
+    async def _risk_event(
+        self,
+        workflow: WorkflowModel,
+        decision: TransferRiskDecision,
+        *,
+        escalated: bool,
+    ):  # type: ignore[no-untyped-def]
+        data = decision.model_dump(mode="json")
+        data["workflow_id"] = str(workflow.workflow_id)
+        data["version"] = workflow.version
+        return await self.publisher.persist(
+            event_type=("workflow.risk_escalated" if escalated else "workflow.risk_evaluated"),
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+            data=data,
+        )
 
     async def reconcile(
         self, operation_id: UUID, *, user_id: str, expected_version: int

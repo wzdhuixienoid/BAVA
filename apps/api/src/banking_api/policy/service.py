@@ -1,12 +1,14 @@
 from pydantic import BaseModel
 
 from banking_api.domain.enums import PolicyDecision, RiskLevel
+from banking_api.domain.risk import BusinessRiskLevel
 from banking_api.tools.models import ToolSpec
 
 
 class PolicyResult(BaseModel):
     decision: PolicyDecision
     reason: str
+    business_risk_level: BusinessRiskLevel | None = None
 
 
 class PolicyService:
@@ -48,6 +50,7 @@ class PolicyService:
                     if commit_allowed
                     else "read-only capability allowed"
                 ),
+                business_risk_level=(BusinessRiskLevel.GREEN if read_allowed else None),
             )
         return PolicyResult(
             decision=PolicyDecision.DENY,

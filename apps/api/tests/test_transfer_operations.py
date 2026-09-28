@@ -57,6 +57,13 @@ def operation_runtime(app, *, fault_mode=TransferProviderFaultMode.SUCCESS, poli
                 "unknown-worker-user",
                 "unavailable-user",
                 "submitted-worker-user",
+                "risk-yellow-user",
+                "risk-boundary-yellow-user",
+                "risk-boundary-red-user",
+                "risk-escalation-user",
+                "risk-mutation-user",
+                "risk-exposure-user",
+                "risk-injection-user",
             }
         )
     )

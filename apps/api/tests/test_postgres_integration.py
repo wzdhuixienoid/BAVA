@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from datetime import UTC, datetime, timedelta
@@ -13,6 +14,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.application.operation_service import (
+    OperationActionError,
     OperationLeaseLostError,
     OperationNotFoundError,
     OperationService,
@@ -588,6 +590,8 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
         "workflow.waiting_for_input",
         "workflow.waiting_for_input",
         "workflow.ready_for_review",
+        "workflow.risk_evaluated",
+        "workflow.risk_evaluated",
         "workflow.reauth_required",
         "workflow.updated",
         "workflow.ready_for_commit",
@@ -1713,3 +1717,99 @@ async def test_postgres_task_worker_crash_lease_expiry_and_recovery(
     assert task.execution_attempts == 2
     assert task.lease_owner is None and task.lease_expires_at is None
     assert event_count == outbox_count == 1
+
+
+async def test_postgres_user_risk_lock_blocks_two_concurrent_yellow_commits(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    user_id = "postgres-risk-concurrency-user"
+    bank = MockBankService(fixture_user_ids=frozenset({user_id}))
+    provider = MockTransferProvider(factory, bank)
+    registry = ToolRegistry()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank, provider.effective_balance))
+    registry.register(build_search_payees_tool(bank))
+    registry.register(build_commit_transfer_tool(factory, provider))
+    registry.register(build_get_transfer_status_tool(factory, provider))
+    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+
+    async def create_yellow_workflow():  # type: ignore[no-untyped-def]
+        async with factory() as session:
+            conversation = await ConversationService(session, bus).create(
+                user_id=user_id, title="Concurrent risk gate"
+            )
+        async with factory() as session:
+            accepted = await ConversationService(session, bus).accept_message(
+                conversation_id=conversation.conversation_id,
+                user_id=user_id,
+                content="给张三转600",
+            )
+        async with factory() as session:
+            workflow = await WorkflowService(session, bus, engine).create_transfer(
+                user_id=user_id,
+                conversation_id=conversation.conversation_id,
+                source_task_id=accepted.task_id,
+                intent=TransferIntent(recipient_query="张三", amount="600.00"),
+            )
+        async with factory() as session:
+            workflow = await WorkflowService(session, bus, engine).select_payee(
+                workflow.workflow_id,
+                user_id=user_id,
+                payee_id="payee_001",
+                expected_version=workflow.version,
+            )
+        async with factory() as session:
+            workflow = await WorkflowService(session, bus, engine).select_source_account(
+                workflow.workflow_id,
+                user_id=user_id,
+                account_id="acc_salary",
+                expected_version=workflow.version,
+            )
+        async with factory() as session:
+            return await WorkflowService(session, bus, engine).approve(
+                workflow.workflow_id,
+                user_id=user_id,
+                expected_version=workflow.version,
+            )
+
+    workflow_a = await create_yellow_workflow()
+    workflow_b = await create_yellow_workflow()
+    assert workflow_a.status is WorkflowStatus.READY_FOR_COMMIT
+    assert workflow_b.status is WorkflowStatus.READY_FOR_COMMIT
+
+    async def prepare(workflow):  # type: ignore[no-untyped-def]
+        async with factory() as session:
+            return await OperationService(session, bus, engine).prepare_transfer(
+                workflow.workflow_id,
+                user_id=user_id,
+                expected_version=workflow.version,
+            )
+
+    results = await asyncio.gather(
+        prepare(workflow_a), prepare(workflow_b), return_exceptions=True
+    )
+    assert sum(not isinstance(result, Exception) for result in results) == 1
+    rejected = next(result for result in results if isinstance(result, Exception))
+    assert isinstance(rejected, OperationActionError)
+    assert str(rejected) == "TRANSFER_RISK_REAUTH_REQUIRED"
+
+    async with factory() as session:
+        operation_count = await session.scalar(
+            select(func.count())
+            .select_from(OperationModel)
+            .where(OperationModel.user_id == user_id)
+        )
+        workflows = list(
+            (
+                await session.execute(
+                    select(WorkflowModel).where(WorkflowModel.user_id == user_id)
+                )
+            ).scalars()
+        )
+    assert operation_count == 1
+    assert {workflow.status for workflow in workflows} == {
+        WorkflowStatus.COMMITTING,
+        WorkflowStatus.REAUTH_REQUIRED,
+    }

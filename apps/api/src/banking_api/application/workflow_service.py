@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from banking_api.application.transfer_risk_facts import TransferRiskFactsService
 from banking_api.config.settings import get_settings
 from banking_api.domain.approval import ApprovalSummary
 from banking_api.domain.enums import (
@@ -17,6 +18,7 @@ from banking_api.domain.enums import (
 from banking_api.domain.operation import OperationSummary
 from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.domain.reauthentication import ReauthenticationSummary
+from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
 from banking_api.domain.workflow import Workflow, WorkflowType
 from banking_api.persistence.models import ApprovalModel, ReauthenticationModel, WorkflowModel
 from banking_api.persistence.repositories.approvals import ApprovalRepository
@@ -44,6 +46,7 @@ from banking_api.workflows.transfer.models import (
     TransferIntent,
     TransferWorkflowState,
 )
+from banking_api.workflows.transfer.risk import TransferRiskPolicy
 
 
 class WorkflowNotFoundError(Exception):
@@ -115,6 +118,10 @@ class WorkflowService:
             if reauth_max_attempts is None
             else reauth_max_attempts
         )
+        self.risk_facts = TransferRiskFactsService(
+            session, business_timezone=settings.banking_business_timezone
+        )
+        self.risk_policy = TransferRiskPolicy()
 
     async def get(self, workflow_id: UUID, *, user_id: str) -> Workflow:
         model = await self.workflows.get_for_user(workflow_id, user_id)
@@ -158,6 +165,8 @@ class WorkflowService:
         status, state = await self.engine.advance(
             initial, principal=ExecutionPrincipal.for_workflow(user_id)
         )
+        if status is WorkflowStatus.READY_FOR_REVIEW:
+            await self._evaluate_transfer_risk(state, user_id=user_id)
         updated = await self.workflows.update_if_version(
             workflow_id=model.workflow_id,
             user_id=user_id,
@@ -173,6 +182,8 @@ class WorkflowService:
             task_id=source_task_id,
             data=self._event_data(updated),
         )
+        if state.risk_decision is not None:
+            await self._persist_risk_event(updated, state.risk_decision, escalated=False)
         await self.session.commit()
         return await self._to_workflow(updated)
 
@@ -272,6 +283,8 @@ class WorkflowService:
             raise WorkflowActionError("TRANSFER_REVALIDATION_FAILED")
 
         now = _as_utc(self.clock())
+        previous_level = state.risk_decision.level if state.risk_decision is not None else None
+        decision = await self._evaluate_transfer_risk(state, user_id=user_id)
         await self._invalidate_authorization(model, now)
         canonical_payload = canonicalize_transfer_payload(state.review_payload)
         payload_hash = transfer_payload_hash(state.review_payload)
@@ -296,11 +309,16 @@ class WorkflowService:
             approval_payload_hash=payload_hash,
             approval_expires_at=approval.expires_at,
         )
+        next_status = (
+            WorkflowStatus.REAUTH_REQUIRED
+            if decision.required_reauthentication
+            else WorkflowStatus.READY_FOR_COMMIT
+        )
         updated = await self.workflows.update_if_version(
             workflow_id=workflow_id,
             user_id=user_id,
             expected_version=expected_version,
-            status=WorkflowStatus.REAUTH_REQUIRED,
+            status=next_status,
             state=state.model_dump(mode="json"),
         )
         if updated is None:
@@ -313,8 +331,16 @@ class WorkflowService:
             status=approval.status.value,
             expires_at=approval.expires_at,
         )
+        await self._persist_risk_event(
+            updated,
+            decision,
+            escalated=(
+                previous_level is BusinessRiskLevel.YELLOW
+                and decision.level is BusinessRiskLevel.RED
+            ),
+        )
         await self.publisher.persist(
-            event_type="workflow.reauth_required",
+            event_type=self._workflow_event_type(next_status),
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=self._event_data(updated),
@@ -487,9 +513,12 @@ class WorkflowService:
     ) -> Workflow:
         await self._invalidate_authorization(model, _as_utc(self.clock()))
         state.authorization = None
+        state.risk_decision = None
         status, advanced = await self.engine.advance(
             state, principal=ExecutionPrincipal.for_workflow(model.user_id)
         )
+        if status is WorkflowStatus.READY_FOR_REVIEW:
+            await self._evaluate_transfer_risk(advanced, user_id=model.user_id)
         updated = await self.workflows.update_if_version(
             workflow_id=model.workflow_id,
             user_id=model.user_id,
@@ -506,6 +535,8 @@ class WorkflowService:
             task_id=model.source_task_id,
             data=self._event_data(updated),
         )
+        if advanced.risk_decision is not None:
+            await self._persist_risk_event(updated, advanced.risk_decision, escalated=False)
         await self.session.commit()
         return await self._to_workflow(updated)
 
@@ -687,6 +718,7 @@ class WorkflowService:
         await self.session.commit()
 
     async def _to_workflow(self, model: WorkflowModel) -> Workflow:
+        state = TransferWorkflowState.model_validate(model.state_json)
         approval = await self.approvals.latest_for_workflow(model.workflow_id, model.user_id)
         reauth = await self.reauthentications.latest_for_workflow(model.workflow_id, model.user_id)
         operation = await self.operations.get_for_workflow(model.workflow_id, model.user_id)
@@ -699,6 +731,8 @@ class WorkflowService:
             status=model.status,
             version=model.version,
             state=model.state_json,
+            risk_level=(state.risk_decision.level if state.risk_decision is not None else None),
+            risk_decision=state.risk_decision,
             approval_summary=(
                 ApprovalSummary(
                     approval_id=approval.approval_id,
@@ -732,6 +766,49 @@ class WorkflowService:
             ),
             created_at=model.created_at,
             updated_at=model.updated_at,
+        )
+
+    async def _evaluate_transfer_risk(
+        self,
+        state: TransferWorkflowState,
+        *,
+        user_id: str,
+    ) -> TransferRiskDecision:
+        if state.review_payload is None:
+            raise WorkflowActionError("TRANSFER_RISK_FACTS_MISSING")
+        evaluated_at = _as_utc(self.clock())
+        facts = await self.risk_facts.for_user(
+            user_id=user_id,
+            currency=state.review_payload.currency,
+            evaluated_at=evaluated_at,
+        )
+        fresh = self.risk_policy.evaluate(
+            requested_amount=state.review_payload.amount,
+            currency=state.review_payload.currency,
+            business_date=facts.business_date,
+            successful_transfer_total_today=facts.successful_total,
+            in_flight_transfer_exposure_today=facts.in_flight_exposure,
+            evaluated_at=evaluated_at,
+        )
+        decision = self.risk_policy.retain_stricter(state.risk_decision, fresh)
+        state.risk_decision = decision
+        return decision
+
+    async def _persist_risk_event(
+        self,
+        model: WorkflowModel,
+        decision: TransferRiskDecision,
+        *,
+        escalated: bool,
+    ):  # type: ignore[no-untyped-def]
+        data = decision.model_dump(mode="json")
+        data["workflow_id"] = str(model.workflow_id)
+        data["version"] = model.version
+        return await self.publisher.persist(
+            event_type=("workflow.risk_escalated" if escalated else "workflow.risk_evaluated"),
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
+            data=data,
         )
 
     async def _persist_authorization_event(

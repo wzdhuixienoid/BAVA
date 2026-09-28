@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
+from banking_api.domain.risk import TransferRiskDecision
+
 
 class TransferIntent(BaseModel):
     """Semantic values only. Internal resource identifiers are deliberately absent."""
@@ -105,6 +107,7 @@ class TransferWorkflowState(BaseModel):
     required_input: TransferRequiredInput | None = None
     validation: TransferValidationResult | None = None
     review_payload: TransferReviewPayload | None = None
+    risk_decision: TransferRiskDecision | None = None
     authorization: TransferAuthorizationSnapshot | None = None
     payee_options: list[dict[str, Any]] = Field(default_factory=list, max_length=10)
     source_account_options: list[dict[str, Any]] = Field(default_factory=list, max_length=10)

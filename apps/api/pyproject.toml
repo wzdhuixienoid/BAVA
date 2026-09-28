@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.6.1"
-description = "支持 OIDC 认证、可信 Principal 与资源所有权隔离的 AI 银行助手"
+version = "0.7.1"
+description = "支持动态风险分级、安全转账与可信 Principal 隔离的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",
