@@ -98,10 +98,10 @@ async def test_fake_e2e_authorization_mutation_and_zero_money_movement(app, clie
         ],
     )
     balances_before = {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id="dev-user-001")["balance"]
+        for item in bank.list_accounts(user_id="dev-user-001")
     }
-    transactions_before = bank.list_transactions()
+    transactions_before = bank.list_transactions(user_id="dev-user-001")
     _, accepted = await create_transfer_task(app, runner)
     async with app.state.test_session_factory() as session:
         task = await session.get(TaskModel, accepted.task_id)
@@ -197,10 +197,10 @@ async def test_fake_e2e_authorization_mutation_and_zero_money_movement(app, clie
     serialized = json.dumps(mutated, ensure_ascii=False)
     assert "246810" not in serialized
     assert balances_before == {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id="dev-user-001")["balance"]
+        for item in bank.list_accounts(user_id="dev-user-001")
     }
-    assert bank.list_transactions() == transactions_before
+    assert bank.list_transactions(user_id="dev-user-001") == transactions_before
     assert len(provider.requests) == 2
     assert not any(
         token in spec.capability_id
@@ -244,7 +244,7 @@ class MutableClock:
 
 
 def transfer_dependencies():  # type: ignore[no-untyped-def]
-    bank = MockBankService()
+    bank = MockBankService(fixture_user_ids=frozenset({"authorization-user", "recipient-user"}))
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))

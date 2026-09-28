@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.agents.models import AgentDefinition
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.llm.models import LLMMessage
 
 RuntimeEventSink = Callable[[str, dict[str, Any]], Awaitable[None]]
@@ -45,7 +46,7 @@ class AgentRunRequest:
     conversation_id: UUID
     current_task: str
     conversation_messages: list[Message]
-    authenticated: bool
+    principal: ExecutionPrincipal
     agent: AgentDefinition | None = None
     caller: str | None = None
     event_sink: RuntimeEventSink | None = None

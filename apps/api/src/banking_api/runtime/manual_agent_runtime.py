@@ -135,7 +135,7 @@ class ManualAgentRuntime:
                         tool_name=call.name,
                         arguments=call.arguments,
                         caller=effective_caller,
-                        authenticated=request.authenticated,
+                        principal=request.principal,
                         agent_allowlist=self.agent.allowed_capabilities,
                     )
                     event_type = "tool.call.completed" if result.ok else "tool.call.failed"

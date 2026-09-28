@@ -12,6 +12,7 @@ from banking_api.domain.enums import (
     WorkflowStatus,
 )
 from banking_api.domain.operation import OperationResource
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.persistence.models import OperationModel, WorkflowModel
 from banking_api.persistence.repositories.approvals import ApprovalRepository
 from banking_api.persistence.repositories.operations import OperationRepository
@@ -153,7 +154,9 @@ class OperationService:
             raise OperationActionError("TRANSFER_COMMIT_POLICY_DENIED") from exc
 
         try:
-            validation_status, state = await self.engine.advance(state)
+            validation_status, state = await self.engine.advance(
+                state, principal=ExecutionPrincipal.for_workflow(user_id)
+            )
         except TransferWorkflowEngineError as exc:
             raise OperationActionError("FINAL_VALIDATION_UNAVAILABLE") from exc
         if validation_status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
@@ -199,9 +202,7 @@ class OperationService:
         self, operation_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
         lease_owner = f"manual:{uuid4()}"
-        operation = await self.operations.get_for_user(
-            operation_id, user_id, for_update=True
-        )
+        operation = await self.operations.get_for_user(operation_id, user_id, for_update=True)
         if operation is None:
             raise OperationNotFoundError
         if operation.version != expected_version:
@@ -231,9 +232,7 @@ class OperationService:
         )
         return await self.reconcile_claimed(operation_id, lease_owner=lease_owner)
 
-    async def reconcile_claimed(
-        self, operation_id: UUID, *, lease_owner: str
-    ) -> OperationResource:
+    async def reconcile_claimed(self, operation_id: UUID, *, lease_owner: str) -> OperationResource:
         operation = await self.operations.get_claimed(
             operation_id, lease_owner, lease_valid_at=_as_utc(self.clock())
         )
@@ -264,7 +263,10 @@ class OperationService:
     ) -> OperationModel:
         now = _as_utc(self.clock())
         try:
-            output = await self.engine.submit_operation(operation.operation_id)
+            output = await self.engine.submit_operation(
+                operation.operation_id,
+                principal=ExecutionPrincipal.for_recovery(operation.user_id),
+            )
         except TransferWorkflowEngineError:
             logger.warning(
                 "provider submission unavailable operation_id=%s", operation.operation_id
@@ -303,7 +305,10 @@ class OperationService:
         self, operation: OperationModel, *, lease_owner: str
     ) -> OperationResource:
         try:
-            output = await self.engine.query_operation_status(operation.operation_id)
+            output = await self.engine.query_operation_status(
+                operation.operation_id,
+                principal=ExecutionPrincipal.for_recovery(operation.user_id),
+            )
         except TransferWorkflowEngineError:
             logger.warning(
                 "provider status query unavailable operation_id=%s", operation.operation_id

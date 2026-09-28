@@ -55,12 +55,13 @@ async def main() -> None:
     if intent.recipient_query != "张三" or str(intent.amount) not in {"2000", "2000.00"}:
         raise AssertionError("intent extraction did not preserve recipient and amount")
 
-    bank = MockBankService()
+    user_id = "smoke-transfer-user"
+    bank = MockBankService(fixture_user_ids=frozenset({user_id}))
     balances_before = {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id=user_id)["balance"]
+        for item in bank.list_accounts(user_id=user_id)
     }
-    transactions_before = bank.list_transactions()
+    transactions_before = bank.list_transactions(user_id=user_id)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))
@@ -75,19 +76,19 @@ async def main() -> None:
 
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
-            user_id="smoke-transfer-user", title="Transfer authorization smoke"
+            user_id=user_id, title="Transfer authorization smoke"
         )
     async with factory() as session:
         accepted = await ConversationService(session, bus).accept_message(
             conversation_id=conversation.conversation_id,
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             content=prompt,
         )
     async with factory() as session:
         workflow = await WorkflowService(
             session, bus, engine, reauth_provider=reauth_provider
         ).create_transfer(
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             conversation_id=conversation.conversation_id,
             source_task_id=accepted.task_id,
             intent=intent,
@@ -102,7 +103,7 @@ async def main() -> None:
             session, bus, engine, reauth_provider=reauth_provider
         ).select_payee(
             workflow.workflow_id,
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             payee_id="payee_001",
             expected_version=workflow.version,
         )
@@ -111,7 +112,7 @@ async def main() -> None:
             session, bus, engine, reauth_provider=reauth_provider
         ).select_source_account(
             workflow.workflow_id,
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             account_id="acc_salary",
             expected_version=workflow.version,
         )
@@ -120,7 +121,7 @@ async def main() -> None:
             session, bus, engine, reauth_provider=reauth_provider
         ).approve(
             workflow.workflow_id,
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             expected_version=workflow.version,
         )
     async with factory() as session:
@@ -128,7 +129,7 @@ async def main() -> None:
             session, bus, engine, reauth_provider=reauth_provider
         ).start_reauthentication(
             workflow.workflow_id,
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             expected_version=workflow.version,
         )
     if workflow.reauth_summary is None:
@@ -138,17 +139,19 @@ async def main() -> None:
             session, bus, engine, reauth_provider=reauth_provider
         ).verify_reauthentication(
             workflow.workflow_id,
-            user_id="smoke-transfer-user",
+            user_id=user_id,
             reauth_id=workflow.reauth_summary.reauth_id,
             verification_code=settings.mock_reauth_code,
             expected_version=workflow.version,
         )
 
     balances_after = {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id=user_id)["balance"]
+        for item in bank.list_accounts(user_id=user_id)
     }
-    if balances_before != balances_after or transactions_before != bank.list_transactions():
+    if balances_before != balances_after or transactions_before != bank.list_transactions(
+        user_id=user_id
+    ):
         raise AssertionError("authorization workflow mutated synthetic bank data")
     capabilities = {spec.capability_id for spec in registry.all()}
     if capabilities != {"account.list", "account.get_balance", "payee.search"}:

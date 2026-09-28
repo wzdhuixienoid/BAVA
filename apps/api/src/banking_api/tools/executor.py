@@ -4,10 +4,16 @@ from typing import Any
 from pydantic import ValidationError
 
 from banking_api.domain.enums import PolicyDecision
+from banking_api.domain.principal import ExecutionPrincipal, Principal
 from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
-from banking_api.tools.models import ToolError, ToolErrorCode, ToolExecutionResult
+from banking_api.tools.models import (
+    ToolError,
+    ToolErrorCode,
+    ToolExecutionContext,
+    ToolExecutionResult,
+)
 
 
 class ToolExecutor:
@@ -21,7 +27,7 @@ class ToolExecutor:
         tool_name: str,
         arguments: Any,
         caller: str,
-        authenticated: bool,
+        principal: Principal | ExecutionPrincipal | None,
         agent_allowlist: frozenset[str],
     ) -> ToolExecutionResult:
         spec = self.registry.get_by_name(tool_name)
@@ -31,7 +37,7 @@ class ToolExecutor:
         decision = self.policy.evaluate(
             spec=spec,
             caller=caller,
-            authenticated=authenticated,
+            authenticated=principal is not None,
             agent_allowlist=agent_allowlist,
         )
         if decision.decision is not PolicyDecision.ALLOW:
@@ -48,7 +54,13 @@ class ToolExecutor:
             )
 
         try:
-            raw_output = spec.handler(validated_input)
+            if principal is None:
+                return self._error(
+                    ToolErrorCode.TOOL_NOT_ALLOWED,
+                    "Authenticated principal is required",
+                    capability_id=spec.capability_id,
+                )
+            raw_output = spec.handler(ToolExecutionContext(principal), validated_input)
             if inspect.isawaitable(raw_output):
                 raw_output = await raw_output
         except FinancialDomainError as exc:

@@ -62,6 +62,20 @@ class ConversationModel(Base):
     )
 
 
+class IdentityMappingModel(Base):
+    __tablename__ = "identity_mappings"
+    __table_args__ = (
+        UniqueConstraint("issuer", "subject", name="uq_identity_mappings_issuer_subject"),
+        Index("ix_identity_mappings_user_id", "user_id"),
+    )
+
+    identity_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    issuer: Mapped[str] = mapped_column(String(2048), nullable=False)
+    subject: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class WorkflowModel(Base):
     __tablename__ = "workflows"
     __table_args__ = (
@@ -77,9 +91,7 @@ class WorkflowModel(Base):
     source_task_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), unique=True, index=True
     )
-    workflow_type: Mapped[WorkflowType] = mapped_column(
-        Enum(WorkflowType, name="workflow_type")
-    )
+    workflow_type: Mapped[WorkflowType] = mapped_column(Enum(WorkflowType, name="workflow_type"))
     status: Mapped[WorkflowStatus] = mapped_column(
         Enum(WorkflowStatus, name="workflow_status"), index=True
     )
@@ -147,9 +159,7 @@ class ReauthenticationModel(Base):
 class OperationModel(Base):
     __tablename__ = "operations"
     __table_args__ = (
-        UniqueConstraint(
-            "workflow_id", "operation_type", name="uq_operations_workflow_type"
-        ),
+        UniqueConstraint("workflow_id", "operation_type", name="uq_operations_workflow_type"),
         Index("ix_operations_user_created_at", "user_id", "created_at"),
         Index(
             "ix_operations_recovery_due",
@@ -190,9 +200,7 @@ class OperationModel(Base):
     next_reconcile_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    reconcile_attempts: Mapped[int] = mapped_column(
-        Integer, default=0, server_default=text("0")
-    )
+    reconcile_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     last_reconcile_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -210,6 +218,7 @@ class MockBankTransferModel(Base):
 
     provider_reference: Mapped[str] = mapped_column(String(255), primary_key=True)
     idempotency_key: Mapped[UUID] = mapped_column(Uuid, unique=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
     source_account_id: Mapped[str] = mapped_column(String(255), index=True)
     payee_id: Mapped[str] = mapped_column(String(255))
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
@@ -252,6 +261,7 @@ class TaskModel(Base):
     )
 
     task_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
     conversation_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
@@ -274,12 +284,8 @@ class TaskModel(Base):
     next_run_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=utc_now
     )
-    execution_attempts: Mapped[int] = mapped_column(
-        Integer, default=0, server_default=text("0")
-    )
-    last_attempt_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    execution_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lease_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
     lease_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -314,9 +320,7 @@ class ReportModel(Base):
     source_task_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), index=True
     )
-    report_type: Mapped[ReportType] = mapped_column(
-        Enum(ReportType, name="report_type")
-    )
+    report_type: Mapped[ReportType] = mapped_column(Enum(ReportType, name="report_type"))
     report_version: Mapped[int] = mapped_column(Integer)
     skill_id: Mapped[str] = mapped_column(String(255))
     skill_version: Mapped[int] = mapped_column(Integer)
@@ -367,15 +371,9 @@ class OutboxEventModel(Base):
         Uuid, ForeignKey("events.id", ondelete="CASCADE"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    published_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    publish_attempts: Mapped[int] = mapped_column(
-        Integer, default=0, server_default=text("0")
-    )
-    next_publish_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    publish_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    next_publish_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lease_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
     lease_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

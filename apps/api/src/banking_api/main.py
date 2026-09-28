@@ -33,6 +33,7 @@ from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.task_execution_worker import TaskExecutionWorker
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
+from banking_api.security.authentication import AuthenticationService
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import (
@@ -65,9 +66,7 @@ def create_app() -> FastAPI:
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         nonlocal checkpoint_manager, operation_recovery_worker, outbox_publisher
         nonlocal task_execution_worker
-        checkpoint_url = (
-            settings.langgraph_checkpoint_database_url or settings.database_url
-        )
+        checkpoint_url = settings.langgraph_checkpoint_database_url or settings.database_url
         if checkpoint_url:
             checkpoint_manager = LangGraphCheckpointManager(
                 checkpoint_url,
@@ -135,7 +134,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.5.4",
+        version="0.6.1",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -185,6 +184,7 @@ def create_app() -> FastAPI:
     )
     runtime_factory.register(RuntimeBackend.MANUAL, manual_runtime)
     application.state.event_bus = bus
+    application.state.authentication_service = AuthenticationService(settings)
     application.state.tool_registry = registry
     application.state.agent_registry = agent_registry
     application.state.skill_registry = skill_registry

@@ -1,8 +1,10 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.domain.enums import RiskLevel
 from banking_api.persistence.models import OperationModel
 from banking_api.tools.models import (
+    ToolExecutionContext,
     ToolSpec,
     TransferOperationInput,
     TransferStatusOutput,
@@ -15,9 +17,17 @@ TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 def build_get_transfer_status_tool(
     session_factory: async_sessionmaker[AsyncSession], provider: TransferProvider
 ) -> ToolSpec:
-    async def handler(arguments: TransferOperationInput) -> TransferStatusOutput:
+    async def handler(
+        context: ToolExecutionContext, arguments: TransferOperationInput
+    ) -> TransferStatusOutput:
         async with session_factory() as session:
-            operation = await session.get(OperationModel, arguments.operation_id)
+            result = await session.execute(
+                select(OperationModel).where(
+                    OperationModel.operation_id == arguments.operation_id,
+                    OperationModel.user_id == context.principal.user_id,
+                )
+            )
+            operation = result.scalar_one_or_none()
         if operation is None:
             return TransferStatusOutput(
                 status="UNKNOWN",
@@ -25,6 +35,7 @@ def build_get_transfer_status_tool(
                 error_message="Operation does not exist",
             )
         result = await provider.get_transfer_status(
+            user_id=operation.user_id,
             idempotency_key=operation.idempotency_key,
             provider_reference=operation.provider_reference,
         )

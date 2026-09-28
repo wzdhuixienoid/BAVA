@@ -15,6 +15,7 @@ from banking_api.domain.enums import (
     WorkflowStatus,
 )
 from banking_api.domain.operation import OperationSummary
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.domain.reauthentication import ReauthenticationSummary
 from banking_api.domain.workflow import Workflow, WorkflowType
 from banking_api.persistence.models import ApprovalModel, ReauthenticationModel, WorkflowModel
@@ -121,9 +122,7 @@ class WorkflowService:
             raise WorkflowNotFoundError
         return await self._to_workflow(model)
 
-    async def get_by_source_task(
-        self, source_task_id: UUID, *, user_id: str
-    ) -> Workflow | None:
+    async def get_by_source_task(self, source_task_id: UUID, *, user_id: str) -> Workflow | None:
         model = await self.workflows.get_by_source_task(source_task_id, user_id)
         if model is None:
             return None
@@ -156,7 +155,9 @@ class WorkflowService:
             task_id=source_task_id,
             data=self._event_data(model),
         )
-        status, state = await self.engine.advance(initial)
+        status, state = await self.engine.advance(
+            initial, principal=ExecutionPrincipal.for_workflow(user_id)
+        )
         updated = await self.workflows.update_if_version(
             workflow_id=model.workflow_id,
             user_id=user_id,
@@ -201,6 +202,7 @@ class WorkflowService:
             await self.engine.validate_payee_action(
                 state,
                 payee_id,
+                principal=ExecutionPrincipal.for_workflow(user_id),
                 allow_outside_selection=self._is_review_or_authorization(model.status),
             )
         except InvalidWorkflowActionError as exc:
@@ -221,6 +223,7 @@ class WorkflowService:
             await self.engine.validate_account_action(
                 state,
                 account_id,
+                principal=ExecutionPrincipal.for_workflow(user_id),
                 allow_outside_selection=self._is_review_or_authorization(model.status),
             )
         except InvalidWorkflowActionError as exc:
@@ -245,7 +248,9 @@ class WorkflowService:
         if model.status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
             raise WorkflowActionError("WORKFLOW_NOT_READY_FOR_APPROVAL")
 
-        validation_status, state = await self.engine.advance(state)
+        validation_status, state = await self.engine.advance(
+            state, principal=ExecutionPrincipal.for_workflow(user_id)
+        )
         if validation_status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
             updated = await self.workflows.update_if_version(
                 workflow_id=workflow_id,
@@ -482,7 +487,9 @@ class WorkflowService:
     ) -> Workflow:
         await self._invalidate_authorization(model, _as_utc(self.clock()))
         state.authorization = None
-        status, advanced = await self.engine.advance(state)
+        status, advanced = await self.engine.advance(
+            state, principal=ExecutionPrincipal.for_workflow(model.user_id)
+        )
         updated = await self.workflows.update_if_version(
             workflow_id=model.workflow_id,
             user_id=model.user_id,

@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from banking_api.domain.enums import PolicyDecision, WorkflowStatus
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.tools.executor import ToolExecutor
 from banking_api.workflows.transfer.models import (
     TransferDraft,
@@ -45,13 +46,13 @@ class TransferWorkflowEngine:
         self._executor = executor
 
     async def start(
-        self, intent: TransferIntent
+        self, intent: TransferIntent, *, principal: ExecutionPrincipal
     ) -> tuple[WorkflowStatus, TransferWorkflowState]:
         draft = TransferDraft(**intent.model_dump())
-        return await self.advance(TransferWorkflowState(draft=draft))
+        return await self.advance(TransferWorkflowState(draft=draft), principal=principal)
 
     async def advance(
-        self, state: TransferWorkflowState
+        self, state: TransferWorkflowState, *, principal: ExecutionPrincipal
     ) -> tuple[WorkflowStatus, TransferWorkflowState]:
         state.required_input = None
         state.validation = None
@@ -65,13 +66,11 @@ class TransferWorkflowEngine:
                 "请提供收款人姓名或手机别名。",
             )
 
-        payees = await self._search_payees(draft.recipient_query)
+        payees = await self._search_payees(draft.recipient_query, principal=principal)
         state.payee_options = payees
         if not payees:
             return self._failed(state, "PAYEE_NOT_FOUND", "未找到匹配的收款人。")
-        selected_payee = next(
-            (item for item in payees if item["payee_id"] == draft.payee_id), None
-        )
+        selected_payee = next((item for item in payees if item["payee_id"] == draft.payee_id), None)
         if draft.payee_id and selected_payee is None:
             return self._failed(state, "PAYEE_NOT_FOUND", "所选收款人不再可用。")
         if draft.payee_id is None:
@@ -97,7 +96,7 @@ class TransferWorkflowEngine:
                 state, "INVALID_TRANSFER_AMOUNT", "转账金额必须大于 0 且最多两位小数。"
             )
 
-        accounts = await self._list_accounts()
+        accounts = await self._list_accounts(principal=principal)
         selected_account = next(
             (item for item in accounts if item["account_id"] == draft.source_account_id),
             None,
@@ -114,10 +113,8 @@ class TransferWorkflowEngine:
         eligible = [item for item in accounts if self._eligible(item)]
         source_options = []
         for account in eligible[:10]:
-            option_balance = await self._get_balance(account["account_id"])
-            source_options.append(
-                {**account, "available_balance": option_balance["balance"]}
-            )
+            option_balance = await self._get_balance(account["account_id"], principal=principal)
+            source_options.append({**account, "available_balance": option_balance["balance"]})
         state.source_account_options = source_options
         if selected_account is None and draft.source_account_hint:
             normalized = normalize_hint(draft.source_account_hint)
@@ -151,7 +148,7 @@ class TransferWorkflowEngine:
         else:
             draft.currency = draft.currency.upper()
 
-        balance = await self._get_balance(selected_account["account_id"])
+        balance = await self._get_balance(selected_account["account_id"], principal=principal)
         available = Decimal(str(balance["balance"]))
         if available < draft.amount:
             return self._failed(
@@ -186,6 +183,7 @@ class TransferWorkflowEngine:
         state: TransferWorkflowState,
         payee_id: str,
         *,
+        principal: ExecutionPrincipal,
         allow_outside_selection: bool = False,
     ) -> None:
         required = state.required_input
@@ -196,7 +194,7 @@ class TransferWorkflowEngine:
         else:
             if not state.draft.recipient_query:
                 raise InvalidWorkflowActionError("Recipient query is missing")
-            candidates = await self._search_payees(state.draft.recipient_query)
+            candidates = await self._search_payees(state.draft.recipient_query, principal=principal)
         if payee_id not in {str(item.get("payee_id")) for item in candidates}:
             raise InvalidWorkflowActionError("Payee is not one of the authoritative options")
 
@@ -205,6 +203,7 @@ class TransferWorkflowEngine:
         state: TransferWorkflowState,
         account_id: str,
         *,
+        principal: ExecutionPrincipal,
         allow_outside_selection: bool = False,
     ) -> None:
         required = state.required_input
@@ -213,7 +212,7 @@ class TransferWorkflowEngine:
             or required.type is not TransferRequiredInputType.SOURCE_ACCOUNT_SELECTION
         ):
             raise InvalidWorkflowActionError("Workflow is not waiting for account selection")
-        accounts = await self._list_accounts()
+        accounts = await self._list_accounts(principal=principal)
         if account_id not in {str(item["account_id"]) for item in accounts}:
             raise InvalidWorkflowActionError("Account does not exist")
 
@@ -228,20 +227,32 @@ class TransferWorkflowEngine:
         if decision.decision is not PolicyDecision.ALLOW:
             raise TransferWorkflowEngineError("TRANSFER_COMMIT_POLICY_DENIED")
 
-    async def submit_operation(self, operation_id: UUID) -> dict[str, Any]:
-        return await self._execute_operation_tool("commit_transfer", operation_id)
+    async def submit_operation(
+        self, operation_id: UUID, *, principal: ExecutionPrincipal
+    ) -> dict[str, Any]:
+        return await self._execute_operation_tool(
+            "commit_transfer", operation_id, principal=principal
+        )
 
-    async def query_operation_status(self, operation_id: UUID) -> dict[str, Any]:
-        return await self._execute_operation_tool("get_transfer_status", operation_id)
+    async def query_operation_status(
+        self, operation_id: UUID, *, principal: ExecutionPrincipal
+    ) -> dict[str, Any]:
+        return await self._execute_operation_tool(
+            "get_transfer_status", operation_id, principal=principal
+        )
 
     async def _execute_operation_tool(
-        self, tool_name: str, operation_id: UUID
+        self,
+        tool_name: str,
+        operation_id: UUID,
+        *,
+        principal: ExecutionPrincipal,
     ) -> dict[str, Any]:
         result = await self._executor.execute(
             tool_name=tool_name,
             arguments={"operation_id": str(operation_id)},
             caller=TRANSFER_CALLER,
-            authenticated=True,
+            principal=principal,
             agent_allowlist=TRANSFER_CAPABILITIES,
         )
         if not result.ok or result.output is None:
@@ -249,23 +260,33 @@ class TransferWorkflowEngine:
             raise TransferWorkflowEngineError(f"Operation capability failed: {code}")
         return result.output
 
-    async def _search_payees(self, query: str) -> list[dict[str, Any]]:
-        output = await self._read("search_payees", {"query": query})
+    async def _search_payees(
+        self, query: str, *, principal: ExecutionPrincipal
+    ) -> list[dict[str, Any]]:
+        output = await self._read("search_payees", {"query": query}, principal=principal)
         return list(output["payees"])
 
-    async def _list_accounts(self) -> list[dict[str, Any]]:
-        output = await self._read("list_accounts", {})
+    async def _list_accounts(self, *, principal: ExecutionPrincipal) -> list[dict[str, Any]]:
+        output = await self._read("list_accounts", {}, principal=principal)
         return list(output["accounts"])
 
-    async def _get_balance(self, account_id: str) -> dict[str, Any]:
-        return await self._read("get_balance", {"account_id": account_id})
+    async def _get_balance(
+        self, account_id: str, *, principal: ExecutionPrincipal
+    ) -> dict[str, Any]:
+        return await self._read("get_balance", {"account_id": account_id}, principal=principal)
 
-    async def _read(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    async def _read(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        principal: ExecutionPrincipal,
+    ) -> dict[str, Any]:
         result = await self._executor.execute(
             tool_name=tool_name,
             arguments=arguments,
             caller=TRANSFER_CALLER,
-            authenticated=True,
+            principal=principal,
             agent_allowlist=TRANSFER_CAPABILITIES,
         )
         if not result.ok or result.output is None:
@@ -275,10 +296,7 @@ class TransferWorkflowEngine:
 
     @staticmethod
     def _eligible(account: dict[str, Any]) -> bool:
-        return (
-            account["account_type"] in ELIGIBLE_ACCOUNT_TYPES
-            and account["status"] == "ACTIVE"
-        )
+        return account["account_type"] in ELIGIBLE_ACCOUNT_TYPES and account["status"] == "ACTIVE"
 
     @staticmethod
     def _waiting(

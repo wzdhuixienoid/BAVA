@@ -65,7 +65,8 @@ async def main() -> None:
     factory = async_sessionmaker(database, expire_on_commit=False)
     async with database.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
-    bank = MockBankService()
+    user_id = "smoke-transfer-operation-user"
+    bank = MockBankService(fixture_user_ids=frozenset({user_id}))
     transfer_provider = MockTransferProvider(factory, bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
@@ -76,9 +77,8 @@ async def main() -> None:
     engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
     reauth_provider = MockReauthenticationProvider(settings.mock_reauth_code)
     bus = EventBus()
-    user_id = "smoke-transfer-operation-user"
-    transactions_before = bank.list_transactions()
-    balance_before = await transfer_provider.effective_balance("acc_salary")
+    transactions_before = bank.list_transactions(user_id=user_id)
+    balance_before = await transfer_provider.effective_balance(user_id, "acc_salary")
 
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
@@ -92,9 +92,7 @@ async def main() -> None:
         )
 
     def workflow_service(session):  # type: ignore[no-untyped-def]
-        return WorkflowService(
-            session, bus, engine, reauth_provider=reauth_provider
-        )
+        return WorkflowService(session, bus, engine, reauth_provider=reauth_provider)
 
     async with factory() as session:
         workflow = await workflow_service(session).create_transfer(
@@ -146,11 +144,9 @@ async def main() -> None:
             expected_version=workflow.version,
         )
     async with factory() as session:
-        final_workflow = await workflow_service(session).get(
-            workflow.workflow_id, user_id=user_id
-        )
+        final_workflow = await workflow_service(session).get(workflow.workflow_id, user_id=user_id)
 
-    balance_after = await transfer_provider.effective_balance("acc_salary")
+    balance_after = await transfer_provider.effective_balance(user_id, "acc_salary")
     if final_workflow.status is not WorkflowStatus.SUCCEEDED:
         raise AssertionError(f"unexpected workflow status: {final_workflow.status.value}")
     if operation.status is not OperationStatus.SUCCEEDED:
@@ -161,7 +157,7 @@ async def main() -> None:
         raise AssertionError("effective balance did not decrease exactly once")
     if await transfer_provider.transfer_count() != 1:
         raise AssertionError("provider idempotency ledger count is not one")
-    if bank.list_transactions() != transactions_before:
+    if bank.list_transactions(user_id=user_id) != transactions_before:
         raise AssertionError("committed synthetic transaction fixture was mutated")
 
     print(

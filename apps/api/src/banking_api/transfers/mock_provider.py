@@ -24,9 +24,11 @@ from banking_api.transfers.provider import (
 logger = logging.getLogger(__name__)
 
 
-def provider_account_lock_key(source_account_id: str) -> int:
+def provider_account_lock_key(source_account_id: str, user_id: str = "dev-user-001") -> int:
     """Map one provider account to a stable signed PostgreSQL advisory-lock key."""
 
+    # Keep the v0.5.2 account-serialization key stable; user scoping is enforced
+    # by provider queries and balance calculations, not by changing lock identity.
     digest = hashlib.sha256(
         f"mock-transfer-provider:source-account:{source_account_id}".encode()
     ).digest()
@@ -48,19 +50,18 @@ class MockTransferProvider:
         self.fault_mode = fault_mode
         self._account_locks: dict[str, asyncio.Lock] = {}
 
-    async def submit_transfer(
-        self, request: TransferProviderRequest
-    ) -> TransferSubmissionResult:
-        lock = self._account_locks.setdefault(request.source_account_id, asyncio.Lock())
+    async def submit_transfer(self, request: TransferProviderRequest) -> TransferSubmissionResult:
+        authority_key = f"{request.user_id}:{request.source_account_id}"
+        lock = self._account_locks.setdefault(authority_key, asyncio.Lock())
         async with lock:
-            existing = await self._find(request.idempotency_key)
+            existing = await self._find(request.user_id, request.idempotency_key)
             if existing is not None:
                 logger.info("mock provider idempotent replay")
                 return self._submission_from(existing)
             try:
                 result = await self._submit_in_provider_transaction(request)
             except IntegrityError:
-                existing = await self._find(request.idempotency_key)
+                existing = await self._find(request.user_id, request.idempotency_key)
                 if existing is None:
                     raise
                 logger.info("mock provider idempotent replay after uniqueness conflict")
@@ -79,13 +80,15 @@ class MockTransferProvider:
         now = datetime.now(UTC)
         async with self._session_factory() as session:
             async with session.begin():
-                await self._serialize_source_account(session, request.source_account_id)
+                await self._serialize_source_account(
+                    session, request.source_account_id, request.user_id
+                )
                 existing = (
                     await session.execute(
                         select(MockBankTransferModel)
                         .where(
-                            MockBankTransferModel.idempotency_key
-                            == request.idempotency_key
+                            MockBankTransferModel.idempotency_key == request.idempotency_key,
+                            MockBankTransferModel.user_id == request.user_id,
                         )
                         .with_for_update()
                     )
@@ -106,7 +109,7 @@ class MockTransferProvider:
                     else None
                 )
                 available = await self._effective_balance_in_session(
-                    session, request.source_account_id
+                    session, request.user_id, request.source_account_id
                 )
                 if available < request.amount:
                     status = "FAILED"
@@ -115,6 +118,7 @@ class MockTransferProvider:
                 transfer = MockBankTransferModel(
                     provider_reference=f"mocktr_{uuid4().hex}",
                     idempotency_key=request.idempotency_key,
+                    user_id=request.user_id,
                     source_account_id=request.source_account_id,
                     payee_id=request.payee_id,
                     amount=request.amount,
@@ -137,27 +141,27 @@ class MockTransferProvider:
 
     @staticmethod
     async def _serialize_source_account(
-        session: AsyncSession, source_account_id: str
+        session: AsyncSession, source_account_id: str, user_id: str = "dev-user-001"
     ) -> None:
         bind = session.get_bind()
         if bind.dialect.name != "postgresql":
             return
-        lock_key = provider_account_lock_key(source_account_id)
-        logger.info(
-            "mock provider waiting for account serialization lock_key=%s", lock_key
-        )
+        lock_key = provider_account_lock_key(source_account_id, user_id)
+        logger.info("mock provider waiting for account serialization lock_key=%s", lock_key)
         await session.execute(
             text("SELECT pg_advisory_xact_lock(:lock_key)"),
             {"lock_key": lock_key},
         )
-        logger.info(
-            "mock provider account serialization acquired lock_key=%s", lock_key
-        )
+        logger.info("mock provider account serialization acquired lock_key=%s", lock_key)
 
     async def get_transfer_status(
-        self, *, idempotency_key: UUID, provider_reference: str | None
+        self,
+        *,
+        user_id: str,
+        idempotency_key: UUID,
+        provider_reference: str | None,
     ) -> TransferProviderStatus:
-        transfer = await self._find(idempotency_key)
+        transfer = await self._find(user_id, idempotency_key)
         if transfer is None:
             return TransferProviderStatus(status=TransferProviderStatusValue.UNKNOWN)
         if provider_reference is not None and transfer.provider_reference != provider_reference:
@@ -175,38 +179,38 @@ class MockTransferProvider:
             or "Mock provider definitively rejected the transfer",
         )
 
-    async def effective_balance(self, account_id: str) -> Decimal:
+    async def effective_balance(self, user_id: str, account_id: str) -> Decimal:
         async with self._session_factory() as session:
-            return await self._effective_balance_in_session(session, account_id)
+            return await self._effective_balance_in_session(session, user_id, account_id)
 
     async def transfer_count(self) -> int:
         async with self._session_factory() as session:
             return int(
                 (
-                    await session.execute(
-                        select(func.count()).select_from(MockBankTransferModel)
-                    )
+                    await session.execute(select(func.count()).select_from(MockBankTransferModel))
                 ).scalar_one()
             )
 
-    async def _find(self, idempotency_key: UUID) -> MockBankTransferModel | None:
+    async def _find(self, user_id: str, idempotency_key: UUID) -> MockBankTransferModel | None:
         async with self._session_factory() as session:
             return (
                 await session.execute(
                     select(MockBankTransferModel).where(
-                        MockBankTransferModel.idempotency_key == idempotency_key
+                        MockBankTransferModel.idempotency_key == idempotency_key,
+                        MockBankTransferModel.user_id == user_id,
                     )
                 )
             ).scalar_one_or_none()
 
     async def _effective_balance_in_session(
-        self, session: AsyncSession, account_id: str
+        self, session: AsyncSession, user_id: str, account_id: str
     ) -> Decimal:
-        base = Decimal(str(self._bank.get_balance(account_id)["balance"]))
+        base = Decimal(str(self._bank.get_balance(account_id, user_id=user_id)["balance"]))
         debited = (
             await session.execute(
                 select(func.coalesce(func.sum(MockBankTransferModel.amount), 0)).where(
                     MockBankTransferModel.source_account_id == account_id,
+                    MockBankTransferModel.user_id == user_id,
                     MockBankTransferModel.status == "SUCCEEDED",
                 )
             )

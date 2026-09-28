@@ -2,12 +2,18 @@ from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.domain.enums import RiskLevel
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.financial.models import FinancialPeriodInput, SpendingPeriodComparison
-from banking_api.tools.models import ToolSpec
+from banking_api.tools.models import ToolExecutionContext, ToolSpec
 
 
 def build_compare_spending_periods_tool(analytics: FinancialAnalyticsService) -> ToolSpec:
-    def handler(arguments: FinancialPeriodInput) -> SpendingPeriodComparison:
-        return analytics.compare_periods(arguments.month, arguments.account_ids)
+    def handler(
+        context: ToolExecutionContext, arguments: FinancialPeriodInput
+    ) -> SpendingPeriodComparison:
+        return analytics.compare_periods(
+            arguments.month,
+            arguments.account_ids,
+            user_id=context.principal.user_id,
+        )
 
     return ToolSpec(
         capability_id="transaction.compare_periods",

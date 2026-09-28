@@ -25,6 +25,7 @@ from banking_api.domain.enums import (
     TaskStatus,
     WorkflowStatus,
 )
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analysis_snapshot import (
     FinancialAnalysisSnapshot,
     build_financial_analysis_snapshot,
@@ -65,8 +66,7 @@ from banking_api.workflows.transfer.intent_extractor import (
 )
 
 UNSUPPORTED_MESSAGE = (
-    "当前无法安全处理该请求。如果请求中包含转账和其他意图，"
-    "请将转账作为独立请求提交。"
+    "当前无法安全处理该请求。如果请求中包含转账和其他意图，请将转账作为独立请求提交。"
 )
 
 ROUTE_AGENT_IDS = {
@@ -178,7 +178,22 @@ class InProcessTaskRunner:
                     policy=policy,
                 )
                 return
-            user_id = conversation.user_id
+            if conversation.user_id != task.user_id or claim.user_id != task.user_id:
+                await session.rollback()
+                await self._fail(
+                    claim,
+                    conversation_id,
+                    {
+                        "category": "AUTHORITY",
+                        "code": "TASK_OWNER_MISMATCH",
+                        "message": "Task ownership is inconsistent",
+                        "retryable": False,
+                    },
+                    policy=policy,
+                )
+                return
+            user_id = task.user_id
+            execution_principal = ExecutionPrincipal.for_task(user_id)
             runtime_backend = task.runtime_backend
             durable_executor_type = task.executor_type
             durable_executor_id = task.executor_id
@@ -261,15 +276,13 @@ class InProcessTaskRunner:
                     conversation_id=conversation_id,
                     current_task=current_task,
                     conversation_messages=conversation_messages,
-                    authenticated=True,
+                    principal=execution_principal,
                     agent=run_agent,
                     event_sink=event_sink,
                 )
             )
             if decision.requested_output is RequestedOutput.MONTHLY_REPORT:
-                snapshot = build_financial_analysis_snapshot(
-                    result.state.successful_tool_results
-                )
+                snapshot = build_financial_analysis_snapshot(result.state.successful_tool_results)
                 await self._run_report_pipeline(
                     claim=claim,
                     conversation_id=conversation_id,
@@ -484,24 +497,16 @@ class InProcessTaskRunner:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             await self._get_owned(tasks, claim)
-            workflow_service = WorkflowService(
-                session, self.bus, self.transfer_workflow_engine
-            )
-            workflow = await workflow_service.get_by_source_task(
-                claim.task_id, user_id=user_id
-            )
+            workflow_service = WorkflowService(session, self.bus, self.transfer_workflow_engine)
+            workflow = await workflow_service.get_by_source_task(claim.task_id, user_id=user_id)
 
         if workflow is None:
             intent = await self.transfer_intent_extractor.extract(user_request)
             async with self.session_factory() as session:
                 tasks = TaskRepository(session)
                 await self._get_owned(tasks, claim, for_update=True)
-                workflow_service = WorkflowService(
-                    session, self.bus, self.transfer_workflow_engine
-                )
-                workflow = await workflow_service.get_by_source_task(
-                    claim.task_id, user_id=user_id
-                )
+                workflow_service = WorkflowService(session, self.bus, self.transfer_workflow_engine)
+                workflow = await workflow_service.get_by_source_task(claim.task_id, user_id=user_id)
                 if workflow is None:
                     workflow = await workflow_service.create_transfer(
                         user_id=user_id,
@@ -763,9 +768,7 @@ class InProcessTaskRunner:
                         "status": task.status.value,
                         "version": task.version,
                         "runtime_backend": task.runtime_backend.value,
-                        "checkpoint_enabled": (
-                            task.runtime_backend is RuntimeBackend.LANGGRAPH
-                        ),
+                        "checkpoint_enabled": (task.runtime_backend is RuntimeBackend.LANGGRAPH),
                     },
                 )
                 await publisher.persist(
@@ -918,9 +921,7 @@ class InProcessTaskRunner:
                     "runtime_backend": task.runtime_backend.value,
                     "checkpoint_enabled": task.runtime_backend is RuntimeBackend.LANGGRAPH,
                     "retryable": retryable,
-                    "next_run_at": (
-                        next_run_at.isoformat() if next_run_at is not None else None
-                    ),
+                    "next_run_at": (next_run_at.isoformat() if next_run_at is not None else None),
                 },
             )
             await session.commit()

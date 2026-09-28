@@ -12,6 +12,7 @@ from banking_api.config.settings import Settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
@@ -85,9 +86,7 @@ def evidence_summary(result: SuccessfulToolResult) -> dict[str, Any]:
         summary["result"] = {
             "period": output["period"],
             "item_count": len(output["transactions"]),
-            "transaction_ids": [
-                item["transaction_id"] for item in output["transactions"]
-            ],
+            "transaction_ids": [item["transaction_id"] for item in output["transactions"]],
         }
     return summary
 
@@ -168,7 +167,7 @@ async def main() -> None:
                     conversation_id=conversation_id,
                     current_task=prompt,
                     conversation_messages=[message],
-                    authenticated=True,
+                    principal=ExecutionPrincipal.for_task("dev-user-001"),
                     agent=agent,
                 )
             )

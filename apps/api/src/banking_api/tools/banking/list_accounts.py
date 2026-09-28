@@ -1,6 +1,11 @@
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
-from banking_api.tools.models import ListAccountsInput, ListAccountsOutput, ToolSpec
+from banking_api.tools.models import (
+    ListAccountsInput,
+    ListAccountsOutput,
+    ToolExecutionContext,
+    ToolSpec,
+)
 
 MINIMAL_BANKING_AGENT_ID = "agent:minimal-banking"
 FINANCIAL_ANALYSIS_AGENT_ID = "agent:financial-analysis"
@@ -8,8 +13,8 @@ TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 
 def build_list_accounts_tool(bank: MockBankService) -> ToolSpec:
-    def handler(_: ListAccountsInput) -> ListAccountsOutput:
-        return ListAccountsOutput(accounts=bank.list_accounts())
+    def handler(context: ToolExecutionContext, _: ListAccountsInput) -> ListAccountsOutput:
+        return ListAccountsOutput(accounts=bank.list_accounts(user_id=context.principal.user_id))
 
     return ToolSpec(
         capability_id="account.list",

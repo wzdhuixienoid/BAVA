@@ -29,7 +29,7 @@ class FixedBalanceBank(MockBankService):
         super().__init__()
         self._fixed_balances = balances
 
-    def get_balance(self, account_id: str) -> dict[str, object]:
+    def get_balance(self, account_id: str, *, user_id: str) -> dict[str, object]:
         return {
             "account_id": account_id,
             "display_name": account_id,
@@ -55,9 +55,13 @@ async def provider_postgres_factory():
 
 
 def transfer_request(
-    *, account_id: str, amount: str, idempotency_key=None  # type: ignore[no-untyped-def]
+    *,
+    account_id: str,
+    amount: str,
+    idempotency_key=None,  # type: ignore[no-untyped-def]
 ) -> TransferProviderRequest:
     return TransferProviderRequest(
+        user_id="dev-user-001",
         idempotency_key=idempotency_key or uuid4(),
         source_account_id=account_id,
         payee_id="payee_001",
@@ -84,12 +88,10 @@ async def test_different_keys_cannot_overspend_same_account(
         TransferSubmissionOutcome.FAILED,
     ]
     failed = next(
-        result
-        for result in results
-        if result.outcome is TransferSubmissionOutcome.FAILED
+        result for result in results if result.outcome is TransferSubmissionOutcome.FAILED
     )
     assert failed.error_code == "INSUFFICIENT_FUNDS"
-    assert await provider_a.effective_balance("account_a") == Decimal("2000.00")
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == Decimal("2000.00")
     async with factory() as session:
         successful_count = await session.scalar(
             select(func.count())
@@ -117,7 +119,7 @@ async def test_concurrent_transfers_that_exactly_fit_both_succeed(
         provider_b.submit_transfer(transfer_request(account_id="account_a", amount="4000.00")),
     )
     assert all(result.outcome is TransferSubmissionOutcome.ACCEPTED for result in results)
-    assert await provider_a.effective_balance("account_a") == Decimal("0.00")
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == Decimal("0.00")
 
 
 async def test_concurrent_different_amounts_preserve_nonnegative_balance(
@@ -145,7 +147,7 @@ async def test_concurrent_different_amounts_preserve_nonnegative_balance(
     assert len(failed) == 1
     assert failed[0].error_code == "INSUFFICIENT_FUNDS"
     assert sum(accepted_amounts, Decimal("0.00")) <= Decimal("10000.00")
-    assert await provider_a.effective_balance("account_a") == (
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == (
         Decimal("10000.00") - sum(accepted_amounts, Decimal("0.00"))
     )
 
@@ -154,9 +156,7 @@ async def test_different_accounts_are_not_globally_serialized(
     provider_postgres_factory,
 ) -> None:
     factory = provider_postgres_factory
-    bank = FixedBalanceBank(
-        {"account_a": Decimal("10000.00"), "account_b": Decimal("10000.00")}
-    )
+    bank = FixedBalanceBank({"account_a": Decimal("10000.00"), "account_b": Decimal("10000.00")})
     provider_a = MockTransferProvider(factory, bank)
     provider_b = MockTransferProvider(factory, bank)
     both_balances_read = asyncio.Event()
@@ -166,9 +166,9 @@ async def test_different_accounts_are_not_globally_serialized(
     def synchronize_balance_read(provider):  # type: ignore[no-untyped-def]
         original = provider._effective_balance_in_session
 
-        async def synchronized(session, account_id):  # type: ignore[no-untyped-def]
+        async def synchronized(session, user_id, account_id):  # type: ignore[no-untyped-def]
             nonlocal arrivals
-            balance = await original(session, account_id)
+            balance = await original(session, user_id, account_id)
             async with arrival_lock:
                 arrivals += 1
                 if arrivals == 2:
@@ -185,8 +185,8 @@ async def test_different_accounts_are_not_globally_serialized(
         provider_b.submit_transfer(transfer_request(account_id="account_b", amount="8000.00")),
     )
     assert all(result.outcome is TransferSubmissionOutcome.ACCEPTED for result in results)
-    assert await provider_a.effective_balance("account_a") == Decimal("2000.00")
-    assert await provider_b.effective_balance("account_b") == Decimal("2000.00")
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == Decimal("2000.00")
+    assert await provider_b.effective_balance("dev-user-001", "account_b") == Decimal("2000.00")
 
 
 async def test_same_key_replay_precedes_current_balance_check(
@@ -197,9 +197,7 @@ async def test_same_key_replay_precedes_current_balance_check(
     provider_a = MockTransferProvider(factory, bank)
     provider_b = MockTransferProvider(factory, bank)
     key = uuid4()
-    original = transfer_request(
-        account_id="account_a", amount="9000.00", idempotency_key=key
-    )
+    original = transfer_request(account_id="account_a", amount="9000.00", idempotency_key=key)
     replays = await asyncio.gather(
         *[
             (provider_a if index % 2 == 0 else provider_b).submit_transfer(original)
@@ -209,13 +207,13 @@ async def test_same_key_replay_precedes_current_balance_check(
     assert all(result.outcome is TransferSubmissionOutcome.ACCEPTED for result in replays)
     assert len({result.provider_reference for result in replays}) == 1
     assert await provider_a.transfer_count() == 1
-    assert await provider_a.effective_balance("account_a") == Decimal("1000.00")
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == Decimal("1000.00")
 
     final_debit = await provider_b.submit_transfer(
         transfer_request(account_id="account_a", amount="1000.00")
     )
     assert final_debit.outcome is TransferSubmissionOutcome.ACCEPTED
-    assert await provider_a.effective_balance("account_a") == Decimal("0.00")
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == Decimal("0.00")
     replay_after_balance_changed = await provider_b.submit_transfer(original)
     assert replay_after_balance_changed.outcome is TransferSubmissionOutcome.ACCEPTED
     assert replay_after_balance_changed.provider_reference == replays[0].provider_reference
@@ -237,7 +235,7 @@ async def test_insufficient_funds_fact_is_stable_across_replay(
     assert first.error_code == replay.error_code == "INSUFFICIENT_FUNDS"
     assert first.provider_reference == replay.provider_reference
     assert await provider_a.transfer_count() == 1
-    assert await provider_a.effective_balance("account_a") == Decimal("1000.00")
+    assert await provider_a.effective_balance("dev-user-001", "account_a") == Decimal("1000.00")
 
 
 def test_advisory_lock_key_is_stable_and_account_scoped() -> None:

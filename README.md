@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-当前版本：`v0.5.4`
+当前版本：`v0.6.1`
 
 面向中文用户的个人银行 Agent 应用。当前产品可以查询账户与余额、分析月度消费、生成结构化报告，以及通过持久化 Transfer Workflow 完成草稿、校验、审批、重新认证、幂等提交和 Provider 最终状态确认。只有 `Operation SUCCEEDED` 表示资金已被 Mock Provider 确认转出。
 
@@ -18,6 +18,7 @@
 | 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
 | 持久事件发布 | Transactional Outbox | Event + Outbox atomic commit → leased publisher → EventBus/SSE |
 | 持久 Task 执行 | PostgreSQL-backed Task worker | due scan → `SKIP LOCKED` claim → lease/heartbeat/fencing → retry/terminal |
+| 生产身份认证与 Principal | provider-neutral OIDC/OAuth 2.0 | verified JWT → identity mapping → Principal → ownership/tool scope |
 
 ```text
 Financial Analysis Vertical Slice: COMPLETE
@@ -26,6 +27,7 @@ Durable Operation Recovery: COMPLETE
 Cross-Process Financial Concurrency: COMPLETE
 Transactional Outbox: COMPLETE
 Durable Task Execution: COMPLETE
+生产身份认证与 Principal：COMPLETE
 ```
 
 用户可以直接输入：
@@ -43,6 +45,9 @@ Durable Task Execution: COMPLETE
 ## 架构
 
 ```text
+OIDC Identity Provider
+    → signed JWT access token → FastAPI authentication boundary
+    → (issuer, subject) mapping → stable Principal.user_id
 User Message
     → Message + durable Task + Event/Outbox atomic commit
     → PostgreSQL Task claim/lease + heartbeat
@@ -72,6 +77,8 @@ User Message
 - Mock Provider 在自己的短 PostgreSQL transaction 内按 source account 串行化，重新计算 fixture balance 减成功 ledger 的 authoritative balance，然后原子地接受或拒绝转账。
 - Operation recovery 调度、尝试次数和 lease 同样持久化在 Application PostgreSQL；LangGraph checkpoint 不是 Workflow/Operation 业务事实源。
 - Task 的调度、attempt、lease 和 fencing token 持久化在 Application PostgreSQL；LangGraph checkpoint 只保存 Agent runtime 进度，不代替 Task ownership。
+- 外部 `(issuer, subject)` 只在认证边界映射到稳定的内部 `user_id`；Conversation、Task、Report、Workflow、Approval、Reauthentication、Operation 和银行数据均以该内部身份做 ownership scope。
+- HTTP credential 不进入 Task、Message、Event、Outbox、Prompt 或 LangGraph checkpoint。Task worker 只从 Task 与 Conversation 的 authoritative `user_id` 构造 server-side execution Principal。
 - 所有需实时通知的 durable Event 都与唯一 Outbox intent 在同一业务 transaction 内写入；Outbox 只引用 Event identity，不复制 payload。
 
 产品 Runtime 是 `LangGraphAgentRuntime`。`ManualAgentRuntime` 仅作为 reference 保留，不承载新功能。
@@ -120,6 +127,10 @@ User Message
 
 默认仍是只读和最小权限；唯一例外是 04.3 新增的受控资金提交能力。
 
+- 所有业务 API 都通过统一 `get_current_principal()` 认证；缺失/无效 credential 返回 401，未 provision 的合法外部身份返回 `403 IDENTITY_NOT_PROVISIONED`。
+- detail、action 和 SSE 在查询层按 `Principal.user_id` 限定，跨用户 UUID 访问统一表现为 404；list 查询直接在 repository 层按用户过滤。
+- LLM、Tool arguments、request body 和浏览器都不能提供或切换 authority。ToolExecutionContext 只能接收 server-created Principal，账户、收款人、余额和交易分析从该 Principal 获得 user scope。
+
 - `agent:minimal-banking`：允许 `account.list`、`account.get_balance`。
 - `agent:financial-analysis`：允许 `account.list` 和四个 Financial Tools，不允许余额、转账、卡片或其他写能力。
 - `skill:monthly-spending-report`：`allowed_tools=[]`，只能消费 `FinancialAnalysisSnapshot`。
@@ -132,7 +143,7 @@ Router 只选择 Agent/Workflow 和 requested output，不扩大权限。未知 
 
 ## 快速启动
 
-准备配置：
+准备配置；认证模式必须显式指定，不存在缺省到 development principal 的 fallback：
 
 ```bash
 cp .env.example .env
@@ -148,6 +159,40 @@ LLM_MODEL=
 ```
 
 `LLM_BASE_URL` 必须是 API root，Adapter 会追加 `/chat/completions`。密钥不会进入数据库、Event、Prompt trace 或前端。
+
+本地开发可显式使用固定 Principal：
+
+```env
+APP_ENVIRONMENT=development
+AUTH_MODE=development
+DEVELOPMENT_USER_ID=dev-user-001
+NEXT_PUBLIC_AUTH_MODE=development
+```
+
+OIDC 模式验证标准 JWT signature、`iss`、`aud`、`exp`、可选 `nbf`、`sub`、allowed algorithm 和 `kid`/JWKS。`OIDC_JWKS_URL` 留空时使用标准 discovery；生产环境禁止 `AUTH_MODE=development`。
+
+```env
+APP_ENVIRONMENT=production
+AUTH_MODE=oidc
+OIDC_ISSUER=https://idp.example.com
+OIDC_AUDIENCE=banking-api
+OIDC_JWKS_URL=
+OIDC_ALLOWED_ALGORITHMS=["RS256"]
+NEXT_PUBLIC_AUTH_MODE=oidc
+NEXT_PUBLIC_OIDC_AUTHORITY=https://idp.example.com
+NEXT_PUBLIC_OIDC_CLIENT_ID=banking-web
+NEXT_PUBLIC_OIDC_SCOPE="openid profile"
+```
+
+前端使用 Authorization Code + PKCE；access token 仅由成熟 OIDC client 保存在内存中并通过 Bearer header 发送，SSE 使用 authenticated fetch streaming，不把 token 放入 URL。外部身份必须显式 provision，系统不会按 email/display name 猜测或自动继承 demo 银行数据：
+
+```bash
+cd apps/api
+uv run python -m banking_api.security.authentication.provision \
+  --user-id dev-user-001 \
+  --issuer https://idp.example.com \
+  --subject external-subject
+```
 
 启动完整产品：
 
@@ -276,6 +321,8 @@ POST /api/v1/operations/{operation_id}/actions/reconcile
 
 SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。`business state + Event + Outbox intent` 在同一 PostgreSQL transaction 内提交；Outbox Publisher 使用 `SKIP LOCKED` + durable lease 向现有 EventBus 做 at-least-once 发布。发布成功后、`published_at` 写回前崩溃可能导致重复通知，但不会重复业务副作用。
 
+SSE connection 本身同样要求认证并先验证 Conversation ownership。OIDC 模式下浏览器通过 streaming `fetch` 在 `Authorization` header 携带 access token，不使用 query-string token。
+
 `READY_FOR_COMMIT` 只表示当前 payload 已审批并重新认证。Commit 仍会重新验证 Approval、Reauthentication、payload hash、Policy、payee、source account、balance 和 currency。`SUBMITTED` 不是成功；`UNKNOWN` 表示 Provider 可能已接收或执行，只能查询原 Operation，不得新建或换 key 重提。只有 `Operation SUCCEEDED` 才能展示“转账成功”。
 
 `CREATED / SUBMITTED / UNKNOWN` 会按持久化 `next_reconcile_at` 自动恢复。多个 API process 可各自运行 worker；PostgreSQL `FOR UPDATE SKIP LOCKED` 与有期 lease 保证同一 Operation 在有效 lease 内只有一个 claim。Provider/network I/O 不持有数据库行锁。
@@ -308,12 +355,17 @@ docs/                     版本交付、测试结果与设计记录
 - [Implementation Report v0.5.4](docs/implementation-report-v0.5.4.md)
 - [Repository Tree v0.5.4](docs/repository-tree-v0.5.4.md)
 - [Test Results v0.5.4](docs/test-results-v0.5.4.md)
+- [Implementation Report v0.6.1](docs/implementation-report-v0.6.1.md)
+- [Repository Tree v0.6.1](docs/repository-tree-v0.6.1.md)
+- [Test Results v0.6.1](docs/test-results-v0.6.1.md)
 
 旧版本文档继续保存在 `docs/` 作为审计和演进记录，但不是理解当前系统的必读入口。
 
 ## 当前限制
 
-当前资金写入仅限持久化 Mock Transfer Provider；不支持真实认证、真实重新认证 Provider、真实转账 Provider、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP、Memory 或 Agent-to-Agent 调用。
+当前资金写入仅限持久化 Mock Transfer Provider；OIDC 协议实现 production-capable，但本次未连接真实外部 IdP 做登录 smoke。当前不支持真实 step-up Reauthentication Provider、真实转账 Provider、KYC、MFA/Passkey enrollment、RBAC/ACL 平台、FX、预约/周期转账、提交后取消、退款/冲正、raw transaction search、Planner、RAG、MCP、Memory 或 Agent-to-Agent 调用。
+
+登录 Authentication 只回答“是谁”，不会替代对 canonical payload 的 Approval，也不会替代高风险操作前的 Reauthentication。`MockReauthenticationProvider` 继续保留；真实 step-up authentication 属于 v0.6.2。
 
 仍然没有 balance reservation/hold/capture 系统。TaskExecutionWorker、OperationRecoveryWorker 和 OutboxPublisher 是三个明确、独立的专用 loop，不是 Celery、Redis、Kafka、通用任务队列或 Generic Worker/Scheduler Framework。Task worker 仍由 API process 托管，未提供独立 worker deployment、优先级队列或 per-conversation ordering。
 

@@ -12,7 +12,7 @@ from banking_api.domain.enums import (
     RuntimeBackend,
     TaskStatus,
 )
-from banking_api.persistence.models import ConversationModel, TaskModel, utc_now
+from banking_api.persistence.models import TaskModel, utc_now
 
 RUNNABLE_TASK_STATUSES = (
     TaskStatus.PENDING,
@@ -31,6 +31,7 @@ TERMINAL_TASK_STATUSES = (
 class TaskExecutionClaim:
     task_id: UUID
     conversation_id: UUID
+    user_id: str
     lease_owner: str
     attempt: int
     version: int
@@ -46,12 +47,14 @@ class TaskRepository:
         self,
         *,
         conversation_id: UUID,
+        user_id: str,
         task_type: str,
         input_data: dict[str, Any],
         runtime_backend: RuntimeBackend = RuntimeBackend.MANUAL,
     ) -> TaskModel:
         task = TaskModel(
             conversation_id=conversation_id,
+            user_id=user_id,
             task_type=task_type,
             runtime_backend=runtime_backend,
             status=TaskStatus.PENDING,
@@ -108,6 +111,7 @@ class TaskRepository:
                 TaskExecutionClaim(
                     task_id=task.task_id,
                     conversation_id=task.conversation_id,
+                    user_id=task.user_id,
                     lease_owner=lease_owner,
                     attempt=task.execution_attempts,
                     version=task.version,
@@ -180,20 +184,14 @@ class TaskRepository:
 
     async def get_for_user(self, task_id: UUID, user_id: str) -> TaskModel | None:
         result = await self.session.execute(
-            select(TaskModel)
-            .join(ConversationModel)
-            .where(TaskModel.task_id == task_id, ConversationModel.user_id == user_id)
+            select(TaskModel).where(TaskModel.task_id == task_id, TaskModel.user_id == user_id)
         )
         return result.scalar_one_or_none()
 
     async def list_for_user(
         self, user_id: str, conversation_id: UUID | None = None
     ) -> list[TaskModel]:
-        statement = (
-            select(TaskModel)
-            .join(ConversationModel)
-            .where(ConversationModel.user_id == user_id)
-        )
+        statement = select(TaskModel).where(TaskModel.user_id == user_id)
         if conversation_id is not None:
             statement = statement.where(TaskModel.conversation_id == conversation_id)
         result = await self.session.execute(statement.order_by(TaskModel.created_at.desc()))

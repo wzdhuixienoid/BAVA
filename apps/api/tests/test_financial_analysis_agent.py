@@ -9,6 +9,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse, LLMToolCall
@@ -72,15 +73,13 @@ def financial_request(content: str = "分析2026年8月消费") -> AgentRunReque
         conversation_id=conversation_id,
         current_task=content,
         conversation_messages=[message],
-        authenticated=True,
+        principal=ExecutionPrincipal.for_task("dev-user-001"),
         agent=FINANCIAL_ANALYSIS_AGENT,
     )
 
 
 def tool_call(call_id: str, name: str, arguments: dict[str, object]) -> LLMResponse:
-    return LLMResponse(
-        tool_calls=[LLMToolCall(id=call_id, name=name, arguments=arguments)]
-    )
+    return LLMResponse(tool_calls=[LLMToolCall(id=call_id, name=name, arguments=arguments)])
 
 
 def test_agent_registry_contains_only_two_specialists() -> None:
@@ -112,9 +111,7 @@ def test_application_registers_two_agents_with_isolated_account_permissions() ->
     assert list_accounts.allowed_callers == frozenset(
         {"agent:minimal-banking", "agent:financial-analysis", "workflow:transfer"}
     )
-    assert get_balance.allowed_callers == frozenset(
-        {"agent:minimal-banking", "workflow:transfer"}
-    )
+    assert get_balance.allowed_callers == frozenset({"agent:minimal-banking", "workflow:transfer"})
 
 
 def test_financial_agent_has_exact_read_capabilities() -> None:
@@ -183,9 +180,7 @@ async def test_summary_compare_and_top_transactions_then_final() -> None:
         [
             tool_call("summary", "get_spending_summary", {"month": "2026-08"}),
             tool_call("compare", "compare_spending_periods", {"month": "2026-08"}),
-            tool_call(
-                "top", "get_top_transactions", {"month": "2026-08", "limit": 5}
-            ),
+            tool_call("top", "get_top_transactions", {"month": "2026-08", "limit": 5}),
             LLMResponse(content="8月消费上升，主要大额交易已列出。"),
         ]
     )
@@ -217,9 +212,7 @@ async def test_account_list_resolves_account_before_filtered_financial_tool() ->
         "account.list",
         "transaction.spending_summary",
     ]
-    assert result.state.successful_tool_results[1].arguments["account_ids"] == [
-        "acc_salary"
-    ]
+    assert result.state.successful_tool_results[1].arguments["account_ids"] == ["acc_salary"]
 
 
 async def test_unknown_account_is_not_invented() -> None:
@@ -266,9 +259,7 @@ async def test_tool_domain_error_is_structured_and_agent_can_explain() -> None:
     result = await runtime.run(financial_request("分析2025年1月消费"))
 
     assert result.answer == "2025年1月没有可分析的交易。"
-    assert "NO_TRANSACTIONS_IN_PERIOD" in (
-        provider.requests[1].messages[-1].content or ""
-    )
+    assert "NO_TRANSACTIONS_IN_PERIOD" in (provider.requests[1].messages[-1].content or "")
     assert result.state.successful_tool_results == []
 
 

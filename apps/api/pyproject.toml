@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.5.4"
-description = "支持 Durable Task Execution 与 Transactional Outbox 的 AI 银行助手"
+version = "0.6.1"
+description = "支持 OIDC 认证、可信 Principal 与资源所有权隔离的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",
@@ -12,6 +12,7 @@ dependencies = [
   "langgraph-checkpoint-postgres>=3,<4",
   "psycopg[binary]>=3.3,<4",
   "pydantic-settings>=2.10,<3",
+  "pyjwt[crypto]>=2.10,<3",
   "sqlalchemy[asyncio]>=2.0.41,<3",
   "uvicorn[standard]>=0.35,<1",
 ]

@@ -115,6 +115,7 @@ async def test_worker_recovers_created_after_provider_accept_with_exactly_one_de
         payload = operation.payload_json  # type: ignore[union-attr]
     await provider.submit_transfer(
         TransferProviderRequest(
+            user_id=ready.user_id,
             idempotency_key=stable_key,
             source_account_id=payload["source_account_id"],
             payee_id=payload["payee_id"],
@@ -186,9 +187,7 @@ async def test_unknown_background_recovery_is_query_only(app) -> None:
     assert await provider.transfer_count() == 1
     async with app.state.test_session_factory() as session:
         recovered = await session.scalar(
-            select(OperationModel).where(
-                OperationModel.operation_id == unknown.operation_id
-            )
+            select(OperationModel).where(OperationModel.operation_id == unknown.operation_id)
         )
     assert recovered.status is OperationStatus.SUCCEEDED  # type: ignore[union-attr]
     assert recovered.reconcile_attempts == 2  # type: ignore[union-attr]
@@ -246,6 +245,7 @@ async def test_submitted_background_recovery_queries_without_resubmission(app) -
         key = operation.idempotency_key  # type: ignore[union-attr]
     accepted = await provider.submit_transfer(
         TransferProviderRequest(
+            user_id=ready.user_id,
             idempotency_key=key,
             source_account_id=payload["source_account_id"],
             payee_id=payload["payee_id"],

@@ -3,7 +3,12 @@ from decimal import Decimal
 
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
-from banking_api.tools.models import BalanceResult, GetBalanceInput, ToolSpec
+from banking_api.tools.models import (
+    BalanceResult,
+    GetBalanceInput,
+    ToolExecutionContext,
+    ToolSpec,
+)
 
 MINIMAL_BANKING_AGENT_ID = "agent:minimal-banking"
 TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
@@ -11,12 +16,13 @@ TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 def build_get_balance_tool(
     bank: MockBankService,
-    effective_balance_reader: Callable[[str], Awaitable[Decimal]] | None = None,
+    effective_balance_reader: Callable[[str, str], Awaitable[Decimal]] | None = None,
 ) -> ToolSpec:
-    async def handler(arguments: GetBalanceInput) -> BalanceResult:
-        result = bank.get_balance(arguments.account_id)
+    async def handler(context: ToolExecutionContext, arguments: GetBalanceInput) -> BalanceResult:
+        user_id = context.principal.user_id
+        result = bank.get_balance(arguments.account_id, user_id=user_id)
         if effective_balance_reader is not None:
-            result["balance"] = await effective_balance_reader(arguments.account_id)
+            result["balance"] = await effective_balance_reader(user_id, arguments.account_id)
         return BalanceResult.model_validate(result)
 
     return ToolSpec(

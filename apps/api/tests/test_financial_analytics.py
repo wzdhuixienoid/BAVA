@@ -11,6 +11,8 @@ from banking_api.financial.analytics_service import (
 from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
 from banking_api.mock_bank.service import MockBankService
 
+USER_ID = "dev-user-001"
+
 
 @pytest.fixture
 def analytics() -> FinancialAnalyticsService:
@@ -37,9 +39,7 @@ def write_bank_data(
         for account_id, currency in currencies.items()
     ]
     (directory / "accounts.json").write_text(json.dumps(accounts), encoding="utf-8")
-    (directory / "transactions.json").write_text(
-        json.dumps(transactions), encoding="utf-8"
-    )
+    (directory / "transactions.json").write_text(json.dumps(transactions), encoding="utf-8")
     return FinancialAnalyticsService(MockBankService(directory))
 
 
@@ -71,7 +71,7 @@ def transaction(
 def test_monthly_summary_separates_income_and_spending_and_excludes_transfer(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    result = analytics.spending_summary("2026-07")
+    result = analytics.spending_summary("2026-07", user_id=USER_ID)
 
     assert result.total_income == Decimal("23800.00")
     assert result.total_spending == Decimal("9333.20")
@@ -80,14 +80,12 @@ def test_monthly_summary_separates_income_and_spending_and_excludes_transfer(
     assert result.currency == "CNY"
     raw_debits = [
         item
-        for item in MockBankService().list_transactions()
+        for item in MockBankService().list_transactions(user_id=USER_ID)
         if item["occurred_at"].startswith("2026-07-")
         and item["direction"] == "DEBIT"
         and item["status"] == "POSTED"
     ]
-    assert sum((Decimal(item["amount"]) for item in raw_debits), Decimal(0)) == Decimal(
-        "14333.20"
-    )
+    assert sum((Decimal(item["amount"]) for item in raw_debits), Decimal(0)) == Decimal("14333.20")
     assert result.total_spending == Decimal("14333.20") - Decimal("5000.00")
 
 
@@ -103,7 +101,7 @@ def test_valid_statuses_are_explicit_and_non_posted_transactions_are_ignored(
     )
 
     assert VALID_TRANSACTION_STATUSES == frozenset({"POSTED"})
-    result = service.spending_summary("2026-08")
+    result = service.spending_summary("2026-08", user_id=USER_ID)
     assert result.total_spending == Decimal("10.10")
     assert result.spending_transaction_count == 1
 
@@ -111,7 +109,7 @@ def test_valid_statuses_are_explicit_and_non_posted_transactions_are_ignored(
 def test_category_breakdown_aggregates_counts_shares_and_order(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    result = analytics.category_breakdown("2026-08")
+    result = analytics.category_breakdown("2026-08", user_id=USER_ID)
 
     assert result.total_spending == Decimal("16547.30")
     assert [item.category for item in result.categories[:4]] == [
@@ -130,7 +128,7 @@ def test_category_breakdown_aggregates_counts_shares_and_order(
 def test_compare_periods_calculates_total_and_category_changes(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    result = analytics.compare_periods("2026-08")
+    result = analytics.compare_periods("2026-08", user_id=USER_ID)
 
     assert result.current_period == "2026-08"
     assert result.previous_period == "2026-07"
@@ -148,7 +146,7 @@ def test_compare_periods_calculates_total_and_category_changes(
 def test_compare_periods_handles_empty_previous_period_without_division_by_zero(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    result = analytics.compare_periods("2026-06")
+    result = analytics.compare_periods("2026-06", user_id=USER_ID)
 
     assert result.previous_period == "2026-05"
     assert result.previous_spending == Decimal(0)
@@ -159,7 +157,7 @@ def test_compare_periods_handles_empty_previous_period_without_division_by_zero(
 def test_top_transactions_are_spending_only_and_deterministically_sorted(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    result = analytics.top_transactions("2026-08", limit=5)
+    result = analytics.top_transactions("2026-08", limit=5, user_id=USER_ID)
 
     assert [item.transaction_id for item in result.transactions] == [
         "txn_0014",
@@ -184,7 +182,7 @@ def test_top_transaction_tie_breaker_uses_time_then_id(tmp_path: Path) -> None:
         ],
     )
 
-    result = service.top_transactions("2026-08", limit=3)
+    result = service.top_transactions("2026-08", limit=3, user_id=USER_ID)
     assert [item.transaction_id for item in result.transactions] == [
         "txn_a",
         "txn_c",
@@ -195,30 +193,30 @@ def test_top_transaction_tie_breaker_uses_time_then_id(tmp_path: Path) -> None:
 def test_account_filtering_and_empty_account_ids_mean_all(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    travel = analytics.spending_summary("2026-08", ["acc_travel"])
-    all_accounts = analytics.spending_summary("2026-08", [])
+    travel = analytics.spending_summary("2026-08", ["acc_travel"], user_id=USER_ID)
+    all_accounts = analytics.spending_summary("2026-08", [], user_id=USER_ID)
 
     assert travel.total_income == Decimal(0)
     assert travel.total_spending == Decimal("4260.00")
-    assert all_accounts == analytics.spending_summary("2026-08")
+    assert all_accounts == analytics.spending_summary("2026-08", user_id=USER_ID)
 
 
 @pytest.mark.parametrize("month", ["2026-8", "2026-13", "not-a-month", "9999-12"])
 def test_invalid_period(month: str, analytics: FinancialAnalyticsService) -> None:
     with pytest.raises(FinancialDomainError) as raised:
-        analytics.spending_summary(month)
+        analytics.spending_summary(month, user_id=USER_ID)
     assert raised.value.code is FinancialErrorCode.INVALID_PERIOD
 
 
 def test_unknown_account(analytics: FinancialAnalyticsService) -> None:
     with pytest.raises(FinancialDomainError) as raised:
-        analytics.spending_summary("2026-08", ["acc_missing"])
+        analytics.spending_summary("2026-08", ["acc_missing"], user_id=USER_ID)
     assert raised.value.code is FinancialErrorCode.ACCOUNT_NOT_FOUND
 
 
 def test_no_transactions_in_period(analytics: FinancialAnalyticsService) -> None:
     with pytest.raises(FinancialDomainError) as raised:
-        analytics.spending_summary("2025-01")
+        analytics.spending_summary("2025-01", user_id=USER_ID)
     assert raised.value.code is FinancialErrorCode.NO_TRANSACTIONS_IN_PERIOD
 
 
@@ -233,7 +231,7 @@ def test_mixed_currency_is_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(FinancialDomainError) as raised:
-        service.spending_summary("2026-08")
+        service.spending_summary("2026-08", user_id=USER_ID)
     assert raised.value.code is FinancialErrorCode.MIXED_CURRENCY_UNSUPPORTED
 
 
@@ -243,6 +241,6 @@ def test_decimal_precision_never_uses_binary_float(tmp_path: Path) -> None:
         [transaction("one", "0.10"), transaction("two", "0.20")],
     )
 
-    result = service.spending_summary("2026-08")
+    result = service.spending_summary("2026-08", user_id=USER_ID)
     assert result.total_spending == Decimal("0.30")
     assert isinstance(result.total_spending, Decimal)

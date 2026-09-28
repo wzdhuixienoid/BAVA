@@ -10,6 +10,7 @@ from banking_api.config.settings import Settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole, RuntimeBackend
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.policy.service import PolicyService
@@ -50,7 +51,7 @@ async def smoke(runtime: AgentRuntime, prompt: str) -> None:
             conversation_id=conversation_id,
             current_task=prompt,
             conversation_messages=[message],
-            authenticated=True,
+            principal=ExecutionPrincipal.for_task("dev-user-001"),
             event_sink=trace,
         )
     )

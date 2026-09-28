@@ -37,6 +37,7 @@ from banking_api.domain.enums import (
     WorkflowStatus,
 )
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot, ToolEvidence
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.fake_provider import FakeLLMProvider
@@ -105,7 +106,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE mock_bank_transfers, events, tasks, messages, conversations "
+                "TRUNCATE identity_mappings, mock_bank_transfers, events, tasks, messages, "
+                "conversations "
                 "RESTART IDENTITY CASCADE"
             )
         )
@@ -113,7 +115,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE mock_bank_transfers, events, tasks, messages, conversations "
+                "TRUNCATE identity_mappings, mock_bank_transfers, events, tasks, messages, "
+                "conversations "
                 "RESTART IDENTITY CASCADE"
             )
         )
@@ -229,12 +232,22 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                         "SELECT column_name FROM information_schema.columns "
                         "WHERE table_name = 'tasks' AND column_name IN "
                         "('next_run_at', 'execution_attempts', 'last_attempt_at', "
-                        "'lease_owner', 'lease_expires_at')"
+                        "'lease_owner', 'lease_expires_at', 'user_id')"
                     )
                 )
             ).scalars()
         )
-        assert revision == "0012"
+        identity_columns = set(
+            (
+                await session.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'identity_mappings'"
+                    )
+                )
+            ).scalars()
+        )
+        assert revision == "0013"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -244,7 +257,9 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             "last_attempt_at",
             "lease_owner",
             "lease_expires_at",
+            "user_id",
         }
+        assert identity_columns == {"id", "user_id", "issuer", "subject", "created_at"}
         assert {
             "id",
             "user_id",
@@ -322,6 +337,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
         assert {
             "provider_reference",
             "idempotency_key",
+            "user_id",
             "source_account_id",
             "payee_id",
             "amount",
@@ -352,7 +368,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
             content="我的工资卡余额是多少？",
         )
 
-    bank = MockBankService()
+    bank = MockBankService(fixture_user_ids=frozenset({"postgres-test-user"}))
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))
@@ -360,9 +376,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
         provider=FakeLLMProvider(
             [
                 LLMResponse(
-                    tool_calls=[
-                        LLMToolCall(id="call_1", name="list_accounts", arguments={})
-                    ]
+                    tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]
                 ),
                 LLMResponse(
                     tool_calls=[
@@ -428,17 +442,19 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
 ) -> None:
     factory = postgres_factory
     bus = EventBus()
-    bank = MockBankService()
+    bank = MockBankService(fixture_user_ids=frozenset({"postgres-transfer-user"}))
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))
     registry.register(build_search_payees_tool(bank))
     engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
     balances_before = {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id="postgres-transfer-user")[
+            "balance"
+        ]
+        for item in bank.list_accounts(user_id="postgres-transfer-user")
     }
-    transactions_before = bank.list_transactions()
+    transactions_before = bank.list_transactions(user_id="postgres-transfer-user")
 
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
@@ -507,9 +523,7 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
                 expected_version=ready.version,
             )
     async with factory() as session:
-        challenged = await WorkflowService(
-            session, bus, engine
-        ).start_reauthentication(
+        challenged = await WorkflowService(session, bus, engine).start_reauthentication(
             ready.workflow_id,
             user_id="postgres-transfer-user",
             expected_version=approved.version,
@@ -519,9 +533,7 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
     assert challenged.reauth_summary.status is ReauthenticationStatus.PENDING
 
     async with factory() as session:
-        authorized = await WorkflowService(
-            session, bus, engine
-        ).verify_reauthentication(
+        authorized = await WorkflowService(session, bus, engine).verify_reauthentication(
             ready.workflow_id,
             user_id="postgres-transfer-user",
             reauth_id=challenged.reauth_summary.reauth_id,
@@ -553,9 +565,7 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
         )
         persisted_approval = (
             await session.execute(
-                select(ApprovalModel).where(
-                    ApprovalModel.workflow_id == ready.workflow_id
-                )
+                select(ApprovalModel).where(ApprovalModel.workflow_id == ready.workflow_id)
             )
         ).scalar_one()
         persisted_reauth = (
@@ -584,10 +594,12 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
     ]
     assert all("state_json" not in event.data_json for event in workflow_events)
     assert balances_before == {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id="postgres-transfer-user")[
+            "balance"
+        ]
+        for item in bank.list_accounts(user_id="postgres-transfer-user")
     }
-    assert bank.list_transactions() == transactions_before
+    assert bank.list_transactions(user_id="postgres-transfer-user") == transactions_before
 
     async with factory() as session:
         mutated = await WorkflowService(session, bus, engine).set_amount(
@@ -609,7 +621,8 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
 ) -> None:
     factory = postgres_factory
     bus = EventBus()
-    bank = MockBankService()
+    user_id = "postgres-operation-user"
+    bank = MockBankService(fixture_user_ids=frozenset({user_id}))
     provider = MockTransferProvider(factory, bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
@@ -618,7 +631,6 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
     registry.register(build_commit_transfer_tool(factory, provider))
     registry.register(build_get_transfer_status_tool(factory, provider))
     engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
-    user_id = "postgres-operation-user"
 
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
@@ -672,7 +684,7 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
             expected_version=workflow.version,
         )
 
-    initial_balance = await provider.effective_balance("acc_salary")
+    initial_balance = await provider.effective_balance(user_id, "acc_salary")
     async with factory() as session:
         created = await OperationService(session, bus, engine).prepare_transfer(
             workflow.workflow_id,
@@ -683,7 +695,8 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
     async with factory() as session:
         persisted_created = await session.get(OperationModel, created.operation_id)
         approval = await session.get(
-            ApprovalModel, workflow.approval_summary.approval_id  # type: ignore[union-attr]
+            ApprovalModel,
+            workflow.approval_summary.approval_id,  # type: ignore[union-attr]
         )
     stable_key = persisted_created.idempotency_key  # type: ignore[union-attr]
     assert approval.status is ApprovalStatus.CONSUMED  # type: ignore[union-attr]
@@ -697,7 +710,7 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
             expected_version=created.version,
         )
     assert succeeded.status is OperationStatus.SUCCEEDED
-    assert await provider.effective_balance("acc_salary") == initial_balance - Decimal(
+    assert await provider.effective_balance(user_id, "acc_salary") == initial_balance - Decimal(
         "2000.00"
     )
     assert await provider.transfer_count() == 1
@@ -721,7 +734,7 @@ async def _create_postgres_created_operation(
     provider=None,
     engine=None,
 ):  # type: ignore[no-untyped-def]
-    bank = bank or MockBankService()
+    bank = bank or MockBankService(fixture_user_ids=frozenset({user_id}))
     provider = provider or MockTransferProvider(factory, bank)
     if engine is None:
         registry = ToolRegistry()
@@ -792,8 +805,8 @@ async def _create_postgres_created_operation(
 
 
 class FixedSalaryBalanceBank(MockBankService):
-    def get_balance(self, account_id: str):  # type: ignore[no-untyped-def]
-        result = super().get_balance(account_id)
+    def get_balance(self, account_id: str, *, user_id: str):  # type: ignore[no-untyped-def]
+        result = super().get_balance(account_id, user_id=user_id)
         if account_id == "acc_salary":
             result["balance"] = Decimal("10000.00")
         return result
@@ -804,7 +817,8 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
 ) -> None:
     factory = postgres_factory
     bus = RecordingPostgresEventBus()
-    bank = FixedSalaryBalanceBank()
+    user_id = "concurrent-operation-owner"
+    bank = FixedSalaryBalanceBank(fixture_user_ids=frozenset({user_id}))
     provider = MockTransferProvider(factory, bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
@@ -817,7 +831,7 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
     _, _, _, created_a = await _create_postgres_created_operation(
         factory,
         bus,
-        user_id="crashed-operation-a",
+        user_id=user_id,
         amount="8000.00",
         bank=bank,
         provider=provider,
@@ -826,7 +840,7 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
     _, _, _, created_b = await _create_postgres_created_operation(
         factory,
         bus,
-        user_id="stale-precheck-operation-b",
+        user_id=user_id,
         amount="8000.00",
         bank=bank,
         provider=provider,
@@ -839,6 +853,7 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
         key_a = operation_a.idempotency_key  # type: ignore[union-attr]
     accepted_a = await provider.submit_transfer(
         TransferProviderRequest(
+            user_id=user_id,
             idempotency_key=key_a,
             source_account_id=payload_a["source_account_id"],
             payee_id=payload_a["payee_id"],
@@ -848,12 +863,12 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
     )
     assert accepted_a.outcome.value == "ACCEPTED"
 
-    # B passed the earlier Workflow check while the balance was 10,000. Provider
-    # now sees A's durable 8,000 debit and definitively rejects B.
+    # Operation B passed the earlier Workflow check while the owner's balance was
+    # 10,000. Provider now sees Operation A's durable 8,000 debit and rejects B.
     async with factory() as session:
         failed_b = await OperationService(session, bus, engine).reconcile(
             created_b.operation_id,
-            user_id="stale-precheck-operation-b",
+            user_id=user_id,
             expected_version=created_b.version,
         )
     assert failed_b.status is OperationStatus.FAILED
@@ -877,7 +892,7 @@ async def test_postgres_provider_rejects_stale_precheck_and_recovery_replays_exa
         worker_id="concurrency-recovery-worker",
     )
     assert await worker.run_once() == 1
-    assert await provider.effective_balance("acc_salary") == Decimal("2000.00")
+    assert await provider.effective_balance(user_id, "acc_salary") == Decimal("2000.00")
     assert await provider.transfer_count() == 2  # one succeeded fact + one failed fact
 
     outbox_publisher = OutboxPublisher(
@@ -920,7 +935,9 @@ async def test_postgres_skip_locked_lease_expiry_and_exact_once_recovery(
     bank, provider, engine, created = await _create_postgres_created_operation(
         factory, bus, user_id="postgres-claim-user"
     )
-    initial_balance = Decimal(str(bank.get_balance("acc_salary")["balance"]))
+    initial_balance = Decimal(
+        str(bank.get_balance("acc_salary", user_id="postgres-claim-user")["balance"])
+    )
     now = datetime.now(UTC)
     lease_duration = timedelta(seconds=30)
 
@@ -952,6 +969,7 @@ async def test_postgres_skip_locked_lease_expiry_and_exact_once_recovery(
         payload = operation.payload_json  # type: ignore[union-attr]
     await provider.submit_transfer(
         TransferProviderRequest(
+            user_id="postgres-claim-user",
             idempotency_key=stable_key,
             source_account_id=payload["source_account_id"],
             payee_id=payload["payee_id"],
@@ -1001,9 +1019,9 @@ async def test_postgres_skip_locked_lease_expiry_and_exact_once_recovery(
         ).reconcile_claimed(created.operation_id, lease_owner="worker-b")
     assert recovered.status is OperationStatus.SUCCEEDED
     assert await provider.transfer_count() == 1
-    assert await provider.effective_balance("acc_salary") == initial_balance - Decimal(
-        "2000.00"
-    )
+    assert await provider.effective_balance(
+        "postgres-claim-user", "acc_salary"
+    ) == initial_balance - Decimal("2000.00")
     async with factory() as session:
         persisted = await session.get(OperationModel, created.operation_id)
         terminal_claims = await OperationRepository(session).claim_due(
@@ -1042,10 +1060,10 @@ async def test_postgres_report_artifact_round_trip(postgres_factory) -> None:
     snapshot = FinancialAnalysisSnapshot(
         period="2026-08",
         account_ids=[],
-        spending_summary=analytics.spending_summary("2026-08"),
-        category_breakdown=analytics.category_breakdown("2026-08"),
-        period_comparison=analytics.compare_periods("2026-08"),
-        top_transactions=analytics.top_transactions("2026-08", 5),
+        spending_summary=analytics.spending_summary("2026-08", user_id="dev-user-001"),
+        category_breakdown=analytics.category_breakdown("2026-08", user_id="dev-user-001"),
+        period_comparison=analytics.compare_periods("2026-08", user_id="dev-user-001"),
+        top_transactions=analytics.top_transactions("2026-08", 5, user_id="dev-user-001"),
         tool_evidence=[
             ToolEvidence(
                 capability_id="transaction.spending_summary",
@@ -1119,13 +1137,13 @@ class CountingBankService(MockBankService):
         super().__init__()
         self.counts = counts
 
-    def list_accounts(self):  # type: ignore[no-untyped-def]
+    def list_accounts(self, *, user_id: str):  # type: ignore[no-untyped-def]
         self.counts["list_accounts"] += 1
-        return super().list_accounts()
+        return super().list_accounts(user_id=user_id)
 
-    def get_balance(self, account_id: str):  # type: ignore[no-untyped-def]
+    def get_balance(self, account_id: str, *, user_id: str):  # type: ignore[no-untyped-def]
         self.counts["get_balance"] += 1
-        return super().get_balance(account_id)
+        return super().get_balance(account_id, user_id=user_id)
 
 
 def build_langgraph_runtime(provider, bank, checkpointer):  # type: ignore[no-untyped-def]
@@ -1159,7 +1177,7 @@ async def test_postgres_checkpoint_persistence_and_resume(postgres_factory) -> N
         conversation_id=conversation_id,
         current_task=message.content,
         conversation_messages=[message],
-        authenticated=True,
+        principal=ExecutionPrincipal.for_task("dev-user-001"),
     )
     counts = {"list_accounts": 0, "get_balance": 0}
 
@@ -1167,13 +1185,7 @@ async def test_postgres_checkpoint_persistence_and_resume(postgres_factory) -> N
     saver_one = await manager_one.start()
     runtime_one = build_langgraph_runtime(
         FakeLLMProvider(
-            [
-                LLMResponse(
-                    tool_calls=[
-                        LLMToolCall(id="list", name="list_accounts", arguments={})
-                    ]
-                )
-            ]
+            [LLMResponse(tool_calls=[LLMToolCall(id="list", name="list_accounts", arguments={})])]
         ),
         CountingBankService(counts),
         saver_one,
@@ -1216,9 +1228,7 @@ async def test_postgres_checkpoint_persistence_and_resume(postgres_factory) -> N
     result = await runtime_two.resume(request)
     assert result.answer == "工资卡余额为 23,864.52 元。"
     assert counts == {"list_accounts": 1, "get_balance": 1}
-    tuple_ = await saver_two.aget_tuple(
-        {"configurable": {"thread_id": str(task_id)}}
-    )
+    tuple_ = await saver_two.aget_tuple({"configurable": {"thread_id": str(task_id)}})
     assert tuple_ is not None
     checkpoint_repr = repr(tuple_.checkpoint).lower()
     for forbidden in (
@@ -1241,17 +1251,20 @@ async def test_postgres_startup_reconciliation(postgres_factory) -> None:
         tasks = TaskRepository(session)
         pending = await tasks.create(
             conversation_id=conversation.conversation_id,
+            user_id="postgres-test-user",
             task_type="MINIMAL_AGENT_RUN",
             input_data={},
             runtime_backend=RuntimeBackend.LANGGRAPH,
         )
         running = await tasks.create(
             conversation_id=conversation.conversation_id,
+            user_id="postgres-test-user",
             task_type="MINIMAL_AGENT_RUN",
             input_data={},
         )
         completed = await tasks.create(
             conversation_id=conversation.conversation_id,
+            user_id="postgres-test-user",
             task_type="MINIMAL_AGENT_RUN",
             input_data={},
         )
@@ -1456,9 +1469,7 @@ async def test_postgres_publish_before_ack_crash_duplicates_only_notification(
         outbox_rows = list(
             (
                 await session.execute(
-                    select(OutboxEventModel).where(
-                        OutboxEventModel.event_id == event.event_id
-                    )
+                    select(OutboxEventModel).where(OutboxEventModel.event_id == event.event_id)
                 )
             ).scalars()
         )

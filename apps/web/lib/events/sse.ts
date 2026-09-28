@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/lib/api/client";
+import { API_BASE_URL, getAuthorizationHeaders } from "@/lib/api/client";
 
 export const eventTypes = [
   "conversation.message.created",
@@ -40,15 +40,59 @@ export function subscribeToConversation(
   onEvent: (event: MessageEvent) => void,
   onConnectionChange: (connected: boolean) => void,
 ): () => void {
-  const source = new EventSource(
-    `${API_BASE_URL}/api/v1/events?conversation_id=${encodeURIComponent(conversationId)}`,
-  );
-  source.onopen = () => onConnectionChange(true);
-  source.onerror = () => onConnectionChange(false);
-  eventTypes.forEach((type) => source.addEventListener(type, onEvent));
+  const controller = new AbortController();
+
+  function dispatchBlock(block: string) {
+    let type = "message";
+    const data: string[] = [];
+    for (const line of block.split("\n")) {
+      if (line.startsWith("event:")) type = line.slice(6).trim();
+      if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+    }
+    if (data.length > 0 && eventTypes.includes(type as (typeof eventTypes)[number])) {
+      onEvent(new MessageEvent(type, { data: data.join("\n") }));
+    }
+  }
+
+  async function connect() {
+    while (!controller.signal.aborted) {
+      try {
+        const authorization = await getAuthorizationHeaders();
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/events?conversation_id=${encodeURIComponent(conversationId)}`,
+          {
+            headers: { Accept: "text/event-stream", ...authorization },
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
+        onConnectionChange(true);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true }).replaceAll("\r\n", "\n");
+          let boundary = buffer.indexOf("\n\n");
+          while (boundary >= 0) {
+            dispatchBlock(buffer.slice(0, boundary));
+            buffer = buffer.slice(boundary + 2);
+            boundary = buffer.indexOf("\n\n");
+          }
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+      }
+      onConnectionChange(false);
+      await new Promise((resolve) => window.setTimeout(resolve, 1500));
+    }
+  }
+
+  void connect();
   return () => {
-    eventTypes.forEach((type) => source.removeEventListener(type, onEvent));
-    source.close();
+    controller.abort();
     onConnectionChange(false);
   };
 }

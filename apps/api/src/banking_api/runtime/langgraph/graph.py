@@ -53,9 +53,7 @@ class LangGraphAgentRuntime:
         state = await self._invoke(request, resume=False, interrupt_after_tool=False)
         return await self._finish(request, state)
 
-    async def run_until_tool_checkpoint(
-        self, request: AgentRunRequest
-    ) -> BankingAgentGraphState:
+    async def run_until_tool_checkpoint(self, request: AgentRunRequest) -> BankingAgentGraphState:
         """Controlled durability experiment hook; not exposed through the product API."""
         return await self._invoke(request, resume=False, interrupt_after_tool=True)
 
@@ -119,9 +117,7 @@ class LangGraphAgentRuntime:
         async def llm_node(state: BankingAgentGraphState) -> dict[str, Any]:
             if state["step_count"] >= self.max_steps:
                 return {
-                    "error": self._error(
-                        "AGENT_STEP_LIMIT_EXCEEDED", "Agent step limit exceeded"
-                    )
+                    "error": self._error("AGENT_STEP_LIMIT_EXCEEDED", "Agent step limit exceeded")
                 }
             step_count = state["step_count"] + 1
             runtime_messages = [
@@ -183,9 +179,7 @@ class LangGraphAgentRuntime:
             )
             return {
                 "step_count": step_count,
-                "runtime_messages": [
-                    *state["runtime_messages"], assistant.model_dump(mode="json")
-                ],
+                "runtime_messages": [*state["runtime_messages"], assistant.model_dump(mode="json")],
                 "pending_tool_calls": [
                     call.model_dump(mode="json") for call in response.tool_calls
                 ],
@@ -208,9 +202,7 @@ class LangGraphAgentRuntime:
                         ),
                     }
                 tool_call_count += 1
-                argument_keys = (
-                    sorted(call.arguments) if isinstance(call.arguments, dict) else []
-                )
+                argument_keys = sorted(call.arguments) if isinstance(call.arguments, dict) else []
                 await sink(
                     "tool.call.started",
                     {
@@ -223,7 +215,7 @@ class LangGraphAgentRuntime:
                     tool_name=call.name,
                     arguments=call.arguments,
                     caller=effective_caller,
-                    authenticated=request.authenticated,
+                    principal=request.principal,
                     agent_allowlist=agent.allowed_capabilities,
                 )
                 metadata: dict[str, Any] = {

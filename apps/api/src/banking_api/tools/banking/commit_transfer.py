@@ -1,8 +1,10 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.domain.enums import RiskLevel
 from banking_api.persistence.models import OperationModel
 from banking_api.tools.models import (
+    ToolExecutionContext,
     ToolSpec,
     TransferCommitOutput,
     TransferOperationInput,
@@ -19,9 +21,17 @@ TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 def build_commit_transfer_tool(
     session_factory: async_sessionmaker[AsyncSession], provider: TransferProvider
 ) -> ToolSpec:
-    async def handler(arguments: TransferOperationInput) -> TransferCommitOutput:
+    async def handler(
+        context: ToolExecutionContext, arguments: TransferOperationInput
+    ) -> TransferCommitOutput:
         async with session_factory() as session:
-            operation = await session.get(OperationModel, arguments.operation_id)
+            result = await session.execute(
+                select(OperationModel).where(
+                    OperationModel.operation_id == arguments.operation_id,
+                    OperationModel.user_id == context.principal.user_id,
+                )
+            )
+            operation = result.scalar_one_or_none()
         if operation is None:
             return TransferCommitOutput(
                 outcome="FAILED",
@@ -30,6 +40,7 @@ def build_commit_transfer_tool(
             )
         payload = operation.payload_json
         request = TransferProviderRequest(
+            user_id=operation.user_id,
             idempotency_key=operation.idempotency_key,
             source_account_id=payload["source_account_id"],
             payee_id=payload["payee_id"],

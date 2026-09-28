@@ -7,6 +7,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse, LLMToolCall
 from banking_api.llm.provider import LLMProviderError
@@ -70,7 +71,7 @@ async def run_runtime(
             conversation_id=message.conversation_id,
             current_task=content,
             conversation_messages=[message],
-            authenticated=True,
+            principal=ExecutionPrincipal.for_task("dev-user-001"),
             caller=caller,
             event_sink=sink,
         )
@@ -93,9 +94,7 @@ async def test_llm_direct_answer() -> None:
 async def test_list_accounts_then_final_answer() -> None:
     runtime, provider = build_runtime(
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]),
             LLMResponse(content="你有 4 个账户。"),
         ]
     )
@@ -112,9 +111,7 @@ async def test_list_accounts_then_final_answer() -> None:
 async def test_list_accounts_get_balance_then_final_answer() -> None:
     runtime, _ = build_runtime(
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]),
             LLMResponse(
                 tool_calls=[
                     LLMToolCall(
@@ -150,9 +147,7 @@ async def test_list_accounts_get_balance_then_final_answer() -> None:
             "TOOL_ARGUMENT_VALIDATION_FAILED",
         ),
         (
-            LLMToolCall(
-                id="failure", name="get_balance", arguments={"account_id": "missing"}
-            ),
+            LLMToolCall(id="failure", name="get_balance", arguments={"account_id": "missing"}),
             None,
             "TOOL_EXECUTION_FAILED",
         ),
@@ -190,9 +185,7 @@ async def test_provider_failure_has_external_retryable_semantics() -> None:
 
 
 async def test_max_step_limit_stops_never_ending_loop() -> None:
-    repeated = LLMResponse(
-        tool_calls=[LLMToolCall(id="call", name="list_accounts", arguments={})]
-    )
+    repeated = LLMResponse(tool_calls=[LLMToolCall(id="call", name="list_accounts", arguments={})])
     runtime, _ = build_runtime([repeated, repeated], max_steps=2, max_tool_calls=10)
 
     with pytest.raises(AgentRuntimeError, match="step limit") as caught:
@@ -227,11 +220,7 @@ def test_context_contains_only_recent_conversation_and_allowed_tool_schemas() ->
         Message(
             message_id=uuid4(),
             conversation_id=conversation_id,
-            role=(
-                MessageRole.USER
-                if index % 2 == 0 or index == 11
-                else MessageRole.ASSISTANT
-            ),
+            role=(MessageRole.USER if index % 2 == 0 or index == 11 else MessageRole.ASSISTANT),
             content=f"message-{index}",
             created_at=datetime.now(UTC),
         )

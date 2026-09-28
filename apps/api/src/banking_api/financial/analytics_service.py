@@ -29,9 +29,9 @@ class FinancialAnalyticsService:
         self._bank = bank
 
     def spending_summary(
-        self, month: str, account_ids: list[str] | None = None
+        self, month: str, account_ids: list[str] | None = None, *, user_id: str
     ) -> SpendingSummary:
-        transactions = self._period_transactions(month, account_ids)
+        transactions = self._period_transactions(month, account_ids, user_id=user_id)
         currency = self._single_currency(transactions)
         income = [
             item
@@ -49,9 +49,9 @@ class FinancialAnalyticsService:
         )
 
     def category_breakdown(
-        self, month: str, account_ids: list[str] | None = None
+        self, month: str, account_ids: list[str] | None = None, *, user_id: str
     ) -> CategoryBreakdown:
-        transactions = self._period_transactions(month, account_ids)
+        transactions = self._period_transactions(month, account_ids, user_id=user_id)
         currency = self._single_currency(transactions)
         spending = [item for item in transactions if self._is_spending(item)]
         total = self._sum_amounts(spending)
@@ -78,14 +78,15 @@ class FinancialAnalyticsService:
         )
 
     def compare_periods(
-        self, month: str, account_ids: list[str] | None = None
+        self, month: str, account_ids: list[str] | None = None, *, user_id: str
     ) -> SpendingPeriodComparison:
         current_start, _ = self._period_bounds(month)
         previous_month = self._previous_month(current_start)
-        current = self._period_transactions(month, account_ids)
+        current = self._period_transactions(month, account_ids, user_id=user_id)
         previous = self._period_transactions(
             previous_month,
             account_ids,
+            user_id=user_id,
             allow_empty=True,
         )
         currency = self._single_currency([*current, *previous])
@@ -117,10 +118,12 @@ class FinancialAnalyticsService:
         month: str,
         limit: int = 5,
         account_ids: list[str] | None = None,
+        *,
+        user_id: str,
     ) -> TopTransactions:
         if not 1 <= limit <= 20:
             raise ValueError("limit must be between 1 and 20")
-        transactions = self._period_transactions(month, account_ids)
+        transactions = self._period_transactions(month, account_ids, user_id=user_id)
         currency = self._single_currency(transactions)
         spending = [item for item in transactions if self._is_spending(item)]
         ordered = sorted(
@@ -154,13 +157,14 @@ class FinancialAnalyticsService:
         month: str,
         account_ids: list[str] | None,
         *,
+        user_id: str,
         allow_empty: bool = False,
     ) -> list[dict[str, Any]]:
         start, end = self._period_bounds(month)
-        selected_accounts = self._selected_account_ids(account_ids)
+        selected_accounts = self._selected_account_ids(account_ids, user_id=user_id)
         transactions = [
             item
-            for item in self._bank.list_transactions()
+            for item in self._bank.list_transactions(user_id=user_id)
             if str(item.get("status")) in VALID_TRANSACTION_STATUSES
             and str(item.get("account_id")) in selected_accounts
             and start <= self._occurred_at(item) < end
@@ -172,8 +176,10 @@ class FinancialAnalyticsService:
             )
         return transactions
 
-    def _selected_account_ids(self, account_ids: list[str] | None) -> frozenset[str]:
-        known = {str(item["account_id"]) for item in self._bank.list_accounts()}
+    def _selected_account_ids(
+        self, account_ids: list[str] | None, *, user_id: str
+    ) -> frozenset[str]:
+        known = {str(item["account_id"]) for item in self._bank.list_accounts(user_id=user_id)}
         if not account_ids:
             return frozenset(known)
         requested = frozenset(account_ids)
@@ -276,9 +282,7 @@ class FinancialAnalyticsService:
             return (current - previous) / previous * Decimal("100")
 
     @classmethod
-    def _category_change(
-        cls, category: str, current: Decimal, previous: Decimal
-    ) -> CategoryChange:
+    def _category_change(cls, category: str, current: Decimal, previous: Decimal) -> CategoryChange:
         return CategoryChange(
             category=category,
             current_amount=current,

@@ -9,6 +9,7 @@ from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analysis_snapshot import build_financial_analysis_snapshot
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.llm.fake_provider import FakeLLMProvider
@@ -31,15 +32,11 @@ DATA_DIR = Path(__file__).parents[1] / "src/banking_api/mock_bank/data"
 
 
 def call(call_id: str, name: str, arguments: dict[str, object]) -> LLMResponse:
-    return LLMResponse(
-        tool_calls=[LLMToolCall(id=call_id, name=name, arguments=arguments)]
-    )
+    return LLMResponse(tool_calls=[LLMToolCall(id=call_id, name=name, arguments=arguments)])
 
 
 async def test_financial_agent_numeric_evidence_matches_committed_golden() -> None:
-    golden = json.loads(
-        (DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8")
-    )
+    golden = json.loads((DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8"))
     provider = FakeLLMProvider(
         [
             call("summary", "get_spending_summary", {"month": "2026-08"}),
@@ -84,13 +81,13 @@ async def test_financial_agent_numeric_evidence_matches_committed_golden() -> No
             conversation_id=conversation_id,
             current_task=message.content,
             conversation_messages=[message],
-            authenticated=True,
+            principal=ExecutionPrincipal.for_task("dev-user-001"),
             agent=FINANCIAL_ANALYSIS_AGENT,
         )
     )
-    snapshot = build_financial_analysis_snapshot(
-        result.state.successful_tool_results
-    ).model_dump(mode="json")
+    snapshot = build_financial_analysis_snapshot(result.state.successful_tool_results).model_dump(
+        mode="json"
+    )
 
     expected_august = golden["months"]["2026-08"]
     expected_comparison = golden["comparisons"]["2026-07_to_2026-08"]
@@ -101,10 +98,7 @@ async def test_financial_agent_numeric_evidence_matches_committed_golden() -> No
     assert snapshot["spending_summary"]["total_spending"] == "16547.30"
     assert snapshot["period_comparison"]["previous_spending"] == "9333.20"
     assert snapshot["period_comparison"]["absolute_change"] == "7214.10"
-    changes = {
-        item["category"]: item
-        for item in snapshot["period_comparison"]["category_changes"]
-    }
+    changes = {item["category"]: item for item in snapshot["period_comparison"]["category_changes"]}
     assert changes["FOOD"]["absolute_change"] == "589.10"
     assert changes["SHOPPING"]["absolute_change"] == "2662.00"
     assert changes["TRAVEL"]["absolute_change"] == "4260.00"

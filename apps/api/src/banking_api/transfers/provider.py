@@ -27,6 +27,7 @@ class TransferProviderStatusValue(StrEnum):
 class TransferProviderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    user_id: str
     idempotency_key: UUID
     source_account_id: str
     payee_id: str
@@ -58,5 +59,5 @@ class TransferProvider(Protocol):
     ) -> TransferSubmissionResult: ...
 
     async def get_transfer_status(
-        self, *, idempotency_key: UUID, provider_reference: str | None
+        self, *, user_id: str, idempotency_key: UUID, provider_reference: str | None
     ) -> TransferProviderStatus: ...

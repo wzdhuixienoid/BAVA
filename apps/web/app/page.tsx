@@ -5,10 +5,12 @@ import type { components } from "@banking/api-client";
 import Link from "next/link";
 import { ConversationPanel } from "@/features/conversation/ConversationPanel";
 import { api } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 type Conversation = components["schemas"]["Conversation"];
 
 export default function HomePage() {
+  const auth = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,14 @@ export default function HomePage() {
         >
           查看历史报告
         </Link>
+        <div className="mb-6 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-400">
+          <span>{auth.development ? "Development Principal" : "OIDC 已认证"}</span>
+          {!auth.development && (
+            <button className="ml-3 text-cyan-300 hover:text-cyan-200" onClick={() => void auth.logout()}>
+              登出
+            </button>
+          )}
+        </div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">最近对话</p>
         <nav className="space-y-2">
           {loading && <p className="text-sm text-slate-400">加载中…</p>}

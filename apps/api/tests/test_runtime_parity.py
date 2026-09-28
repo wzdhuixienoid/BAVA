@@ -9,6 +9,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole, RiskLevel
 from banking_api.domain.message import Message
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse, LLMToolCall
 from banking_api.llm.provider import LLMProviderError
@@ -47,7 +48,7 @@ def build_runtime(
                 risk_level=RiskLevel.R1_PRIVATE_READ,
                 side_effect=False,
                 allowed_callers=frozenset({"agent:minimal-banking"}),
-                handler=lambda _: {"accounts": "not-a-list"},
+                handler=lambda _context, _arguments: {"accounts": "not-a-list"},
             )
         )
     else:
@@ -84,7 +85,7 @@ def request(content: str = "我有哪些账户？", *, caller: str | None = None
         conversation_id=conversation_id,
         current_task=content,
         conversation_messages=[message],
-        authenticated=True,
+        principal=ExecutionPrincipal.for_task("dev-user-001"),
         caller=caller,
     )
 
@@ -105,9 +106,7 @@ async def test_list_accounts_parity(backend: Backend) -> None:
     runtime, provider = build_runtime(
         backend,
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="list", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="list", name="list_accounts", arguments={})]),
             LLMResponse(content="你有 4 个账户。"),
         ],
     )
@@ -122,9 +121,7 @@ async def test_multi_tool_parity(backend: Backend) -> None:
     runtime, _ = build_runtime(
         backend,
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="list", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="list", name="list_accounts", arguments={})]),
             LLMResponse(
                 tool_calls=[
                     LLMToolCall(
@@ -148,9 +145,7 @@ async def test_invalid_argument_can_be_repaired(backend: Backend) -> None:
         backend,
         [
             LLMResponse(
-                tool_calls=[
-                    LLMToolCall(id="bad", name="get_balance", arguments={"wrong": "value"})
-                ]
+                tool_calls=[LLMToolCall(id="bad", name="get_balance", arguments={"wrong": "value"})]
             ),
             LLMResponse(
                 tool_calls=[
@@ -166,9 +161,7 @@ async def test_invalid_argument_can_be_repaired(backend: Backend) -> None:
     )
     result = await runtime.run(request())
     assert result.answer == "已修正。"
-    assert "TOOL_ARGUMENT_VALIDATION_FAILED" in (
-        provider.requests[1].messages[-1].content or ""
-    )
+    assert "TOOL_ARGUMENT_VALIDATION_FAILED" in (provider.requests[1].messages[-1].content or "")
 
 
 @pytest.mark.parametrize("backend", ["manual", "langgraph"])
@@ -176,9 +169,7 @@ async def test_policy_denial_is_fatal(backend: Backend) -> None:
     runtime, provider = build_runtime(
         backend,
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="denied", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="denied", name="list_accounts", arguments={})]),
             LLMResponse(content="must not be reached"),
         ],
     )
@@ -216,9 +207,7 @@ async def test_output_validation_failure_is_fatal(backend: Backend) -> None:
     runtime, provider = build_runtime(
         backend,
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="invalid", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="invalid", name="list_accounts", arguments={})]),
             LLMResponse(content="must not be reached"),
         ],
         invalid_list_output=True,
@@ -240,12 +229,8 @@ async def test_provider_failure_parity(backend: Backend) -> None:
 
 @pytest.mark.parametrize("backend", ["manual", "langgraph"])
 async def test_step_limit_parity(backend: Backend) -> None:
-    repeated = LLMResponse(
-        tool_calls=[LLMToolCall(id="loop", name="list_accounts", arguments={})]
-    )
-    runtime, _ = build_runtime(
-        backend, [repeated, repeated], max_steps=2, max_tool_calls=10
-    )
+    repeated = LLMResponse(tool_calls=[LLMToolCall(id="loop", name="list_accounts", arguments={})])
+    runtime, _ = build_runtime(backend, [repeated, repeated], max_steps=2, max_tool_calls=10)
     with pytest.raises(AgentRuntimeError) as caught:
         await runtime.run(request())
     assert caught.value.code == "AGENT_STEP_LIMIT_EXCEEDED"

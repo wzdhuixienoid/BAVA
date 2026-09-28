@@ -4,6 +4,7 @@ import asyncio
 from urllib.parse import urlparse
 
 from banking_api.config.settings import Settings
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.policy.service import PolicyService
@@ -47,38 +48,42 @@ async def main() -> None:
         raise AssertionError("intent extraction did not preserve recipient and amount")
 
     bank = MockBankService()
+    user_id = "dev-user-001"
+    principal = ExecutionPrincipal.for_workflow(user_id)
     balances_before = {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id=user_id)["balance"]
+        for item in bank.list_accounts(user_id=user_id)
     }
-    transactions_before = bank.list_transactions()
+    transactions_before = bank.list_transactions(user_id=user_id)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))
     registry.register(build_search_payees_tool(bank))
     engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
 
-    status, state = await engine.start(intent)
+    status, state = await engine.start(intent, principal=principal)
     if status.value != "WAITING_FOR_INPUT" or state.required_input is None:
         raise AssertionError("expected payee selection")
     if len(state.required_input.options) != 2:
         raise AssertionError("expected exactly two deterministic 张三 candidates")
-    await engine.validate_payee_action(state, "payee_001")
+    await engine.validate_payee_action(state, "payee_001", principal=principal)
     state.draft.payee_id = "payee_001"
-    status, state = await engine.advance(state)
+    status, state = await engine.advance(state, principal=principal)
     if status.value != "WAITING_FOR_INPUT":
         raise AssertionError("expected source account selection")
-    await engine.validate_account_action(state, "acc_salary")
+    await engine.validate_account_action(state, "acc_salary", principal=principal)
     state.draft.source_account_id = "acc_salary"
-    status, state = await engine.advance(state)
+    status, state = await engine.advance(state, principal=principal)
     if status.value != "READY_FOR_REVIEW":
         raise AssertionError(f"unexpected final status: {status.value}")
 
     balances_after = {
-        item["account_id"]: bank.get_balance(item["account_id"])["balance"]
-        for item in bank.list_accounts()
+        item["account_id"]: bank.get_balance(item["account_id"], user_id=user_id)["balance"]
+        for item in bank.list_accounts(user_id=user_id)
     }
-    if balances_before != balances_after or transactions_before != bank.list_transactions():
+    if balances_before != balances_after or transactions_before != bank.list_transactions(
+        user_id=user_id
+    ):
         raise AssertionError("read-only transfer draft mutated bank data")
     capabilities = {spec.capability_id for spec in registry.all()}
     if capabilities != {"account.list", "account.get_balance", "payee.search"}:

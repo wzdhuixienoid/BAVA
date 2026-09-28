@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,6 +11,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "postgresql+asyncpg://banking:banking@localhost:5432/banking"
+    app_environment: Literal["development", "test", "production"] = "development"
+    auth_mode: Literal["development", "oidc"]
+    development_user_id: str = "dev-user-001"
+    oidc_issuer: str = ""
+    oidc_audience: str = ""
+    oidc_jwks_url: str = ""
+    oidc_allowed_algorithms: list[str] = ["RS256"]
+    oidc_jwks_cache_seconds: int = Field(default=300, ge=1, le=86400)
+    oidc_clock_skew_seconds: int = Field(default=30, ge=0, le=300)
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: list[str] = ["http://localhost:3000"]
@@ -52,11 +62,20 @@ class Settings(BaseSettings):
     task_worker_max_concurrency: int = Field(default=4, ge=1, le=100)
 
     @model_validator(mode="after")
-    def validate_task_worker_timing(self) -> "Settings":
+    def validate_security_and_worker_settings(self) -> "Settings":
+        if self.app_environment == "production" and self.auth_mode == "development":
+            raise ValueError("AUTH_MODE=development is forbidden in production")
+        if self.auth_mode == "oidc":
+            if not self.oidc_issuer or not self.oidc_audience:
+                raise ValueError("OIDC_ISSUER and OIDC_AUDIENCE are required in OIDC mode")
+            if not self.oidc_allowed_algorithms:
+                raise ValueError("OIDC_ALLOWED_ALGORITHMS must not be empty")
+            forbidden = {"none", "HS256", "HS384", "HS512"}
+            if forbidden.intersection(self.oidc_allowed_algorithms):
+                raise ValueError("OIDC_ALLOWED_ALGORITHMS must use asymmetric algorithms")
         if self.task_worker_heartbeat_seconds >= self.task_worker_lease_seconds:
             raise ValueError(
-                "TASK_WORKER_HEARTBEAT_SECONDS must be less than "
-                "TASK_WORKER_LEASE_SECONDS"
+                "TASK_WORKER_HEARTBEAT_SECONDS must be less than TASK_WORKER_LEASE_SECONDS"
             )
         return self
 

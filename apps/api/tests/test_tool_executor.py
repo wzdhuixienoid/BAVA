@@ -1,4 +1,5 @@
 from banking_api.domain.enums import RiskLevel
+from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.tools.executor import ToolExecutor
@@ -22,7 +23,7 @@ async def test_tool_output_validation_failure_is_structured() -> None:
             risk_level=RiskLevel.R1_PRIVATE_READ,
             side_effect=False,
             allowed_callers=frozenset({"agent:test"}),
-            handler=lambda _: {"unexpected": True},
+            handler=lambda _context, _arguments: {"unexpected": True},
         )
     )
 
@@ -30,7 +31,7 @@ async def test_tool_output_validation_failure_is_structured() -> None:
         tool_name="bad_output",
         arguments={},
         caller="agent:test",
-        authenticated=True,
+        principal=ExecutionPrincipal.for_task("dev-user-001"),
         agent_allowlist=frozenset({"test.bad_output"}),
     )
 
@@ -51,7 +52,7 @@ async def test_unauthenticated_tool_call_is_denied() -> None:
             risk_level=RiskLevel.R1_PRIVATE_READ,
             side_effect=False,
             allowed_callers=frozenset({"agent:test"}),
-            handler=lambda _: {},
+            handler=lambda _context, _arguments: {},
         )
     )
 
@@ -59,7 +60,7 @@ async def test_unauthenticated_tool_call_is_denied() -> None:
         tool_name="test_read",
         arguments={},
         caller="agent:test",
-        authenticated=False,
+        principal=None,
         agent_allowlist=frozenset({"test.read"}),
     )
 

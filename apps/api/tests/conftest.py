@@ -1,4 +1,8 @@
+import os
 from collections.abc import AsyncIterator
+
+os.environ.setdefault("APP_ENVIRONMENT", "test")
+os.environ.setdefault("AUTH_MODE", "development")
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -39,6 +43,7 @@ async def app(tmp_path):
     bank = MockBankService()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank))
+
     def make_runner(responses, *, max_steps=6, max_tool_calls=4):
         runtime = AgentRuntime(
             provider=FakeLLMProvider(responses),
@@ -68,7 +73,5 @@ async def app(tmp_path):
 
 @pytest.fixture
 async def client(app) -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as test_client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
         yield test_client

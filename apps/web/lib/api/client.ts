@@ -12,14 +12,32 @@ type OperationResource = components["schemas"]["OperationResource"];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
+let accessTokenProvider: () => Promise<string | null> = async () => null;
+
+export function setAccessTokenProvider(provider: () => Promise<string | null>) {
+  accessTokenProvider = provider;
+}
+
+export async function getAuthorizationHeaders(): Promise<Record<string, string>> {
+  const token = await accessTokenProvider();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const authorization = await getAuthorizationHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...authorization, ...init?.headers },
   });
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
-    const detail = payload?.detail ?? "请求失败";
+    const payload = (await response.json().catch(() => null)) as {
+      detail?: string | { code?: string; message?: string };
+    } | null;
+    const rawDetail = payload?.detail;
+    const detail =
+      typeof rawDetail === "string"
+        ? rawDetail
+        : rawDetail?.code ?? rawDetail?.message ?? "请求失败";
     throw new Error(`请求失败（${response.status}）：${detail}`);
   }
   return response.json() as Promise<T>;

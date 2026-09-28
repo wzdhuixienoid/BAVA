@@ -1,13 +1,20 @@
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
-from banking_api.tools.models import SearchPayeesInput, SearchPayeesOutput, ToolSpec
+from banking_api.tools.models import (
+    SearchPayeesInput,
+    SearchPayeesOutput,
+    ToolExecutionContext,
+    ToolSpec,
+)
 
 TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 
 def build_search_payees_tool(bank: MockBankService) -> ToolSpec:
-    def handler(arguments: SearchPayeesInput) -> SearchPayeesOutput:
-        return SearchPayeesOutput(payees=bank.search_payees(arguments.query))
+    def handler(context: ToolExecutionContext, arguments: SearchPayeesInput) -> SearchPayeesOutput:
+        return SearchPayeesOutput(
+            payees=bank.search_payees(arguments.query, user_id=context.principal.user_id)
+        )
 
     return ToolSpec(
         capability_id="payee.search",

@@ -107,9 +107,7 @@ def account_narrative() -> LLMResponse:
                         "type": "CHANGE",
                         "title": "餐饮变化值得关注",
                         "narrative": "餐饮是工资卡消费变化中较为突出的类别。",
-                        "evidence_refs": [
-                            "category_breakdown.FOOD.absolute_change"
-                        ],
+                        "evidence_refs": ["category_breakdown.FOOD.absolute_change"],
                     },
                 ],
             },
@@ -119,18 +117,14 @@ def account_narrative() -> LLMResponse:
 
 
 def golden_snapshot() -> FinancialAnalysisSnapshot:
-    golden = json.loads(
-        (DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8")
-    )
+    golden = json.loads((DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8"))
     august = golden["months"]["2026-08"]
     comparison = golden["comparisons"]["2026-07_to_2026-08"]
     return FinancialAnalysisSnapshot(
         period="2026-08",
         account_ids=[],
         spending_summary=SpendingSummary.model_validate(august["summary"]),
-        category_breakdown=CategoryBreakdown.model_validate(
-            august["category_breakdown"]
-        ),
+        category_breakdown=CategoryBreakdown.model_validate(august["category_breakdown"]),
         period_comparison=SpendingPeriodComparison.model_validate(comparison),
         top_transactions=TopTransactions.model_validate(august["top_transactions"]),
         tool_evidence=[
@@ -160,10 +154,14 @@ def account_snapshot() -> FinancialAnalysisSnapshot:
     return FinancialAnalysisSnapshot(
         period="2026-08",
         account_ids=account_ids,
-        spending_summary=analytics.spending_summary("2026-08", account_ids),
-        category_breakdown=analytics.category_breakdown("2026-08", account_ids),
-        period_comparison=analytics.compare_periods("2026-08", account_ids),
-        top_transactions=analytics.top_transactions("2026-08", 5, account_ids),
+        spending_summary=analytics.spending_summary("2026-08", account_ids, user_id="dev-user-001"),
+        category_breakdown=analytics.category_breakdown(
+            "2026-08", account_ids, user_id="dev-user-001"
+        ),
+        period_comparison=analytics.compare_periods("2026-08", account_ids, user_id="dev-user-001"),
+        top_transactions=analytics.top_transactions(
+            "2026-08", 5, account_ids, user_id="dev-user-001"
+        ),
         tool_evidence=[
             ToolEvidence(capability_id="account.list", input={}),
             ToolEvidence(
@@ -230,10 +228,12 @@ async def test_category_order_and_top_n_are_preserved() -> None:
     report = await SkillExecutor(FakeLLMProvider([valid_narrative()])).execute(snapshot)
 
     assert [item.category for item in report.category_breakdown] == [
-        item.category for item in snapshot.category_breakdown.categories  # type: ignore[union-attr]
+        item.category
+        for item in snapshot.category_breakdown.categories  # type: ignore[union-attr]
     ]
     assert [item.transaction_id for item in report.top_transactions] == [
-        item.transaction_id for item in snapshot.top_transactions.transactions  # type: ignore[union-attr]
+        item.transaction_id
+        for item in snapshot.top_transactions.transactions  # type: ignore[union-attr]
     ]
 
 
@@ -378,7 +378,5 @@ def test_skill_registry_contains_only_monthly_report_skill() -> None:
 def test_application_registers_monthly_report_skill() -> None:
     skills = create_app().state.skill_registry
 
-    assert [skill.skill_id for skill in skills.all()] == [
-        "skill:monthly-spending-report"
-    ]
+    assert [skill.skill_id for skill in skills.all()] == ["skill:monthly-spending-report"]
     assert skills.all()[0].allowed_tools == ()

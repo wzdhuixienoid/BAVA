@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -7,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.domain.enums import RiskLevel
+from banking_api.domain.principal import ExecutionPrincipal, Principal
 from banking_api.financial.errors import FinancialErrorCode
 
 
@@ -79,7 +81,12 @@ class TransferStatusOutput(BaseModel):
     error_message: str | None = None
 
 
-ToolHandler = Callable[[BaseModel], BaseModel | Awaitable[BaseModel]]
+@dataclass(frozen=True, slots=True)
+class ToolExecutionContext:
+    principal: Principal | ExecutionPrincipal
+
+
+ToolHandler = Callable[[ToolExecutionContext, BaseModel], BaseModel | Awaitable[BaseModel]]
 
 
 class ToolSpec(BaseModel):

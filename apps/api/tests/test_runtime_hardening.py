@@ -29,9 +29,7 @@ from banking_api.tools.models import (
         (ToolErrorCode.TOOL_EXECUTION_FAILED, ToolErrorDisposition.FATAL),
     ],
 )
-def test_tool_error_dispositions(
-    code: ToolErrorCode, expected: ToolErrorDisposition
-) -> None:
+def test_tool_error_dispositions(code: ToolErrorCode, expected: ToolErrorDisposition) -> None:
     assert ToolError(code=code, message="test").disposition is expected
 
 
@@ -75,18 +73,21 @@ async def test_startup_reconciliation_marks_only_stale_tasks(tmp_path) -> None:
         tasks = TaskRepository(session)
         pending = await tasks.create(
             conversation_id=conversation.conversation_id,
+            user_id="dev-user-001",
             task_type="MINIMAL_AGENT_RUN",
             input_data={},
             runtime_backend=RuntimeBackend.MANUAL,
         )
         running = await tasks.create(
             conversation_id=conversation.conversation_id,
+            user_id="dev-user-001",
             task_type="MINIMAL_AGENT_RUN",
             input_data={},
             runtime_backend=RuntimeBackend.LANGGRAPH,
         )
         completed = await tasks.create(
             conversation_id=conversation.conversation_id,
+            user_id="dev-user-001",
             task_type="MINIMAL_AGENT_RUN",
             input_data={},
         )
@@ -107,9 +108,7 @@ async def test_startup_reconciliation_marks_only_stale_tasks(tmp_path) -> None:
         assert completed is not None and completed.status is TaskStatus.COMPLETED
         for stale in (pending, running):
             assert stale.next_run_at is not None
-        events = await EventRepository(session).list_for_conversation(
-            completed.conversation_id
-        )
+        events = await EventRepository(session).list_for_conversation(completed.conversation_id)
         assert events == []
     await engine.dispose()
 

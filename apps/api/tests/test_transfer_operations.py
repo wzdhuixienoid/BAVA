@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import func, select
 from test_transfer_authorization import MutableClock, create_ready_workflow
 
-from banking_api.api.dependencies import DevPrincipal, get_current_principal
+from banking_api.api.dependencies import get_current_principal
 from banking_api.application.operation_service import (
     OperationActionError,
     OperationService,
@@ -19,6 +19,7 @@ from banking_api.domain.enums import (
     PolicyDecision,
     WorkflowStatus,
 )
+from banking_api.domain.principal import ExecutionPrincipal, Principal
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.models import ApprovalModel, EventModel, OperationModel
 from banking_api.policy.service import PolicyResult, PolicyService
@@ -41,7 +42,24 @@ from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 
 
 def operation_runtime(app, *, fault_mode=TransferProviderFaultMode.SUCCESS, policy=None):  # type: ignore[no-untyped-def]
-    bank = MockBankService()
+    bank = MockBankService(
+        fixture_user_ids=frozenset(
+            {
+                "dev-user-001",
+                "operation-user",
+                "expiry-user",
+                "balance-user",
+                "crash-b-user",
+                "approval-expiry-user",
+                "created-expiry-user",
+                "claim-user",
+                "worker-crash-user",
+                "unknown-worker-user",
+                "unavailable-user",
+                "submitted-worker-user",
+            }
+        )
+    )
     provider = MockTransferProvider(app.state.test_session_factory, bank, fault_mode=fault_mode)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
@@ -104,7 +122,9 @@ async def authorize_workflow(
 async def test_happy_path_consumes_approval_and_debits_exactly_once(app) -> None:
     bank, provider, registry, engine = operation_runtime(app)
     ready = await authorize_workflow(app, engine)
-    starting_balance = Decimal(str(bank.get_balance("acc_salary")["balance"]))
+    starting_balance = Decimal(
+        str(bank.get_balance("acc_salary", user_id=ready.user_id)["balance"])
+    )
 
     async with app.state.test_session_factory() as session:
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
@@ -114,7 +134,9 @@ async def test_happy_path_consumes_approval_and_debits_exactly_once(app) -> None
         )
 
     assert operation.status is OperationStatus.SUCCEEDED
-    assert await provider.effective_balance("acc_salary") == starting_balance - Decimal("2000.00")
+    assert await provider.effective_balance(
+        ready.user_id, "acc_salary"
+    ) == starting_balance - Decimal("2000.00")
     assert await provider.transfer_count() == 1
     async with app.state.test_session_factory() as session:
         persisted = await session.get(OperationModel, operation.operation_id)
@@ -176,9 +198,7 @@ async def test_timeout_after_accept_is_unknown_then_reconciles_without_resubmit(
     )
     assert reconciled.status_code == 200
     assert reconciled.json()["status"] == "SUCCEEDED"
-    final_workflow = (
-        await client.get(f"/api/v1/workflows/{ready.workflow_id}")
-    ).json()
+    final_workflow = (await client.get(f"/api/v1/workflows/{ready.workflow_id}")).json()
     assert final_workflow["status"] == "SUCCEEDED"
     assert await provider.transfer_count() == 1
 
@@ -224,6 +244,7 @@ async def test_created_crash_boundaries_resume_same_operation_and_key(app) -> No
         key2 = internal.idempotency_key  # type: ignore[union-attr]
     await provider2.submit_transfer(
         TransferProviderRequest(
+            user_id=ready2.user_id,
             idempotency_key=key2,
             source_account_id=payload["source_account_id"],
             payee_id=payload["payee_id"],
@@ -243,8 +264,9 @@ async def test_created_crash_boundaries_resume_same_operation_and_key(app) -> No
 
 async def test_provider_replay_same_key_debits_once(app) -> None:
     bank, provider, _, _ = operation_runtime(app)
-    before = Decimal(str(bank.get_balance("acc_salary")["balance"]))
+    before = Decimal(str(bank.get_balance("acc_salary", user_id="operation-user")["balance"]))
     request = TransferProviderRequest(
+        user_id="operation-user",
         idempotency_key=uuid4(),
         source_account_id="acc_salary",
         payee_id="payee_001",
@@ -254,7 +276,9 @@ async def test_provider_replay_same_key_debits_once(app) -> None:
     results = [await provider.submit_transfer(request) for _ in range(10)]
     assert len({item.provider_reference for item in results}) == 1
     assert await provider.transfer_count() == 1
-    assert await provider.effective_balance("acc_salary") == before - Decimal("100.00")
+    assert await provider.effective_balance("operation-user", "acc_salary") == before - Decimal(
+        "100.00"
+    )
 
 
 async def test_stale_double_commit_cancel_and_ownership_are_closed(app, client) -> None:
@@ -280,9 +304,16 @@ async def test_stale_double_commit_cancel_and_ownership_are_closed(app, client) 
     assert "idempotency_key" not in operation
     assert "payload" not in operation
 
-    app.dependency_overrides[get_current_principal] = lambda: DevPrincipal(user_id="other-user")
+    app.dependency_overrides[get_current_principal] = lambda: Principal(
+        user_id="other-user", issuer="test", subject="other-user"
+    )
     try:
         assert (await client.get(f"/api/v1/operations/{operation_id}")).status_code == 404
+        denied = await client.post(
+            f"/api/v1/operations/{operation_id}/actions/reconcile",
+            json={"expected_version": operation["version"]},
+        )
+        assert denied.status_code == 404
     finally:
         app.dependency_overrides.pop(get_current_principal)
 
@@ -311,6 +342,7 @@ async def test_policy_deny_and_fresh_balance_failure_create_nothing(app) -> None
     ready2 = await authorize_workflow(app, engine2, user_id="balance-user")
     await provider2.submit_transfer(
         TransferProviderRequest(
+            user_id="balance-user",
             idempotency_key=uuid4(),
             source_account_id="acc_salary",
             payee_id="payee_001",
@@ -387,9 +419,9 @@ async def test_commit_expiry_repairs_workflow_and_created_recovery_ignores_ttl(a
                 expected_version=approval_ready.version,
             )
     async with app.state.test_session_factory() as session:
-        approval_repaired = await WorkflowService(
-            session, app.state.event_bus, engine
-        ).get(approval_ready.workflow_id, user_id=approval_ready.user_id)
+        approval_repaired = await WorkflowService(session, app.state.event_bus, engine).get(
+            approval_ready.workflow_id, user_id=approval_ready.user_id
+        )
         operation_count = await session.scalar(
             select(func.count())
             .select_from(OperationModel)
@@ -434,7 +466,7 @@ async def test_definitive_provider_failure_never_debits(app) -> None:
         app, fault_mode=TransferProviderFaultMode.DEFINITIVE_FAILURE
     )
     ready = await authorize_workflow(app, engine)
-    before = await provider.effective_balance("acc_salary")
+    before = await provider.effective_balance(ready.user_id, "acc_salary")
     async with app.state.test_session_factory() as session:
         failed = await OperationService(session, app.state.event_bus, engine).commit_workflow(
             ready.workflow_id,
@@ -442,7 +474,7 @@ async def test_definitive_provider_failure_never_debits(app) -> None:
             expected_version=ready.version,
         )
     assert failed.status is OperationStatus.FAILED
-    assert await provider.effective_balance("acc_salary") == before
+    assert await provider.effective_balance(ready.user_id, "acc_salary") == before
     assert await provider.transfer_count() == 1
 
 
@@ -494,7 +526,7 @@ async def test_agents_cannot_invoke_transfer_commit_even_with_injected_prompt(ap
             tool_name="commit_transfer",
             arguments={"operation_id": str(uuid4())},
             caller=caller,
-            authenticated=True,
+            principal=ExecutionPrincipal.for_workflow("dev-user-001"),
             agent_allowlist=allowlist,
         )
         assert result.ok is False

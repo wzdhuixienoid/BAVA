@@ -72,6 +72,7 @@ class ConversationService:
         )
         task = await self.tasks.create(
             conversation_id=conversation_id,
+            user_id=user_id,
             task_type=BANKING_REQUEST_TASK_TYPE,
             input_data={"message_id": str(message.message_id), "request_id": str(request_id)},
             runtime_backend=self.runtime_backend,
