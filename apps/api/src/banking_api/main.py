@@ -16,6 +16,7 @@ from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
 from banking_api.financial.analytics_service import FinancialAnalyticsService
+from banking_api.financial.anomaly_detector import TransactionAnomalyDetector
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import session_factory
@@ -41,6 +42,7 @@ from banking_api.subscriptions.provider import MockSubscriptionProvider
 from banking_api.tools.banking import (
     build_commit_transfer_tool,
     build_compare_spending_periods_tool,
+    build_detect_anomalies_tool,
     build_get_balance_tool,
     build_get_category_breakdown_tool,
     build_get_spending_summary_tool,
@@ -146,7 +148,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.7.2",
+        version="0.7.3",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -168,6 +170,7 @@ def create_app() -> FastAPI:
     transfer_provider = MockTransferProvider(session_factory, bank)
     subscription_provider = MockSubscriptionProvider(session_factory, bank)
     analytics = FinancialAnalyticsService(bank)
+    anomaly_detector = TransactionAnomalyDetector(bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank, transfer_provider.effective_balance))
@@ -175,6 +178,7 @@ def create_app() -> FastAPI:
     registry.register(build_get_category_breakdown_tool(analytics))
     registry.register(build_compare_spending_periods_tool(analytics))
     registry.register(build_get_top_transactions_tool(analytics))
+    registry.register(build_detect_anomalies_tool(anomaly_detector))
     registry.register(build_search_payees_tool(bank))
     registry.register(build_commit_transfer_tool(session_factory, transfer_provider))
     registry.register(build_get_transfer_status_tool(session_factory, transfer_provider))

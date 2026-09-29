@@ -14,6 +14,7 @@ from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
 from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analytics_service import FinancialAnalyticsService
+from banking_api.financial.anomaly_detector import TransactionAnomalyDetector
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.policy.service import PolicyService
@@ -26,6 +27,7 @@ from banking_api.runtime.langgraph.checkpoint import LangGraphCheckpointManager
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.tools.banking import (
     build_compare_spending_periods_tool,
+    build_detect_anomalies_tool,
     build_get_balance_tool,
     build_get_category_breakdown_tool,
     build_get_spending_summary_tool,
@@ -88,6 +90,15 @@ def evidence_summary(result: SuccessfulToolResult) -> dict[str, Any]:
             "item_count": len(output["transactions"]),
             "transaction_ids": [item["transaction_id"] for item in output["transactions"]],
         }
+    elif result.capability_id == "transaction.detect_anomalies":
+        snapshot = output["snapshot"]
+        summary["result"] = {
+            "anomaly_count": len(snapshot["anomalies"]),
+            "transaction_ids": [
+                item["transaction_id"] for item in snapshot["anomalies"]
+            ],
+            "raw_transaction_history_present": "transactions" in snapshot,
+        }
     return summary
 
 
@@ -118,6 +129,7 @@ async def main() -> None:
     tools.register(build_get_category_breakdown_tool(analytics))
     tools.register(build_compare_spending_periods_tool(analytics))
     tools.register(build_get_top_transactions_tool(analytics))
+    tools.register(build_detect_anomalies_tool(TransactionAnomalyDetector(bank)))
     agents = AgentRegistry()
     agents.register(MINIMAL_BANKING_AGENT)
     agents.register(FINANCIAL_ANALYSIS_AGENT)
@@ -140,6 +152,7 @@ async def main() -> None:
             "我有哪些账户？",
             "帮我分析一下2026年8月份消费",
             "分析一下工资卡2026年8月的消费",
+            "最近有没有异常交易？",
         ):
             decision = await router.route(prompt)
             agent_id = ROUTE_AGENT.get(decision.route)

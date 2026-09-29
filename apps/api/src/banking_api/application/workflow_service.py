@@ -29,6 +29,7 @@ from banking_api.persistence.repositories.reauthentications import (
 from banking_api.persistence.repositories.workflows import WorkflowRepository
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
+from banking_api.security.guard import SecurityGuardService
 from banking_api.security.reauthentication.mock_provider import (
     MockReauthenticationProvider,
 )
@@ -107,6 +108,7 @@ class WorkflowService:
         self.operations = OperationRepository(session)
         self.reauthentications = ReauthenticationRepository(session)
         self.publisher = EventPublisher(session)
+        self.security_guard = SecurityGuardService(session, clock=clock)
         self.engine = engine
         self.subscription_engine = subscription_engine
         self.reauth_provider = reauth_provider or MockReauthenticationProvider(
@@ -458,6 +460,7 @@ class WorkflowService:
     async def start_reauthentication(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> Workflow:
+        await self.security_guard.require_write_allowed(user_id)
         model, state = await self._load_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.REAUTH_REQUIRED:
             raise WorkflowActionError("WORKFLOW_NOT_REAUTH_REQUIRED")
@@ -522,6 +525,7 @@ class WorkflowService:
         verification_code: str,
         expected_version: int,
     ) -> Workflow:
+        await self.security_guard.require_write_allowed(user_id)
         model, state = await self._load_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.REAUTH_REQUIRED:
             raise WorkflowActionError("WORKFLOW_NOT_REAUTH_REQUIRED")
@@ -551,6 +555,13 @@ class WorkflowService:
             raise WorkflowActionError("REAUTH_FAILED")
 
         now = _as_utc(self.clock())
+        await self.security_guard.record_reauthentication_result(
+            user_id=user_id,
+            workflow_id=model.workflow_id,
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
+            succeeded=True,
+        )
         reauth.status = ReauthenticationStatus.VERIFIED
         reauth.verified_at = now
         assert state.authorization is not None
@@ -903,6 +914,13 @@ class WorkflowService:
         expected_version: int,
     ) -> None:
         reauth.attempt_count += 1
+        await self.security_guard.record_reauthentication_result(
+            user_id=model.user_id,
+            workflow_id=model.workflow_id,
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
+            succeeded=False,
+        )
         if reauth.attempt_count >= self.reauth_max_attempts:
             reauth.status = ReauthenticationStatus.FAILED
             assert state.authorization is not None

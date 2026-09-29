@@ -748,6 +748,16 @@ class InProcessTaskRunner:
             output["analysis_snapshot"] = build_financial_analysis_snapshot(
                 successful_tool_results
             ).model_dump(mode="json")
+            anomaly_result = next(
+                (
+                    item
+                    for item in successful_tool_results
+                    if item.capability_id == "transaction.detect_anomalies"
+                ),
+                None,
+            )
+            if anomaly_result is not None and "snapshot" in anomaly_result.output:
+                output["transaction_anomaly_snapshot"] = anomaly_result.output["snapshot"]
         if agent_id == SUBSCRIPTION_ANALYSIS_AGENT_ID:
             result = next(
                 (

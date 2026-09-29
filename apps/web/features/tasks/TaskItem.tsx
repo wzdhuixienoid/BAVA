@@ -5,11 +5,14 @@ import { TaskProgress } from "./TaskProgress";
 import { TransferWorkflowCard } from "@/features/workflows/transfer/TransferWorkflowCard";
 import { SubscriptionCancellationCard } from "@/features/workflows/subscriptions/SubscriptionCancellationCard";
 import { SubscriptionSummaryCard } from "@/features/subscriptions/SubscriptionSummaryCard";
+import { TransactionAnomalyCard, type TransactionAnomalySnapshot } from "@/features/anomalies/TransactionAnomalyCard";
+import { SecurityStatusBanner } from "@/features/security/SecurityStatusBanner";
 
 type Task = components["schemas"]["Task"];
 type ReportListItem = components["schemas"]["ReportListItem"];
 type Workflow = components["schemas"]["Workflow"];
 type SubscriptionAnalysisSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
+type SecurityStatus = components["schemas"]["SecurityStatus"];
 
 const taskTypeLabels: Record<string, string> = {
   BANKING_REQUEST: "银行服务请求",
@@ -21,14 +24,19 @@ export function TaskItem({
   report,
   workflow,
   onRefresh,
+  securityStatus,
 }: {
   task: Task;
   report?: ReportListItem;
   workflow?: Workflow;
+  securityStatus: SecurityStatus | null;
   onRefresh: () => Promise<void>;
 }) {
   const subscriptionSnapshot = task.output?.subscription_analysis_snapshot as
     | SubscriptionAnalysisSnapshot
+    | undefined;
+  const anomalySnapshot = task.output?.transaction_anomaly_snapshot as
+    | TransactionAnomalySnapshot
     | undefined;
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3">
@@ -55,6 +63,8 @@ export function TaskItem({
       {subscriptionSnapshot && (
         <SubscriptionSummaryCard snapshot={subscriptionSnapshot} />
       )}
+      {anomalySnapshot && <TransactionAnomalyCard snapshot={anomalySnapshot} />}
+      {workflow && <SecurityStatusBanner status={securityStatus} />}
       {workflow?.workflow_type === "TRANSFER" && (
         <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />
       )}

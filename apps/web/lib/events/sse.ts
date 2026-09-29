@@ -33,6 +33,9 @@ export const eventTypes = [
   "operation.unknown",
   "operation.succeeded",
   "operation.failed",
+  "security.reauth_failed",
+  "security.control_bypass_attempt",
+  "security.write_lock_activated",
 ] as const;
 
 export function subscribeToConversation(

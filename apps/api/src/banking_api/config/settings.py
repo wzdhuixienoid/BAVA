@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     transfer_reauth_ttl_seconds: int = 300
     transfer_reauth_max_attempts: int = 3
     mock_reauth_code: str = "246810"
+    security_reauth_failure_limit: int = Field(default=3, ge=1)
+    security_reauth_failure_window_seconds: int = Field(default=600, ge=1)
+    security_bypass_limit: int = Field(default=5, ge=1)
+    security_bypass_window_seconds: int = Field(default=300, ge=1)
+    security_write_lock_seconds: int = Field(default=900, ge=1)
     banking_business_timezone: str = "Asia/Shanghai"
     operation_recovery_enabled: bool = True
     operation_recovery_poll_interval_seconds: float = Field(default=5.0, gt=0)

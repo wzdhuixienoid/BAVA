@@ -4,16 +4,19 @@ import { TaskItem } from "./TaskItem";
 type Task = components["schemas"]["Task"];
 type ReportListItem = components["schemas"]["ReportListItem"];
 type Workflow = components["schemas"]["Workflow"];
+type SecurityStatus = components["schemas"]["SecurityStatus"];
 
 export function TaskPanel({
   tasks,
   reports,
   workflows,
+  securityStatus,
   onRefresh,
 }: {
   tasks: Task[];
   reports: ReportListItem[];
   workflows: Workflow[];
+  securityStatus: SecurityStatus | null;
   onRefresh: () => Promise<void>;
 }) {
   const reportsByTask = new Map(reports.map((report) => [report.source_task_id, report]));
@@ -36,6 +39,7 @@ export function TaskPanel({
                 ? workflowsById.get(task.output.workflow_id)
                 : undefined
             }
+            securityStatus={securityStatus}
             onRefresh={onRefresh}
           />
         ))}

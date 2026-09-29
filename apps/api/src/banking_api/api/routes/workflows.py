@@ -24,6 +24,7 @@ from banking_api.application.workflow_service import (
     WorkflowVersionConflictError,
 )
 from banking_api.domain.workflow import Workflow
+from banking_api.security.guard import SecurityWriteLockedError
 from banking_api.workflows.subscription_cancel.models import SelectSubscriptionAction
 from banking_api.workflows.transfer.models import (
     ApproveTransferAction,
@@ -45,6 +46,20 @@ def _service(session, bus, engine, subscription_engine=None) -> WorkflowService:
 
 
 def _raise_action_error(exc: Exception) -> NoReturn:
+    if isinstance(exc, SecurityWriteLockedError):
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail={
+                "code": "SECURITY_WRITE_LOCKED",
+                "message": "安全保护已启动，新的业务写操作已暂停",
+                "locked_until": exc.status.locked_until.isoformat()
+                if exc.status.locked_until
+                else None,
+                "reason_code": exc.status.reason_code.value
+                if exc.status.reason_code
+                else None,
+            },
+        ) from exc
     if isinstance(exc, (WorkflowNotFoundError, OperationNotFoundError)):
         raise HTTPException(status_code=404, detail="未找到该工作流") from exc
     if isinstance(
@@ -109,7 +124,11 @@ async def select_payee(
             payee_id=body.payee_id,
             expected_version=body.expected_version,
         )
-    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+    except (
+        WorkflowNotFoundError,
+        WorkflowVersionConflictError,
+        WorkflowActionError,
+    ) as exc:
         _raise_action_error(exc)
 
 
@@ -129,7 +148,11 @@ async def set_recipient_query(
             recipient_query=body.recipient_query,
             expected_version=body.expected_version,
         )
-    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+    except (
+        WorkflowNotFoundError,
+        WorkflowVersionConflictError,
+        WorkflowActionError,
+    ) as exc:
         _raise_action_error(exc)
 
 
@@ -228,7 +251,12 @@ async def start_reauthentication(
             user_id=principal.user_id,
             expected_version=body.expected_version,
         )
-    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+    except (
+        WorkflowNotFoundError,
+        WorkflowVersionConflictError,
+        WorkflowActionError,
+        SecurityWriteLockedError,
+    ) as exc:
         _raise_action_error(exc)
 
 
@@ -249,7 +277,12 @@ async def verify_reauthentication(
             verification_code=body.verification_code,
             expected_version=body.expected_version,
         )
-    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+    except (
+        WorkflowNotFoundError,
+        WorkflowVersionConflictError,
+        WorkflowActionError,
+        SecurityWriteLockedError,
+    ) as exc:
         _raise_action_error(exc)
 
 
@@ -279,6 +312,7 @@ async def commit_transfer(
         OperationVersionConflictError,
         OperationLeaseLostError,
         OperationActionError,
+        SecurityWriteLockedError,
     ) as exc:
         _raise_action_error(exc)
 

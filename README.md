@@ -1,8 +1,8 @@
 # AI Banking Agent
 
-当前版本：`v0.7.2`
+当前版本：`v0.7.3`
 
-面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账，以及确定性订阅识别、成本/涨价/续费分析和可管理订阅取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
+面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
 
@@ -20,6 +20,7 @@
 |---|---|---|
 | 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
+| 异常交易分析 | `agent:financial-analysis` | `transaction.detect_anomalies` → bounded deterministic Snapshot |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
 | 订阅分析 | `agent:subscription-analysis` | 自动识别周期扣费、按币种成本、涨价、即将续费 |
 | 订阅管理分类 | deterministic Subscription service | `MANAGED` / `DETECTED_ONLY`，仅合同可管理者允许取消 |
@@ -29,6 +30,7 @@
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
 | 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
 | 并发转账认证安全 | Application Risk Gate | user-scoped advisory lock → fresh daily exposure → controls → Operation |
+| 安全熔断 | `SecurityGuardService` | 3 次连续强验证失败 / 10 min，或 5 次控制绕过 / 5 min → `WRITE_LOCKED` 15 min |
 | 持久事件发布 | Transactional Outbox | Event + Outbox atomic commit → leased publisher → EventBus/SSE |
 | 持久 Task 执行 | PostgreSQL-backed Task worker | due scan → `SKIP LOCKED` claim → lease/heartbeat/fencing → retry/terminal |
 | 生产身份认证与 Principal | provider-neutral OIDC/OAuth 2.0 | verified JWT → identity mapping → Principal → ownership/tool scope |
@@ -43,6 +45,8 @@ Transactional Outbox: COMPLETE
 Durable Task Execution: COMPLETE
 生产身份认证与 Principal：COMPLETE
 动态风险分级：COMPLETE
+异常交易识别：COMPLETE
+安全熔断：COMPLETE
 ```
 
 ### GREEN / YELLOW / RED
@@ -68,6 +72,7 @@ Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINE
 生成一份2026年8月份消费报告
 我有哪些订阅？最近有没有涨价的？
 取消星幕视频
+最近有没有异常交易？
 ```
 
 报告生成后可在 Conversation 中通过 ReportCard 打开，也可以从 `/reports` 查看历史报告。
@@ -84,7 +89,7 @@ User Message
     → RequestRouter
     → AgentRegistry / deterministic Workflow
         ├─ MinimalBankingAgent
-        ├─ FinancialAnalysisAgent
+        ├─ FinancialAnalysisAgent → bounded TransactionAnomalySnapshot
         ├─ SubscriptionAnalysisAgent → bounded SubscriptionAnalysisSnapshot
         └─ SubscriptionCancellationWorkflow
     → LangGraphAgentRuntime
@@ -93,9 +98,15 @@ User Message
         └─ subscription.analyze (R1) / subscription.cancel (R4)
     → TransferRiskPolicy → persisted RiskDecision
         → user advisory lock → commit-time risk re-evaluation
-    → persistent Operation → MockTransferProvider idempotency ledger
-或  → persistent Operation → MockSubscriptionProvider cancellation ledger
-        → PostgreSQL account advisory lock → authoritative balance decision
+    → SecurityGuardService → persistent NORMAL / WRITE_LOCKED state
+    → Operation
+        ├─ TRANSFER
+        │  → MockTransferProvider
+        │  → PostgreSQL account advisory lock
+        │  → authoritative balance decision
+        └─ SUBSCRIPTION_CANCEL
+           → MockSubscriptionProvider
+           → cancellation ledger
     → PostgreSQL claim/lease → automatic Operation recovery
     → durable Event + Outbox intent → OutboxPublisher → EventBus/SSE
     → FinancialAnalysisSnapshot
@@ -116,6 +127,7 @@ User Message
 - 外部 `(issuer, subject)` 只在认证边界映射到稳定的内部 `user_id`；Conversation、Task、Report、Workflow、Approval、Reauthentication、Operation 和银行数据均以该内部身份做 ownership scope。
 - HTTP credential 不进入 Task、Message、Event、Outbox、Prompt 或 LangGraph checkpoint。Task worker 只从 Task 与 Conversation 的 authoritative `user_id` 构造 server-side execution Principal。
 - 所有需实时通知的 durable Event 都与唯一 Outbox intent 在同一业务 transaction 内写入；Outbox 只引用 Event identity，不复制 payload。
+- `security_guard_states` 保存当前 Principal 的熔断计数与期限；安全 signal 通过现有 Event + Outbox 留痕，不保存验证码、JWT 或隐藏推理。
 
 产品 Runtime 是 `LangGraphAgentRuntime`。`ManualAgentRuntime` 仅作为 reference 保留，不承载新功能。
 
@@ -155,6 +167,9 @@ User Message
 - Income 是 `POSTED + CREDIT + category != TRANSFER`。
 - 不做汇率换算；同次聚合出现多币种时返回 `MIXED_CURRENCY_UNSUPPORTED`。
 - Financial Tools 只返回聚合结果或 bounded Top N，不向 LLM 提供整月 raw transaction history。
+- 异常规则固定为 `AMOUNT_SPIKE`、`RAPID_DUPLICATE`、`NEW_MERCHANT_HIGH_AMOUNT`、`SUBSCRIPTION_PRICE_SPIKE`；金额与比例只用 `Decimal`，baseline 按 Principal + currency 隔离。
+- **异常提示 ≠ 已确认欺诈。**
+- **异常交易检测结果不会自动触发 Security Write Lock。熔断由明确的安全执行失败信号触发。**
 - Report exact Decimal 在 JSON 中序列化为 string；前端直接使用 Backend `*_display`，不重新计算或四舍五入。
 
 > Financial Agents should receive deterministic summaries by default, not full transaction history.
@@ -168,7 +183,7 @@ User Message
 - LLM、Tool arguments、request body 和浏览器都不能提供或切换 authority。ToolExecutionContext 只能接收 server-created Principal，账户、收款人、余额和交易分析从该 Principal 获得 user scope。
 
 - `agent:minimal-banking`：允许 `account.list`、`account.get_balance`。
-- `agent:financial-analysis`：允许 `account.list` 和四个 Financial Tools，不允许余额、转账、卡片或其他写能力。
+- `agent:financial-analysis`：允许 `account.list`、四个 Financial Tools 和 `transaction.detect_anomalies`，不允许余额、转账、卡片或其他写能力。
 - `agent:subscription-analysis`：只允许 `subscription.analyze`，不允许 `subscription.cancel`、Operation/Approval 写入。
 - `skill:monthly-spending-report`：`allowed_tools=[]`，只能消费 `FinancialAnalysisSnapshot`。
 - `workflow:transfer`：允许三项 R1 读能力，以及仅接受持久化 `operation_id` 的 `transfer.commit` (`R4_FINANCIAL_COMMIT`) 和 `transfer.get_status` (R1)。
@@ -352,6 +367,7 @@ GET  /api/v1/reports
 GET  /api/v1/reports/{report_id}
 GET  /api/v1/subscriptions
 GET  /api/v1/subscriptions/{subscription_id}
+GET  /api/v1/security/status
 GET  /api/v1/workflows/{workflow_id}
 GET  /api/v1/workflows?conversation_id=...
 POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|select-subscription|approve|start-reauth|verify-reauth|commit|cancel}
@@ -380,6 +396,10 @@ Task 执行同样使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、持久 lease、att
 
 Idempotency 和资金并发是两个独立 invariant：同一 idempotency key 通过 provider ledger unique constraint 仅执行一次；不同 Operation/key 通过 source-account-scoped PostgreSQL transaction advisory lock 不能并发花穿余额。Workflow balance check 仅用于 early validation，Provider commit-time balance check 才是最终资金 correctness boundary。
 
+`WRITE_LOCKED` 只阻止新的 Transfer / Subscription cancel Operation 以及 reauthentication start/verify；GREEN 查询、异常分析和状态查询继续可用。Operation 创建前服务端 fail closed，因 lock 拒绝时不消费 Approval、不创建 Operation、不调用 Provider。`locked_until` 到期后 lazy clear，无后台 unlock worker。
+
+Security Guard 状态转移与新 Operation 创建共享同一个 Principal-scoped PostgreSQL transaction advisory lock。Authoritative write gate 与 Operation/Approval/Workflow 更新在同一 transaction 中，因此 lock activation 与 Operation creation 对同一用户有唯一线性化顺序。Transfer 的全局锁顺序固定为 `Security Guard user lock → Transfer Risk user lock`；Subscription cancellation 只获取前者。
+
 ## 项目结构
 
 ```text
@@ -392,9 +412,9 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.7.2](docs/implementation-report-v0.7.2.md)
-- [Repository Tree v0.7.2](docs/repository-tree-v0.7.2.md)
-- [Test Results v0.7.2](docs/test-results-v0.7.2.md)
+- [Implementation Report v0.7.3](docs/implementation-report-v0.7.3.md)
+- [Repository Tree v0.7.3](docs/repository-tree-v0.7.3.md)
+- [Test Results v0.7.3](docs/test-results-v0.7.3.md)
 
 ## 当前限制
 
@@ -402,7 +422,7 @@ docs/                     版本交付、测试结果与设计记录
 
 订阅检测当前只支持固定的月度/年度 cadence 窗口和 fixture alias；不做 FX、不根据商户类型主观判断“重复”，不推断用户是否真正使用某项订阅，也未实现主动通知调度。
 
-当前 Risk Policy 只覆盖产品已存在的纯查询与 CNY 转账日累计门槛。未实现异常交易检测、Fraud Engine、连续失败熔断、通用 Rule Engine/DSL 或机器学习风控。
+异常检测只是可解释的确定性分析，不是完整 Fraud Detection Platform；不做 FX、主动通知、Fraud ML、通用 Rule Engine/DSL 或人工审核台。Security Guard 只有 `NORMAL / WRITE_LOCKED`，本版无管理员手工解锁。
 
 登录 Authentication 只回答“是谁”，不替代 canonical payload Approval，也不替代 RED 在 commit 前要求的 Reauthentication。
 

@@ -53,9 +53,11 @@ from banking_api.persistence.models import (
     OperationModel,
     OutboxEventModel,
     ReauthenticationModel,
+    SecurityGuardStateModel,
     TaskModel,
     WorkflowModel,
 )
+from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.operations import OperationRepository
 from banking_api.persistence.repositories.outbox import OutboxRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
@@ -79,8 +81,16 @@ from banking_api.runtime.task_execution_worker import (
 )
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
+from banking_api.security.guard import (
+    SecurityGuardService,
+    SecurityGuardStatus,
+    SecurityWriteLockedError,
+    acquire_security_user_lock,
+)
+from banking_api.security.reauthentication.mock_provider import MockReauthenticationProvider
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
+from banking_api.subscriptions.provider import MockSubscriptionProvider
 from banking_api.tools.banking import (
     build_commit_transfer_tool,
     build_get_balance_tool,
@@ -89,8 +99,15 @@ from banking_api.tools.banking import (
     build_search_payees_tool,
 )
 from banking_api.tools.executor import ToolExecutor
+from banking_api.tools.subscriptions import (
+    build_subscription_analyze_tool,
+    build_subscription_cancel_tool,
+    build_subscription_status_tool,
+)
 from banking_api.transfers.mock_provider import MockTransferProvider
 from banking_api.transfers.provider import TransferProviderRequest
+from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
+from banking_api.workflows.subscription_cancel.models import SubscriptionCancelIntent
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.models import TransferIntent
 
@@ -108,7 +125,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE identity_mappings, mock_bank_transfers, events, tasks, messages, "
+                "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
+                "events, tasks, messages, "
                 "conversations "
                 "RESTART IDENTITY CASCADE"
             )
@@ -117,7 +135,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE identity_mappings, mock_bank_transfers, events, tasks, messages, "
+                "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
+                "events, tasks, messages, "
                 "conversations "
                 "RESTART IDENTITY CASCADE"
             )
@@ -259,7 +278,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0014"
+        assert revision == "0015"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -1834,3 +1853,386 @@ async def test_postgres_user_risk_lock_blocks_two_concurrent_yellow_commits(
         WorkflowStatus.COMMITTING,
         WorkflowStatus.REAUTH_REQUIRED,
     }
+
+
+async def test_concurrent_security_signals_do_not_lose_updates(postgres_factory) -> None:
+    factory = postgres_factory
+    user_id = "security-concurrency-user"
+    workflow_id = uuid4()
+    async with factory() as session:
+        conversation = await ConversationRepository(session).create(
+            user_id=user_id, title="Security concurrency"
+        )
+        task = await TaskRepository(session).create(
+            conversation_id=conversation.conversation_id,
+            user_id=user_id,
+            task_type="USER_REQUEST",
+            input_data={},
+        )
+        await session.commit()
+
+    async def record_failure():
+        async with factory() as session:
+            status = await SecurityGuardService(session).record_reauthentication_result(
+                user_id=user_id,
+                workflow_id=workflow_id,
+                conversation_id=conversation.conversation_id,
+                task_id=task.task_id,
+                succeeded=False,
+            )
+            await session.commit()
+            return status
+
+    await record_failure()
+    await asyncio.gather(record_failure(), record_failure())
+
+    async with factory() as session:
+        state = await session.get(SecurityGuardStateModel, user_id)
+        assert state is not None
+        assert state.reauth_failure_count == 3
+        assert (
+            await SecurityGuardService(session).get_status(user_id)
+        ).status is SecurityGuardStatus.WRITE_LOCKED
+
+
+async def _create_postgres_red_transfer(factory, bus: EventBus, user_id: str):  # type: ignore[no-untyped-def]
+    bank = MockBankService(fixture_user_ids=frozenset({user_id}))
+    provider = MockTransferProvider(factory, bank)
+    registry = ToolRegistry()
+    registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_balance_tool(bank, provider.effective_balance))
+    registry.register(build_search_payees_tool(bank))
+    registry.register(build_commit_transfer_tool(factory, provider))
+    registry.register(build_get_transfer_status_tool(factory, provider))
+    engine = TransferWorkflowEngine(ToolExecutor(registry, PolicyService()))
+    reauth_provider = MockReauthenticationProvider("race-test-code")
+
+    def workflows(session):  # type: ignore[no-untyped-def]
+        return WorkflowService(
+            session,
+            bus,
+            engine,
+            reauth_provider=reauth_provider,
+        )
+
+    async with factory() as session:
+        conversation = await ConversationService(session, bus).create(
+            user_id=user_id, title="Security Operation race"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id=user_id,
+            content="给张三转2000",
+        )
+    async with factory() as session:
+        workflow = await workflows(session).create_transfer(
+            user_id=user_id,
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            intent=TransferIntent(recipient_query="张三", amount=Decimal("2000.00")),
+        )
+    async with factory() as session:
+        workflow = await workflows(session).select_payee(
+            workflow.workflow_id,
+            user_id=user_id,
+            payee_id="payee_001",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await workflows(session).select_source_account(
+            workflow.workflow_id,
+            user_id=user_id,
+            account_id="acc_salary",
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await workflows(session).approve(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    assert workflow.status is WorkflowStatus.REAUTH_REQUIRED
+    async with factory() as session:
+        workflow = await workflows(session).start_reauthentication(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    async with factory() as session:
+        workflow = await workflows(session).verify_reauthentication(
+            workflow.workflow_id,
+            user_id=user_id,
+            reauth_id=workflow.reauth_summary.reauth_id,  # type: ignore[union-attr]
+            verification_code="race-test-code",
+            expected_version=workflow.version,
+        )
+    assert workflow.status is WorkflowStatus.READY_FOR_COMMIT
+    return engine, provider, workflow
+
+
+async def _create_postgres_subscription_cancel(factory, bus: EventBus, user_id: str):  # type: ignore[no-untyped-def]
+    bank = MockBankService(fixture_user_ids=frozenset({user_id}))
+    provider = MockSubscriptionProvider(factory, bank)
+    registry = ToolRegistry()
+    registry.register(build_subscription_analyze_tool(factory, bank))
+    registry.register(build_subscription_cancel_tool(factory, provider))
+    registry.register(build_subscription_status_tool(factory, provider))
+    executor = ToolExecutor(registry, PolicyService())
+    subscription_engine = SubscriptionCancellationWorkflow(executor)
+    transfer_engine = TransferWorkflowEngine(executor)
+
+    async with factory() as session:
+        conversation = await ConversationService(session, bus).create(
+            user_id=user_id, title="Security subscription race"
+        )
+    async with factory() as session:
+        accepted = await ConversationService(session, bus).accept_message(
+            conversation_id=conversation.conversation_id,
+            user_id=user_id,
+            content="取消星幕视频",
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(
+            session,
+            bus,
+            transfer_engine,
+            subscription_engine=subscription_engine,
+        ).create_subscription_cancel(
+            user_id=user_id,
+            conversation_id=conversation.conversation_id,
+            source_task_id=accepted.task_id,
+            intent=SubscriptionCancelIntent(subscription_query="星幕视频"),
+        )
+    async with factory() as session:
+        workflow = await WorkflowService(
+            session,
+            bus,
+            transfer_engine,
+            subscription_engine=subscription_engine,
+        ).approve(
+            workflow.workflow_id,
+            user_id=user_id,
+            expected_version=workflow.version,
+        )
+    assert workflow.status is WorkflowStatus.READY_FOR_COMMIT
+    return transfer_engine, subscription_engine, provider, workflow
+
+
+async def _seed_security_counter(
+    factory,
+    user_id: str,
+    *,
+    reauth_failures: int = 0,
+    bypass_attempts: int = 0,
+) -> None:  # type: ignore[no-untyped-def]
+    async with factory() as session:
+        state = await session.get(SecurityGuardStateModel, user_id)
+        if state is None:
+            state = SecurityGuardStateModel(user_id=user_id)
+            session.add(state)
+        now = datetime.now(UTC)
+        state.reauth_failure_count = reauth_failures
+        state.reauth_window_started_at = now if reauth_failures else None
+        state.bypass_attempt_count = bypass_attempts
+        state.bypass_window_started_at = now if bypass_attempts else None
+        await session.commit()
+
+
+async def test_security_lock_activation_wins_transfer_operation_race(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    user_id = "security-transfer-signal-wins"
+    engine, provider, workflow = await _create_postgres_red_transfer(factory, bus, user_id)
+    await _seed_security_counter(factory, user_id, reauth_failures=2)
+    operation_attempted = asyncio.Event()
+
+    class AnnouncingSecurityGuard(SecurityGuardService):
+        async def require_write_allowed(self, checked_user_id: str) -> None:
+            operation_attempted.set()
+            await super().require_write_allowed(checked_user_id)
+
+    async def prepare_transfer():  # type: ignore[no-untyped-def]
+        async with factory() as session:
+            service = OperationService(session, bus, engine)
+            service.security_guard = AnnouncingSecurityGuard(session)
+            return await service.prepare_transfer(
+                workflow.workflow_id,
+                user_id=user_id,
+                expected_version=workflow.version,
+            )
+
+    async with factory() as signal_session:
+        await acquire_security_user_lock(signal_session, user_id)
+        locked = await SecurityGuardService(
+            signal_session
+        ).record_reauthentication_result(
+            user_id=user_id,
+            workflow_id=workflow.workflow_id,
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+            succeeded=False,
+        )
+        assert locked.status is SecurityGuardStatus.WRITE_LOCKED
+        operation_task = asyncio.create_task(prepare_transfer())
+        await operation_attempted.wait()
+        await signal_session.commit()
+
+    with pytest.raises(SecurityWriteLockedError):
+        await operation_task
+    async with factory() as session:
+        operation_count = await session.scalar(
+            select(func.count())
+            .select_from(OperationModel)
+            .where(OperationModel.workflow_id == workflow.workflow_id)
+        )
+        approval = (
+            await session.execute(
+                select(ApprovalModel).where(ApprovalModel.workflow_id == workflow.workflow_id)
+            )
+        ).scalar_one()
+        persisted_workflow = await session.get(WorkflowModel, workflow.workflow_id)
+    assert operation_count == 0
+    assert approval.status is ApprovalStatus.APPROVED
+    assert approval.consumed_at is None
+    assert persisted_workflow is not None
+    assert persisted_workflow.status is WorkflowStatus.READY_FOR_COMMIT
+    assert await provider.transfer_count() == 0
+
+
+async def test_transfer_operation_wins_then_security_lock_blocks_new_operation(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    user_id = "security-transfer-operation-wins"
+    engine, provider, workflow = await _create_postgres_red_transfer(factory, bus, user_id)
+    await _seed_security_counter(factory, user_id, reauth_failures=2)
+    operation_has_lock = asyncio.Event()
+    release_operation = asyncio.Event()
+    signal_started = asyncio.Event()
+
+    class PausingSecurityGuard(SecurityGuardService):
+        async def require_write_allowed(self, checked_user_id: str) -> None:
+            await super().require_write_allowed(checked_user_id)
+            operation_has_lock.set()
+            await release_operation.wait()
+
+    async def prepare_transfer():  # type: ignore[no-untyped-def]
+        async with factory() as session:
+            service = OperationService(session, bus, engine)
+            service.security_guard = PausingSecurityGuard(session)
+            return await service.prepare_transfer(
+                workflow.workflow_id,
+                user_id=user_id,
+                expected_version=workflow.version,
+            )
+
+    async def activate_lock():  # type: ignore[no-untyped-def]
+        async with factory() as session:
+            signal_started.set()
+            status = await SecurityGuardService(session).record_reauthentication_result(
+                user_id=user_id,
+                workflow_id=workflow.workflow_id,
+                conversation_id=workflow.conversation_id,
+                task_id=workflow.source_task_id,
+                succeeded=False,
+            )
+            await session.commit()
+            return status
+
+    operation_task = asyncio.create_task(prepare_transfer())
+    await operation_has_lock.wait()
+    signal_task = asyncio.create_task(activate_lock())
+    await signal_started.wait()
+    release_operation.set()
+    operation, locked = await asyncio.gather(operation_task, signal_task)
+
+    assert operation.status is OperationStatus.CREATED
+    assert locked.status is SecurityGuardStatus.WRITE_LOCKED
+    async with factory() as session:
+        with pytest.raises(SecurityWriteLockedError):
+            await OperationService(session, bus, engine).prepare_transfer(
+                workflow.workflow_id,
+                user_id=user_id,
+                expected_version=workflow.version,
+            )
+    async with factory() as session:
+        operation_count = await session.scalar(
+            select(func.count())
+            .select_from(OperationModel)
+            .where(OperationModel.workflow_id == workflow.workflow_id)
+        )
+    assert operation_count == 1
+    assert await provider.transfer_count() == 0
+
+
+async def test_bypass_lock_activation_wins_subscription_operation_race(
+    postgres_factory,
+) -> None:
+    factory = postgres_factory
+    bus = EventBus()
+    user_id = "security-subscription-signal-wins"
+    transfer_engine, subscription_engine, provider, workflow = (
+        await _create_postgres_subscription_cancel(factory, bus, user_id)
+    )
+    await _seed_security_counter(factory, user_id, bypass_attempts=4)
+    operation_attempted = asyncio.Event()
+
+    class AnnouncingSecurityGuard(SecurityGuardService):
+        async def require_write_allowed(self, checked_user_id: str) -> None:
+            operation_attempted.set()
+            await super().require_write_allowed(checked_user_id)
+
+    async def prepare_subscription():  # type: ignore[no-untyped-def]
+        async with factory() as session:
+            service = OperationService(
+                session,
+                bus,
+                transfer_engine,
+                subscription_engine=subscription_engine,
+            )
+            service.security_guard = AnnouncingSecurityGuard(session)
+            return await service.prepare_subscription_cancel(
+                workflow.workflow_id,
+                user_id=user_id,
+                expected_version=workflow.version,
+            )
+
+    async with factory() as signal_session:
+        await acquire_security_user_lock(signal_session, user_id)
+        locked = await SecurityGuardService(
+            signal_session
+        ).record_control_bypass_attempt(
+            user_id=user_id,
+            workflow_id=workflow.workflow_id,
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+        )
+        assert locked.status is SecurityGuardStatus.WRITE_LOCKED
+        operation_task = asyncio.create_task(prepare_subscription())
+        await operation_attempted.wait()
+        await signal_session.commit()
+
+    with pytest.raises(SecurityWriteLockedError):
+        await operation_task
+    async with factory() as session:
+        operation_count = await session.scalar(
+            select(func.count())
+            .select_from(OperationModel)
+            .where(OperationModel.workflow_id == workflow.workflow_id)
+        )
+        approval = (
+            await session.execute(
+                select(ApprovalModel).where(ApprovalModel.workflow_id == workflow.workflow_id)
+            )
+        ).scalar_one()
+        persisted_workflow = await session.get(WorkflowModel, workflow.workflow_id)
+    assert operation_count == 0
+    assert approval.status is ApprovalStatus.APPROVED
+    assert approval.consumed_at is None
+    assert persisted_workflow is not None
+    assert persisted_workflow.status is WorkflowStatus.READY_FOR_COMMIT
+    assert await provider.cancellation_count() == 0

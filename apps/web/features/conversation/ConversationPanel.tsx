@@ -7,23 +7,31 @@ import { subscribeToConversation } from "@/lib/events/sse";
 import { MessageComposer } from "./MessageComposer";
 import { MessageList } from "./MessageList";
 import { TaskPanel } from "@/features/tasks/TaskPanel";
+import { SecurityStatusBanner } from "@/features/security/SecurityStatusBanner";
 
 type ConversationDetail = components["schemas"]["ConversationDetail"];
 type Task = components["schemas"]["Task"];
 type ReportListItem = components["schemas"]["ReportListItem"];
 type Workflow = components["schemas"]["Workflow"];
+type SecurityStatus = components["schemas"]["SecurityStatus"];
 
 export function ConversationPanel({ conversationId }: { conversationId: string }) {
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<ReportListItem[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refreshWorkflows = useCallback(async () => {
     try {
-      setWorkflows(await api.listWorkflows(conversationId));
+      const [nextWorkflows, nextSecurityStatus] = await Promise.all([
+        api.listWorkflows(conversationId),
+        api.getSecurityStatus(),
+      ]);
+      setWorkflows(nextWorkflows);
+      setSecurityStatus(nextSecurityStatus);
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法加载工作流状态");
@@ -32,16 +40,18 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
 
   const refresh = useCallback(async () => {
     try {
-      const [nextConversation, nextTasks, nextReports, nextWorkflows] = await Promise.all([
+      const [nextConversation, nextTasks, nextReports, nextWorkflows, nextSecurityStatus] = await Promise.all([
         api.getConversation(conversationId),
         api.listTasks(conversationId),
         api.listReports(conversationId),
         api.listWorkflows(conversationId),
+        api.getSecurityStatus(),
       ]);
       setConversation(nextConversation);
       setTasks(nextTasks);
       setReports(nextReports);
       setWorkflows(nextWorkflows);
+      setSecurityStatus(nextSecurityStatus);
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "无法加载服务器状态");
@@ -53,6 +63,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     setTasks([]);
     setReports([]);
     setWorkflows([]);
+    setSecurityStatus(null);
     void refresh();
     return subscribeToConversation(
       conversationId,
@@ -86,13 +97,13 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
       {error ? (
         <div className="p-6 text-sm text-red-700">{error}</div>
       ) : (
-        <div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <><SecurityStatusBanner status={securityStatus} /><div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
           <section className="flex min-h-[60vh] min-w-0 flex-col">
             <MessageList messages={conversation?.messages ?? []} />
             <MessageComposer onSend={send} />
           </section>
-          <TaskPanel tasks={tasks} reports={reports} workflows={workflows} onRefresh={refresh} />
-        </div>
+          <TaskPanel tasks={tasks} reports={reports} workflows={workflows} securityStatus={securityStatus} onRefresh={refresh} />
+        </div></>
       )}
     </div>
   );

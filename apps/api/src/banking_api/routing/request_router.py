@@ -13,6 +13,7 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 路由规则：
 - 账户列表、余额查询 -> MINIMAL_BANKING / ANSWER
 - 消费分析、月份支出、消费分类、花费原因、环比变化、最大消费 -> FINANCIAL_ANALYSIS / ANSWER
+- 异常交易或奇怪扣款 -> FINANCIAL_ANALYSIS / ANSWER
 - 生成、制作、给我一份月度消费报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
 - 同时要求消费分析和生成报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
 - 独立转账请求 -> TRANSFER_WORKFLOW / WORKFLOW

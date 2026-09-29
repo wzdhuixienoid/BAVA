@@ -68,6 +68,7 @@ def test_application_registry_adds_financial_tools_without_expanding_minimal_age
         "subscription.analyze",
         "subscription.cancel",
         "subscription.get_status",
+        "transaction.detect_anomalies",
         *FINANCIAL_CAPABILITIES,
     }
     assert [

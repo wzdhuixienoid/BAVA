@@ -157,6 +157,32 @@ class ReauthenticationModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class SecurityGuardStateModel(Base):
+    __tablename__ = "security_guard_states"
+
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    lock_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    reauth_failure_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0")
+    )
+    reauth_window_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    bypass_attempt_count: Mapped[int] = mapped_column(
+        Integer, default=0, server_default=text("0")
+    )
+    bypass_window_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default=text("1"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+
 class OperationModel(Base):
     __tablename__ = "operations"
     __table_args__ = (

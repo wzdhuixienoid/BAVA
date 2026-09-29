@@ -28,6 +28,11 @@ from banking_api.persistence.repositories.reauthentications import (
 from banking_api.persistence.repositories.workflows import WorkflowRepository
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
+from banking_api.security.guard import (
+    SecurityGuardService,
+    SecurityGuardStatus,
+    SecurityWriteLockedError,
+)
 from banking_api.workflows.subscription_cancel.authorization import (
     canonicalize_subscription_cancel_payload,
     subscription_cancel_payload_hash,
@@ -107,6 +112,7 @@ class OperationService:
         self.reauthentications = ReauthenticationRepository(session)
         self.operations = OperationRepository(session)
         self.publisher = EventPublisher(session)
+        self.security_guard = SecurityGuardService(session, clock=clock)
         settings = get_settings()
         self.risk_facts = TransferRiskFactsService(
             session, business_timezone=settings.banking_business_timezone
@@ -143,6 +149,9 @@ class OperationService:
     async def prepare_transfer(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
+        # Global lock order for transfer creation: Security Guard, then Transfer Risk.
+        # Both transaction-scoped locks remain held through Operation creation and commit.
+        await self.security_guard.require_write_allowed(user_id)
         await self._serialize_user_risk(user_id)
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
         if workflow is None:
@@ -150,6 +159,7 @@ class OperationService:
         if workflow.version != expected_version:
             raise OperationVersionConflictError
         if workflow.status is not WorkflowStatus.READY_FOR_COMMIT:
+            await self._record_bypass_if_security_control(workflow)
             raise OperationActionError("WORKFLOW_NOT_READY_FOR_COMMIT")
         if await self.operations.get_for_workflow(workflow_id, user_id) is not None:
             raise OperationActionError("TRANSFER_OPERATION_ALREADY_EXISTS")
@@ -269,6 +279,8 @@ class OperationService:
     async def prepare_subscription_cancel(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
+        # The Security Guard lock is held until this Operation transaction commits.
+        await self.security_guard.require_write_allowed(user_id)
         if self.subscription_engine is None:
             raise OperationActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
@@ -279,6 +291,7 @@ class OperationService:
         if workflow.version != expected_version:
             raise OperationVersionConflictError
         if workflow.status is not WorkflowStatus.READY_FOR_COMMIT:
+            await self._record_bypass_if_security_control(workflow)
             raise OperationActionError("WORKFLOW_NOT_READY_FOR_COMMIT")
         if await self.operations.get_for_workflow(workflow_id, user_id) is not None:
             raise OperationActionError("SUBSCRIPTION_OPERATION_ALREADY_EXISTS")
@@ -345,6 +358,22 @@ class OperationService:
             text("SELECT pg_advisory_xact_lock(:lock_key)"),
             {"lock_key": transfer_risk_lock_key(user_id)},
         )
+
+    async def _record_bypass_if_security_control(self, workflow: WorkflowModel) -> None:
+        if workflow.status not in {
+            WorkflowStatus.READY_FOR_REVIEW,
+            WorkflowStatus.REAUTH_REQUIRED,
+        }:
+            return
+        status = await self.security_guard.record_control_bypass_attempt(
+            user_id=workflow.user_id,
+            workflow_id=workflow.workflow_id,
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+        )
+        await self.session.commit()
+        if status.status is SecurityGuardStatus.WRITE_LOCKED:
+            raise SecurityWriteLockedError(status)
 
     async def _require_reauthentication_for_risk(
         self,

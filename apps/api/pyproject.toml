@@ -1,7 +1,7 @@
 [project]
 name = "banking-api"
-version = "0.7.2"
-description = "支持订阅分析、安全取消、动态转账风险与 Principal 隔离的 AI 银行助手"
+version = "0.7.3"
+description = "支持确定性异常交易分析与持久化安全熔断的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",

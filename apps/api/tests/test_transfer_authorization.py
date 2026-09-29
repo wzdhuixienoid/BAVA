@@ -20,6 +20,7 @@ from banking_api.persistence.models import (
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.runtime.event_bus import EventBus
+from banking_api.security.guard import SecurityWriteLockedError
 from banking_api.security.reauthentication.mock_provider import MockReauthenticationProvider
 from banking_api.tools.banking import (
     build_get_balance_tool,
@@ -381,10 +382,32 @@ async def test_injectable_expiry_and_reauthentication_attempt_limits(app) -> Non
     assert failed.state["authorization"]["reauth_id"] is None
 
     async with app.state.test_session_factory() as session:
+        with pytest.raises(SecurityWriteLockedError):
+            await service(session).start_reauthentication(
+                workflow.workflow_id,
+                user_id=workflow.user_id,
+                expected_version=failed.version,
+            )
+    clock.advance(seconds=16 * 60)
+    async with app.state.test_session_factory() as session:
+        with pytest.raises(WorkflowActionError, match="APPROVAL_EXPIRED"):
+            await service(session).start_reauthentication(
+                workflow.workflow_id,
+                user_id=workflow.user_id,
+                expected_version=failed.version,
+            )
+    async with app.state.test_session_factory() as session:
+        after_lock = await service(session).get(workflow.workflow_id, user_id=workflow.user_id)
+        approved_again = await service(session).approve(
+            workflow.workflow_id,
+            user_id=workflow.user_id,
+            expected_version=after_lock.version,
+        )
+    async with app.state.test_session_factory() as session:
         challenged_again = await service(session).start_reauthentication(
             workflow.workflow_id,
             user_id=workflow.user_id,
-            expected_version=failed.version,
+            expected_version=approved_again.version,
         )
     async with app.state.test_session_factory() as session:
         ready = await service(session).verify_reauthentication(

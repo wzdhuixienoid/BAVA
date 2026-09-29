@@ -11,6 +11,7 @@ type Workflow = components["schemas"]["Workflow"];
 type OperationResource = components["schemas"]["OperationResource"];
 type SubscriptionAnalysisSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
 type SubscriptionItem = components["schemas"]["SubscriptionItem"];
+type SecurityStatus = components["schemas"]["SecurityStatus"];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -46,6 +47,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getSecurityStatus: () => request<SecurityStatus>("/api/v1/security/status"),
   listConversations: () => request<Conversation[]>("/api/v1/conversations"),
   createConversation: (body: ConversationCreate) =>
     request<Conversation>("/api/v1/conversations", {
