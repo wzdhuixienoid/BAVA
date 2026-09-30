@@ -464,6 +464,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plans */
+        get: operations["list_plans_api_v1_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plan */
+        get: operations["get_plan_api_v1_plans__plan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}/actions/take-over": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take Over */
+        post: operations["take_over_api_v1_plans__plan_id__actions_take_over_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}/actions/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume */
+        post: operations["resume_api_v1_plans__plan_id__actions_resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/{plan_id}/actions/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rollback */
+        post: operations["rollback_api_v1_plans__plan_id__actions_rollback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -771,6 +856,86 @@ export interface components {
          * @enum {string}
          */
         OperationType: "TRANSFER" | "SUBSCRIPTION_CANCEL";
+        /** Plan */
+        Plan: {
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Conversation Id
+             * Format: uuid
+             */
+            conversation_id: string;
+            /**
+             * Source Task Id
+             * Format: uuid
+             */
+            source_task_id: string;
+            /** Goal Summary */
+            goal_summary: string;
+            status: components["schemas"]["PlanStatus"];
+            /** Version */
+            version: number;
+            /** Manual Takeover */
+            manual_takeover: boolean;
+            /** Steps */
+            steps: components["schemas"]["PlanStep"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Completed At */
+            completed_at: string | null;
+        };
+        /**
+         * PlanCapability
+         * @enum {string}
+         */
+        PlanCapability: "ACCOUNT_QUERY" | "FINANCIAL_ANALYSIS" | "SUBSCRIPTION_ANALYSIS" | "TRANSFER_WORKFLOW" | "SUBSCRIPTION_CANCEL_WORKFLOW";
+        /**
+         * PlanStatus
+         * @enum {string}
+         */
+        PlanStatus: "RUNNING" | "WAITING_USER" | "WAITING_EXTERNAL" | "PAUSED" | "COMPLETED" | "FAILED" | "CANCELLED";
+        /** PlanStep */
+        PlanStep: {
+            /**
+             * Step Id
+             * Format: uuid
+             */
+            step_id: string;
+            /** Step Key */
+            step_key: string;
+            /** Display Title */
+            display_title: string;
+            capability: components["schemas"]["PlanCapability"];
+            status: components["schemas"]["PlanStepStatus"];
+            /** Depends On */
+            depends_on: string[];
+            /** Linked Workflow Id */
+            linked_workflow_id: string | null;
+            /** Result Summary */
+            result_summary: {
+                [key: string]: unknown;
+            } | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Rollback Allowed */
+            rollback_allowed: boolean;
+        };
+        /**
+         * PlanStepStatus
+         * @enum {string}
+         */
+        PlanStepStatus: "PENDING" | "RUNNING" | "WAITING_USER" | "WAITING_EXTERNAL" | "COMPLETED" | "FAILED" | "CANCELLED" | "SKIPPED";
         /**
          * ReauthenticationMethod
          * @enum {string}
@@ -989,6 +1154,14 @@ export interface components {
          * @enum {string}
          */
         RiskReasonCode: "READ_ONLY_AUTOMATIC" | "DAILY_TRANSFER_WITHIN_LIMIT" | "DAILY_TRANSFER_LIMIT_EXCEEDED" | "RISK_ESCALATED_AT_COMMIT" | "RISK_NOT_DOWNGRADED";
+        /** RollbackPlanAction */
+        RollbackPlanAction: {
+            /**
+             * Target Step Id
+             * Format: uuid
+             */
+            target_step_id: string;
+        };
         /**
          * RuntimeBackend
          * @enum {string}
@@ -2175,6 +2348,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SecurityStatus"];
+                };
+            };
+        };
+    };
+    list_plans_api_v1_plans_get: {
+        parameters: {
+            query?: {
+                conversation_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_api_v1_plans__plan_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    take_over_api_v1_plans__plan_id__actions_take_over_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_api_v1_plans__plan_id__actions_resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rollback_api_v1_plans__plan_id__actions_rollback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollbackPlanAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

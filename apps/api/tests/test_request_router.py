@@ -143,7 +143,7 @@ async def test_router_accepts_json_code_fence_without_free_reasoning() -> None:
     assert result.route is RequestRoute.MINIMAL_BANKING
 
 
-async def test_mixed_transfer_intent_is_forced_unsupported_even_if_model_misroutes() -> None:
+async def test_mixed_transfer_intent_enters_plan_even_if_model_misroutes() -> None:
     provider = FakeLLMProvider(
         [
             LLMResponse(
@@ -157,5 +157,5 @@ async def test_mixed_transfer_intent_is_forced_unsupported_even_if_model_misrout
 
     result = await RequestRouter(provider).route("分析8月消费，然后给张三转账1000")
 
-    assert result.route is RequestRoute.UNSUPPORTED
+    assert result.route is RequestRoute.COMPLEX_PLAN
     assert result.requested_output is RequestedOutput.ANSWER

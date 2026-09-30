@@ -11,6 +11,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.models import AgentDefinition
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT_ID
 from banking_api.application.conversation_service import to_message
+from banking_api.application.plan_execution_service import PlanExecutionService, fail_plan
 from banking_api.application.report_service import (
     ReportPersistenceError,
     ReportService,
@@ -35,6 +36,8 @@ from banking_api.financial.report_models import MonthlySpendingReport
 from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.messages import MessageRepository
 from banking_api.persistence.repositories.tasks import TaskExecutionClaim, TaskRepository
+from banking_api.planning.planner import ConstrainedPlanner
+from banking_api.planning.validator import PlanValidationError
 from banking_api.registries.agent_registry import AgentRegistry
 from banking_api.registries.skill_registry import SkillRegistry
 from banking_api.routing.models import RequestRoute, RouteDecision
@@ -71,9 +74,7 @@ from banking_api.workflows.transfer.intent_extractor import (
     TransferIntentExtractor,
 )
 
-UNSUPPORTED_MESSAGE = (
-    "当前无法安全处理该请求。如果请求中包含转账和其他意图，请将转账作为独立请求提交。"
-)
+UNSUPPORTED_MESSAGE = "当前无法安全处理该请求。暂不支持条件自动执行或当前能力之外的业务。"
 
 ROUTE_AGENT_IDS = {
     RequestRoute.MINIMAL_BANKING: MINIMAL_BANKING_AGENT.agent_id,
@@ -116,6 +117,7 @@ class InProcessTaskRunner:
         transfer_workflow_engine: TransferWorkflowEngine | None = None,
         subscription_intent_extractor: SubscriptionCancelIntentExtractor | None = None,
         subscription_workflow_engine: SubscriptionCancellationWorkflow | None = None,
+        planner: ConstrainedPlanner | None = None,
         clock=_now,  # type: ignore[no-untyped-def]
     ) -> None:
         self.session_factory = session_factory
@@ -130,6 +132,7 @@ class InProcessTaskRunner:
         self.transfer_workflow_engine = transfer_workflow_engine
         self.subscription_intent_extractor = subscription_intent_extractor
         self.subscription_workflow_engine = subscription_workflow_engine
+        self.planner = planner
         self.clock = clock
 
     async def run(self, task_id: UUID) -> None:
@@ -226,7 +229,9 @@ class InProcessTaskRunner:
                 requested_output=durable_requested_output,
             ) or await self._route(current_task)
             executor_id = (
-                TRANSFER_WORKFLOW_ID
+                "planner:constrained"
+                if decision.route is RequestRoute.COMPLEX_PLAN
+                else TRANSFER_WORKFLOW_ID
                 if decision.route is RequestRoute.TRANSFER_WORKFLOW
                 else SUBSCRIPTION_WORKFLOW_ID
                 if decision.route is RequestRoute.SUBSCRIPTION_CANCEL
@@ -240,6 +245,9 @@ class InProcessTaskRunner:
                     executor_id=executor_id,
                     requested_output=decision.requested_output,
                 )
+            if decision.route is RequestRoute.COMPLEX_PLAN:
+                await PlanExecutionService(self).execute(claim, current_task)
+                return
             if decision.route is RequestRoute.UNSUPPORTED:
                 await self._complete_without_agent(
                     claim=claim,
@@ -391,6 +399,18 @@ class InProcessTaskRunner:
                 },
                 policy=policy,
             )
+        except PlanValidationError as exc:
+            await self._fail(
+                claim,
+                conversation_id,
+                {
+                    "category": "PLAN",
+                    "code": exc.code,
+                    "message": "当前计划无法安全执行，或包含不支持的能力",
+                    "retryable": False,
+                },
+                policy=policy,
+            )
         except AgentRuntimeError as exc:
             await self._fail(claim, conversation_id, exc.as_dict(), policy=policy)
         except SkillExecutionError as exc:
@@ -450,7 +470,9 @@ class InProcessTaskRunner:
     ) -> RouteDecision | None:
         if executor_id is None or requested_output is None:
             return None
-        if executor_type is ExecutorType.WORKFLOW and executor_id in {
+        if executor_id == "planner:constrained":
+            route = RequestRoute.COMPLEX_PLAN
+        elif executor_type is ExecutorType.WORKFLOW and executor_id in {
             TRANSFER_WORKFLOW_ID,
             SUBSCRIPTION_WORKFLOW_ID,
         }:
@@ -502,7 +524,7 @@ class InProcessTaskRunner:
             executor_type = None
             if route in {RequestRoute.TRANSFER_WORKFLOW, RequestRoute.SUBSCRIPTION_CANCEL}:
                 executor_type = ExecutorType.WORKFLOW
-            elif executor_id is not None:
+            elif executor_id is not None and route is not RequestRoute.COMPLEX_PLAN:
                 executor_type = ExecutorType.AGENT
             await tasks.assign_route(
                 task,
@@ -1050,6 +1072,7 @@ class InProcessTaskRunner:
                 )
             else:
                 next_run_at = None
+                await fail_plan(session, claim.task_id, error["code"])
                 await tasks.transition(task, TaskStatus.FAILED, error=error)
                 event_type = "task.failed"
                 logger.info(

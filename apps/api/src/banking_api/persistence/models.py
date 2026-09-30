@@ -420,3 +420,69 @@ class OutboxEventModel(Base):
         DateTime(timezone=True), nullable=True
     )
     last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class PlanModel(Base):
+    __tablename__ = "plans"
+    __table_args__ = (
+        Index("ix_plans_user_created_at", "user_id", "created_at"),
+        Index("ix_plans_conversation_created_at", "conversation_id", "created_at"),
+    )
+
+    plan_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255))
+    conversation_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE")
+    )
+    source_task_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), unique=True
+    )
+    goal_summary: Mapped[str] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(String(30))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    manual_takeover: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlanStepModel(Base):
+    __tablename__ = "plan_steps"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "step_key", name="uq_plan_steps_key"),
+        UniqueConstraint("plan_id", "ordinal", name="uq_plan_steps_ordinal"),
+        Index("ix_plan_steps_plan_status", "plan_id", "status"),
+        Index("ix_plan_steps_linked_workflow", "linked_workflow_id"),
+    )
+
+    step_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
+    plan_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("plans.id", ondelete="CASCADE"))
+    step_key: Mapped[str] = mapped_column(String(64))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    display_title: Mapped[str] = mapped_column(String(160))
+    capability: Mapped[str] = mapped_column(String(40))
+    executor_kind: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(30))
+    subtask_query: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    output_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    linked_workflow_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("workflows.id"), nullable=True
+    )
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PlanStepDependencyModel(Base):
+    __tablename__ = "plan_step_dependencies"
+    __table_args__ = (CheckConstraint("step_id <> depends_on_step_id", name="ck_plan_no_self"),)
+
+    step_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("plan_steps.id", ondelete="CASCADE"), primary_key=True
+    )
+    depends_on_step_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("plan_steps.id", ondelete="CASCADE"), primary_key=True
+    )

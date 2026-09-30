@@ -8,6 +8,7 @@ import { MessageComposer } from "./MessageComposer";
 import { MessageList } from "./MessageList";
 import { TaskPanel } from "@/features/tasks/TaskPanel";
 import { SecurityStatusBanner } from "@/features/security/SecurityStatusBanner";
+import { PlanCard } from "@/features/plans/PlanCard";
 
 type ConversationDetail = components["schemas"]["ConversationDetail"];
 type Task = components["schemas"]["Task"];
@@ -20,6 +21,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<ReportListItem[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [plans, setPlans] = useState<components["schemas"]["Plan"][]>([]);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +42,19 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
 
   const refresh = useCallback(async () => {
     try {
-      const [nextConversation, nextTasks, nextReports, nextWorkflows, nextSecurityStatus] = await Promise.all([
+      const [nextConversation, nextTasks, nextReports, nextWorkflows, nextSecurityStatus, nextPlans] = await Promise.all([
         api.getConversation(conversationId),
         api.listTasks(conversationId),
         api.listReports(conversationId),
         api.listWorkflows(conversationId),
         api.getSecurityStatus(),
+        api.listPlans(conversationId),
       ]);
       setConversation(nextConversation);
       setTasks(nextTasks);
       setReports(nextReports);
       setWorkflows(nextWorkflows);
+      setPlans(nextPlans);
       setSecurityStatus(nextSecurityStatus);
       setError(null);
     } catch (reason) {
@@ -63,6 +67,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     setTasks([]);
     setReports([]);
     setWorkflows([]);
+    setPlans([]);
     setSecurityStatus(null);
     void refresh();
     return subscribeToConversation(
@@ -100,6 +105,9 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
         <><SecurityStatusBanner status={securityStatus} /><div className="grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px]">
           <section className="flex min-h-[60vh] min-w-0 flex-col">
             <MessageList messages={conversation?.messages ?? []} />
+            <div className="space-y-3 px-6 pb-4">
+              {plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={workflows} onRefresh={refresh} />)}
+            </div>
             <MessageComposer onSend={send} />
           </section>
           <TaskPanel tasks={tasks} reports={reports} workflows={workflows} securityStatus={securityStatus} onRefresh={refresh} />

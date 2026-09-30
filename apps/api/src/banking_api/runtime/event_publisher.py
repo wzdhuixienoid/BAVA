@@ -36,6 +36,14 @@ class EventPublisher:
         task_id: UUID | None,
         data: dict[str, Any],
     ) -> EventModel:
+        if event_type in {
+            "workflow.ready_for_review", "workflow.ready_for_commit", "workflow.reauth_required",
+            "workflow.waiting_for_input", "workflow.committing", "workflow.succeeded",
+            "workflow.failed", "workflow.cancelled", "workflow.updated",
+        } and task_id is not None:
+            from banking_api.application.plan_wake_service import PlanWakeService
+
+            await PlanWakeService(self.events.session).wake(task_id)
         event = await self.events.create(
             event_type=event_type,
             conversation_id=conversation_id,

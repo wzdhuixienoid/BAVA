@@ -47,6 +47,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  listPlans: (conversationId: string) => request<components["schemas"]["Plan"][]>(
+    `/api/v1/plans?conversation_id=${encodeURIComponent(conversationId)}`,
+  ),
+  takeOverPlan: (planId: string) => request<components["schemas"]["Plan"]>(
+    `/api/v1/plans/${encodeURIComponent(planId)}/actions/take-over`, { method: "POST" },
+  ),
+  resumePlan: (planId: string) => request<components["schemas"]["Plan"]>(
+    `/api/v1/plans/${encodeURIComponent(planId)}/actions/resume`, { method: "POST" },
+  ),
+  rollbackPlan: (planId: string, stepId: string) => request<components["schemas"]["Plan"]>(
+    `/api/v1/plans/${encodeURIComponent(planId)}/actions/rollback`, {
+      method: "POST", body: JSON.stringify({ target_step_id: stepId }),
+    },
+  ),
   getSecurityStatus: () => request<SecurityStatus>("/api/v1/security/status"),
   listConversations: () => request<Conversation[]>("/api/v1/conversations"),
   createConversation: (body: ConversationCreate) =>

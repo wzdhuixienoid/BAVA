@@ -162,6 +162,7 @@ class WorkflowService:
         conversation_id: UUID,
         source_task_id: UUID,
         intent: TransferIntent,
+        execution_check=None,
     ) -> Workflow:
         initial = TransferWorkflowState(draft=intent.model_dump())
         model = await self.workflows.create(
@@ -200,6 +201,8 @@ class WorkflowService:
         )
         if state.risk_decision is not None:
             await self._persist_risk_event(updated, state.risk_decision, escalated=False)
+        if execution_check is not None:
+            await execution_check()
         await self.session.commit()
         return await self._to_workflow(updated)
 
@@ -210,6 +213,7 @@ class WorkflowService:
         conversation_id: UUID,
         source_task_id: UUID,
         intent: SubscriptionCancelIntent,
+        execution_check=None,
     ) -> Workflow:
         if self.subscription_engine is None:
             raise WorkflowActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")
@@ -246,6 +250,8 @@ class WorkflowService:
             task_id=source_task_id,
             data=self._event_data(updated),
         )
+        if execution_check is not None:
+            await execution_check()
         await self.session.commit()
         return await self._to_workflow(updated)
 

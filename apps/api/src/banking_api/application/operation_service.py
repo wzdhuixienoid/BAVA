@@ -32,6 +32,7 @@ from banking_api.security.guard import (
     SecurityGuardService,
     SecurityGuardStatus,
     SecurityWriteLockedError,
+    acquire_security_user_lock,
 )
 from banking_api.workflows.subscription_cancel.authorization import (
     canonicalize_subscription_cancel_payload,
@@ -131,6 +132,12 @@ class OperationService:
         workflow = await self.workflows.get_for_user(workflow_id, user_id)
         if workflow is None:
             raise OperationNotFoundError
+        await acquire_security_user_lock(self.session, user_id)
+        existing = await self.operations.get_for_workflow(workflow_id, user_id)
+        if existing is not None:
+            resource = self._resource(existing)
+            await self.session.commit()
+            return resource
         operation = (
             await self.prepare_subscription_cancel(
                 workflow_id, user_id=user_id, expected_version=expected_version
@@ -151,6 +158,12 @@ class OperationService:
     ) -> OperationResource:
         # Global lock order for transfer creation: Security Guard, then Transfer Risk.
         # Both transaction-scoped locks remain held through Operation creation and commit.
+        await acquire_security_user_lock(self.session, user_id)
+        existing = await self.operations.get_for_workflow(workflow_id, user_id)
+        if existing is not None:
+            resource = self._resource(existing)
+            await self.session.commit()
+            return resource
         await self.security_guard.require_write_allowed(user_id)
         await self._serialize_user_risk(user_id)
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
@@ -280,6 +293,12 @@ class OperationService:
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> OperationResource:
         # The Security Guard lock is held until this Operation transaction commits.
+        await acquire_security_user_lock(self.session, user_id)
+        existing = await self.operations.get_for_workflow(workflow_id, user_id)
+        if existing is not None:
+            resource = self._resource(existing)
+            await self.session.commit()
+            return resource
         await self.security_guard.require_write_allowed(user_id)
         if self.subscription_engine is None:
             raise OperationActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")

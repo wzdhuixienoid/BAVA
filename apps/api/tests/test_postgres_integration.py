@@ -126,6 +126,7 @@ async def postgres_factory():
         await connection.execute(
             text(
                 "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
+                "mock_subscription_cancellations, "
                 "events, tasks, messages, "
                 "conversations "
                 "RESTART IDENTITY CASCADE"
@@ -136,6 +137,7 @@ async def postgres_factory():
         await connection.execute(
             text(
                 "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
+                "mock_subscription_cancellations, "
                 "events, tasks, messages, "
                 "conversations "
                 "RESTART IDENTITY CASCADE"
@@ -278,7 +280,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0015"
+        assert revision == "0016"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -2049,15 +2051,10 @@ async def test_security_lock_activation_wins_transfer_operation_race(
     await _seed_security_counter(factory, user_id, reauth_failures=2)
     operation_attempted = asyncio.Event()
 
-    class AnnouncingSecurityGuard(SecurityGuardService):
-        async def require_write_allowed(self, checked_user_id: str) -> None:
-            operation_attempted.set()
-            await super().require_write_allowed(checked_user_id)
-
     async def prepare_transfer():  # type: ignore[no-untyped-def]
         async with factory() as session:
             service = OperationService(session, bus, engine)
-            service.security_guard = AnnouncingSecurityGuard(session)
+            operation_attempted.set()
             return await service.prepare_transfer(
                 workflow.workflow_id,
                 user_id=user_id,
@@ -2109,6 +2106,7 @@ async def test_transfer_operation_wins_then_security_lock_blocks_new_operation(
     bus = EventBus()
     user_id = "security-transfer-operation-wins"
     engine, provider, workflow = await _create_postgres_red_transfer(factory, bus, user_id)
+    _, _, new_workflow = await _create_postgres_red_transfer(factory, bus, user_id)
     await _seed_security_counter(factory, user_id, reauth_failures=2)
     operation_has_lock = asyncio.Event()
     release_operation = asyncio.Event()
@@ -2153,11 +2151,16 @@ async def test_transfer_operation_wins_then_security_lock_blocks_new_operation(
     assert operation.status is OperationStatus.CREATED
     assert locked.status is SecurityGuardStatus.WRITE_LOCKED
     async with factory() as session:
+        retry = await OperationService(session, bus, engine).prepare_transfer(
+            workflow.workflow_id, user_id=user_id, expected_version=workflow.version
+        )
+        assert retry.operation_id == operation.operation_id
+    async with factory() as session:
         with pytest.raises(SecurityWriteLockedError):
             await OperationService(session, bus, engine).prepare_transfer(
-                workflow.workflow_id,
+                new_workflow.workflow_id,
                 user_id=user_id,
-                expected_version=workflow.version,
+                expected_version=new_workflow.version,
             )
     async with factory() as session:
         operation_count = await session.scalar(
@@ -2181,11 +2184,6 @@ async def test_bypass_lock_activation_wins_subscription_operation_race(
     await _seed_security_counter(factory, user_id, bypass_attempts=4)
     operation_attempted = asyncio.Event()
 
-    class AnnouncingSecurityGuard(SecurityGuardService):
-        async def require_write_allowed(self, checked_user_id: str) -> None:
-            operation_attempted.set()
-            await super().require_write_allowed(checked_user_id)
-
     async def prepare_subscription():  # type: ignore[no-untyped-def]
         async with factory() as session:
             service = OperationService(
@@ -2194,7 +2192,7 @@ async def test_bypass_lock_activation_wins_subscription_operation_race(
                 transfer_engine,
                 subscription_engine=subscription_engine,
             )
-            service.security_guard = AnnouncingSecurityGuard(session)
+            operation_attempted.set()
             return await service.prepare_subscription_cancel(
                 workflow.workflow_id,
                 user_id=user_id,

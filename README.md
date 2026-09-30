@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-当前版本：`v0.7.3`
+当前版本：`v0.8.1`
 
 面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
 
@@ -33,7 +33,9 @@
 | 安全熔断 | `SecurityGuardService` | 3 次连续强验证失败 / 10 min，或 5 次控制绕过 / 5 min → `WRITE_LOCKED` 15 min |
 | 持久事件发布 | Transactional Outbox | Event + Outbox atomic commit → leased publisher → EventBus/SSE |
 | 持久 Task 执行 | PostgreSQL-backed Task worker | due scan → `SKIP LOCKED` claim → lease/heartbeat/fencing → retry/terminal |
-| 生产身份认证与 Principal | provider-neutral OIDC/OAuth 2.0 | verified JWT → identity mapping → Principal → ownership/tool scope |
+| 受约束复杂任务规划 | `ConstrainedPlanner` + `PlanValidator` | 只选已有高层 Capability，最多 8 步、一个写 Workflow |
+| 持久化 Task DAG | `PlanExecutionService` + 现有 Task worker | attempt fencing、幂等恢复、用户等待、人工接管、只读回退 |
+| 可信身份与多用户隔离（OIDC-ready） | provider-neutral OIDC/OAuth 2.0 | verified JWT → identity mapping → Principal → ownership/tool scope |
 
 ```text
 Financial Analysis Vertical Slice: COMPLETE
@@ -43,10 +45,15 @@ Durable Operation Recovery: COMPLETE
 Cross-Process Financial Concurrency: COMPLETE
 Transactional Outbox: COMPLETE
 Durable Task Execution: COMPLETE
-生产身份认证与 Principal：COMPLETE
+可信身份与多用户隔离（OIDC-ready）：COMPLETE
 动态风险分级：COMPLETE
 异常交易识别：COMPLETE
 安全熔断：COMPLETE
+受约束复杂任务规划：COMPLETE
+持久化 Task DAG：COMPLETE
+中断 / Human-in-the-loop：COMPLETE
+有限安全回退：COMPLETE
+人工接管：COMPLETE
 ```
 
 ### GREEN / YELLOW / RED
@@ -77,7 +84,37 @@ Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINE
 
 报告生成后可在 Conversation 中通过 ReportCard 打开，也可以从 `/reports` 查看历史报告。
 
+## 受约束任务规划
+
+单个 Agent / Workflow 能完整完成的请求继续原路径，包括余额查询、消费分析、月度报告、独立转账和取消订阅。需要两个以上已有能力协作才进入 `COMPLEX_PLAN`。
+
+```text
+先查一下工资卡余额，再分析一下 2026 年 9 月的消费。
+先看看我有哪些订阅，然后取消星幕视频。
+```
+
+Planner 只选择 `ACCOUNT_QUERY / FINANCIAL_ANALYSIS / SUBSCRIPTION_ANALYSIS / TRANSFER_WORKFLOW / SUBSCRIPTION_CANCEL_WORKFLOW`。Proposal 不接受业务内部 ID、金额、权限、风险或 Tool；写 Workflow 始终从原始用户 Message 提取意图，沿用原有 Policy、Approval、Reauthentication、Security Guard、Operation 和 Provider。
+
+`plans / plan_steps / plan_step_dependencies` 是固定持久化 DAG；`source_task_id` 唯一，Task retry 不再次规划。执行由原 Task worker 的 lease/attempt fence 保护，无独立 Plan worker。只读输出为 bounded structured facts；最终回答由服务器确定性整合这些事实，写步骤成功必须同时满足 Workflow 与 Operation `SUCCEEDED`。
+
+PlanCard 显示依赖和中文状态，关联业务继续使用原 Workflow Card。等待用户时 Step / Plan / Task 为 `WAITING_USER`；Operation 尚未收敛时为 `WAITING_EXTERNAL`。Workflow 状态事件在同一 transaction 中幂等重新调度原 Task。人工接管暂停编排并 fence 当前执行；业务卡片仍可操作，必须明确 resume 才能继续自动执行。
+
+回退只重算目标及其下游的只读步骤，并清除旧输出、错误和时间戳；范围包含写 Capability 或 linked Workflow 时拒绝 `PLAN_ROLLBACK_NOT_SAFE`。回退不会撤销转账、恢复订阅或修改 Provider ledger。
+
 ## 架构
+
+```text
+User Message
+  → Message + durable Task
+  → RequestRouter
+      ├─ simple request → existing Agent / Workflow
+      └─ COMPLEX_PLAN → ConstrainedPlanner → PlanValidator
+          → Persistent Plan DAG → TaskExecutionWorker / PlanExecutionService
+              ├─ existing read-only Agent → bounded structured result
+              └─ existing Workflow → Policy → Approval → Reauthentication
+                  → SecurityGuard → Operation → Provider
+```
+
 
 ```text
 OIDC Identity Provider
@@ -222,7 +259,7 @@ DEVELOPMENT_USER_ID=dev-user-001
 NEXT_PUBLIC_AUTH_MODE=development
 ```
 
-OIDC 模式验证标准 JWT signature、`iss`、`aud`、`exp`、可选 `nbf`、`sub`、allowed algorithm 和 `kid`/JWKS。`OIDC_JWKS_URL` 留空时使用标准 discovery；生产环境禁止 `AUTH_MODE=development`。
+OIDC 模式验证标准 JWT signature、`iss`、`aud`、`exp`、可选 `nbf`、`sub`、allowed algorithm 和 `kid`/JWKS。`OIDC_JWKS_URL` 留空时使用标准 discovery；生产环境禁止 `AUTH_MODE=development`。当前比赛能力为 OIDC-ready 的认证边界和多用户隔离，未接入真实生产 IdP。
 
 ```env
 APP_ENVIRONMENT=production
@@ -368,6 +405,11 @@ GET  /api/v1/reports/{report_id}
 GET  /api/v1/subscriptions
 GET  /api/v1/subscriptions/{subscription_id}
 GET  /api/v1/security/status
+GET  /api/v1/plans?conversation_id=...
+GET  /api/v1/plans/{plan_id}
+POST /api/v1/plans/{plan_id}/actions/take-over
+POST /api/v1/plans/{plan_id}/actions/resume
+POST /api/v1/plans/{plan_id}/actions/rollback
 GET  /api/v1/workflows/{workflow_id}
 GET  /api/v1/workflows?conversation_id=...
 POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|select-subscription|approve|start-reauth|verify-reauth|commit|cancel}
@@ -392,11 +434,13 @@ Commit 的 user risk advisory lock 只覆盖“重读 exposure → 风险评估 
 
 `CREATED / SUBMITTED / UNKNOWN` 会按持久化 `next_reconcile_at` 自动恢复。多个 API process 可各自运行 worker；PostgreSQL `FOR UPDATE SKIP LOCKED` 与有期 lease 保证同一 Operation 在有效 lease 内只有一个 claim。Provider/network I/O 不持有数据库行锁。
 
-Task 执行同样使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、持久 lease、attempt fencing 和 heartbeat。保证是“at-least-once execution attempt + fenced authoritative completion”，不是外部副作用 exactly-once。Report 依赖 `source_task_id` 唯一约束；Transfer retry 复用同一 Workflow，金融副作用仍只由 Operation/Provider/OperationRecoveryWorker 收敛。
+Task 执行同样使用 PostgreSQL `FOR UPDATE SKIP LOCKED`、持久 lease、attempt fencing 和 heartbeat。保证是“at-least-once execution attempt + fenced authoritative completion”，不是外部副作用 exactly-once。Report 依赖 `source_task_id` 唯一约束；Plan retry 复用同一 DAG，写步骤 retry 通过 source_task_id 找回同一 Workflow（包括 Workflow 已创建但尚未保存 link 的 crash window）。Transfer retry 复用同一 Workflow，金融副作用仍只由 Operation/Provider/OperationRecoveryWorker 收敛。
 
 Idempotency 和资金并发是两个独立 invariant：同一 idempotency key 通过 provider ledger unique constraint 仅执行一次；不同 Operation/key 通过 source-account-scoped PostgreSQL transaction advisory lock 不能并发花穿余额。Workflow balance check 仅用于 early validation，Provider commit-time balance check 才是最终资金 correctness boundary。
 
 `WRITE_LOCKED` 只阻止新的 Transfer / Subscription cancel Operation 以及 reauthentication start/verify；GREEN 查询、异常分析和状态查询继续可用。Operation 创建前服务端 fail closed，因 lock 拒绝时不消费 Approval、不创建 Operation、不调用 Provider。`locked_until` 到期后 lazy clear，无后台 unlock worker。
+
+已有 Operation 的 commit retry 在取得 Security Guard user lock 后先返回原记录，即使客户端使用创建前版本且用户随后 WRITE_LOCKED，也不重消费 Approval 或换 idempotency key。CREATED / SUBMITTED / UNKNOWN 继续由原 Recovery 收敛，不重新检查用户写锁。
 
 Security Guard 状态转移与新 Operation 创建共享同一个 Principal-scoped PostgreSQL transaction advisory lock。Authoritative write gate 与 Operation/Approval/Workflow 更新在同一 transaction 中，因此 lock activation 与 Operation creation 对同一用户有唯一线性化顺序。Transfer 的全局锁顺序固定为 `Security Guard user lock → Transfer Risk user lock`；Subscription cancellation 只获取前者。
 
@@ -412,11 +456,14 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.7.3](docs/implementation-report-v0.7.3.md)
-- [Repository Tree v0.7.3](docs/repository-tree-v0.7.3.md)
-- [Test Results v0.7.3](docs/test-results-v0.7.3.md)
+- [Implementation Report v0.8.1](docs/implementation-report-v0.8.1.md)
+- [Repository Tree v0.8.1](docs/repository-tree-v0.8.1.md)
+- [Test Results v0.8.1](docs/test-results-v0.8.1.md)
 
 ## 当前限制
+
+Plan 最多 8 步、一个写 Workflow，按 ordinal 顺序执行 ready steps；不支持条件节点、循环、数据流表达式、多笔金融副作用、动态重规划或自由 Agent 协商。复杂请求中的月度 Report Artifact 暂未作为 Plan Capability 注册，会整体拒绝；独立分析并生成报告仍走完整 Financial vertical slice。没有 Plan cancel API，业务取消沿用 Workflow。
+
 
 当前写入仅限比赛 synthetic banking environment 中的持久化 `MockTransferProvider` 和正式 `MockSubscriptionProvider`；未连接真实商户订阅 API。RED 强验证使用 `MockReauthenticationProvider`。
 
@@ -429,3 +476,12 @@ docs/                     版本交付、测试结果与设计记录
 仍然没有 balance reservation/hold/capture 系统。TaskExecutionWorker、OperationRecoveryWorker 和 OutboxPublisher 是三个明确、独立的专用 loop，不是 Celery、Redis、Kafka、通用任务队列或 Generic Worker/Scheduler Framework。Task worker 仍由 API process 托管，未提供独立 worker deployment、优先级队列或 per-conversation ordering。
 
 EventBus 仍是 process-local：多 API process 下，某个 publisher 的本地发布不保证另一 process 上的 SSE client 收到。本版也没有 client acknowledgement、SSE replay、Outbox DLQ、archival/cleanup、分布式 metrics/tracing 或跨进程 realtime broker；Resource API 仍是事实源。
+
+真实 HTTP + 当前 LLM 的 Plan smoke 使用独立 synthetic 数据库和最新 API：
+
+```bash
+PLAN_SMOKE_BASE_URL=http://127.0.0.1:8001 \
+  uv run --project apps/api python scripts/smoke_plan_product.py
+```
+
+该脚本完成只读 DAG，以及一次明确 Approval + commit 的 synthetic 订阅取消，并核对原 Operation 幂等复用；不要指向真实业务环境。

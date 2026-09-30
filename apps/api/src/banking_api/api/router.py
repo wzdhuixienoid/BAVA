@@ -4,6 +4,7 @@ from banking_api.api.routes import (
     conversations,
     events,
     operations,
+    plans,
     reports,
     security,
     subscriptions,
@@ -20,3 +21,4 @@ api_router.include_router(workflows.router)
 api_router.include_router(operations.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(security.router)
+api_router.include_router(plans.router)

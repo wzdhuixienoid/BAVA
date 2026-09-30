@@ -301,7 +301,8 @@ async def test_stale_double_commit_cancel_and_ownership_are_closed(app, client) 
         f"/api/v1/workflows/{ready.workflow_id}/actions/commit",
         json={"expected_version": ready.version},
     )
-    assert second.status_code == 409
+    assert second.status_code == 200
+    assert second.json()["operation_summary"]["operation_id"] == operation_id
     cancel = await client.post(
         f"/api/v1/workflows/{ready.workflow_id}/actions/cancel",
         json={"expected_version": first.json()["version"]},

@@ -326,10 +326,9 @@ async def test_financial_route_cannot_gain_transfer_authority(app) -> None:
     await runner.run(accepted.task_id)
     task, events = await load_task_and_events(app, accepted.task_id)
 
-    assert task.status is TaskStatus.COMPLETED
-    assert task.executor_id is None
-    assert task.output is not None
-    assert task.output["route"] == "UNSUPPORTED"
+    assert task.status is TaskStatus.FAILED
+    assert task.executor_id == "planner:constrained"
+    assert task.error["code"] == "PLAN_PLANNER_NOT_CONFIGURED"
     assert len(provider.requests) == 1
     assert not any(event.event_type.startswith("agent.") for event in events)
     assert not any(event.event_type.startswith("tool.") for event in events)

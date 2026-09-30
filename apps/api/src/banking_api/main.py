@@ -20,6 +20,7 @@ from banking_api.financial.anomaly_detector import TransactionAnomalyDetector
 from banking_api.llm.openai_compatible_provider import OpenAICompatibleProvider
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import session_factory
+from banking_api.planning.planner import ConstrainedPlanner
 from banking_api.policy.service import PolicyService
 from banking_api.registries.agent_registry import AgentRegistry
 from banking_api.registries.skill_registry import SkillRegistry
@@ -148,7 +149,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.7.3",
+        version="0.8.1",
         lifespan=lifespan,
     )
     application.add_middleware(
@@ -230,6 +231,7 @@ def create_app() -> FastAPI:
         transfer_workflow_engine=transfer_engine,
         subscription_intent_extractor=SubscriptionCancelIntentExtractor(provider),
         subscription_workflow_engine=subscription_engine,
+        planner=ConstrainedPlanner(provider),
     )
     application.state.task_runner = task_runner
     application.include_router(health_router)
