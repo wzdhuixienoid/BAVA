@@ -12,6 +12,7 @@ from banking_api.runtime.base import (
     AgentRunState,
     AgentRunStatus,
     AgentRuntimeError,
+    SuccessfulToolResult,
     ignore_runtime_event,
 )
 from banking_api.tools.executor import ToolExecutor
@@ -145,6 +146,14 @@ class ManualAgentRuntime:
                         "capability_id": result.capability_id,
                     }
                     if result.ok:
+                        state.successful_tool_results.append(
+                            SuccessfulToolResult(
+                                capability_id=result.capability_id,
+                                tool_name=call.name,
+                                arguments=call.arguments,
+                                output=result.output or {},
+                            )
+                        )
                         metadata["output_keys"] = sorted(result.output or {})
                         accounts = (result.output or {}).get("accounts")
                         if isinstance(accounts, list):

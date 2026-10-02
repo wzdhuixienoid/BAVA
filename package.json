@@ -8,5 +8,6 @@
     "web:lint": "pnpm --filter @banking/web lint",
     "web:typecheck": "pnpm --filter @banking/web typecheck",
     "web:build": "pnpm --filter @banking/web build"
-  }
+  },
+  "version": "0.9.1"
 }

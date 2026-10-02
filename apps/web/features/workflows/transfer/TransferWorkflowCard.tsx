@@ -3,66 +3,12 @@
 import { useState } from "react";
 import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
+import { StatusBadge } from "@/components/agent-ui/StatusBadge";
+import { RiskDetails } from "@/features/workflows/RiskDetails";
+import { WorkflowTimeline } from "@/features/workflows/WorkflowTimeline";
 
 type Workflow = components["schemas"]["Workflow"];
-type TransferRiskDecision = components["schemas"]["TransferRiskDecision"];
-
-type PayeeOption = {
-  payee_id: string;
-  display_name: string;
-  bank_name: string;
-  masked_account: string;
-  phone_alias: string;
-};
-
-type AccountOption = {
-  account_id: string;
-  display_name: string;
-  masked_number: string;
-  currency: string;
-  available_balance: string;
-};
-
-type TransferState = {
-  draft: {
-    recipient_query?: string | null;
-    payee_id?: string | null;
-    amount?: string | null;
-    source_account_id?: string | null;
-  };
-  required_input?: {
-    type: "PAYEE_SELECTION" | "SOURCE_ACCOUNT_SELECTION" | "AMOUNT" | "RECIPIENT_QUERY";
-    message: string;
-    options: Array<PayeeOption | AccountOption>;
-  } | null;
-  validation?: {
-    is_valid: boolean;
-    issues: Array<{ code: string; message: string }>;
-  } | null;
-  review_payload?: {
-    source_account_display_name: string;
-    source_account_masked_number: string;
-    payee_display_name: string;
-    payee_bank_name: string;
-    payee_masked_account: string;
-    amount: string;
-    currency: string;
-  } | null;
-  payee_options?: PayeeOption[];
-  source_account_options?: AccountOption[];
-};
-
-function isPayee(option: PayeeOption | AccountOption): option is PayeeOption {
-  return "payee_id" in option;
-}
-
-function money(value: string, currency: string) {
-  return new Intl.NumberFormat("zh-CN", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(Number(value));
-}
+type TransferState = components["schemas"]["TransferWorkflowState"];
 
 function expiresAt(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -71,7 +17,7 @@ function expiresAt(value: string) {
   }).format(new Date(value));
 }
 
-function ReviewDetails({ state }: { state: TransferState }) {
+function ReviewDetails({ state, amountDisplay }: { state: TransferState; amountDisplay?: string | null }) {
   const review = state.review_payload;
   if (!review) return null;
   return (
@@ -83,50 +29,10 @@ function ReviewDetails({ state }: { state: TransferState }) {
       <dt className="text-slate-500">收款银行</dt>
       <dd>{review.payee_bank_name}</dd>
       <dt className="text-slate-500">金额</dt>
-      <dd className="font-semibold">{money(review.amount, review.currency)}</dd>
+      <dd className="font-semibold">{amountDisplay ?? `${review.amount} ${review.currency}`}</dd>
       <dt className="text-slate-500">币种</dt>
       <dd>{review.currency}</dd>
     </dl>
-  );
-}
-
-function RiskDetails({ risk }: { risk: TransferRiskDecision }) {
-  const red = risk.level === "RED";
-  const escalated = risk.reason_codes.includes("RISK_ESCALATED_AT_COMMIT");
-  return (
-    <div
-      className={`mt-3 rounded-md border p-3 ${
-        red ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className={`text-sm font-bold ${red ? "text-red-800" : "text-amber-800"}`}>
-          风险等级：{red ? "红色" : "黄色"}
-        </p>
-        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold">
-          {red ? "强验证" : "用户确认"}
-        </span>
-      </div>
-      {escalated && (
-        <p className="mt-2 rounded bg-red-100 p-2 text-xs font-semibold leading-5 text-red-800">
-          风险等级已升级：今日累计转账金额发生变化，本次操作现在需要强验证。
-        </p>
-      )}
-      <dl className="mt-3 grid grid-cols-[112px_1fr] gap-y-1 text-xs">
-        <dt className="text-slate-500">本笔转账</dt>
-        <dd>{money(risk.requested_amount, risk.currency)}</dd>
-        <dt className="text-slate-500">今日已成功</dt>
-        <dd>{money(risk.daily_successful_total, risk.currency)}</dd>
-        <dt className="text-slate-500">今日执行中</dt>
-        <dd>{money(risk.daily_in_flight_exposure, risk.currency)}</dd>
-        <dt className="text-slate-500">预计日累计</dt>
-        <dd className="font-semibold">{money(risk.projected_daily_total, risk.currency)}</dd>
-      </dl>
-      <div className="mt-3 space-y-1 text-xs text-slate-700">
-        <p>✓ 需要用户确认</p>
-        <p>{risk.required_reauthentication ? "✓ 需要强身份验证（模拟）" : "○ 无需强验证"}</p>
-      </div>
-    </div>
   );
 }
 
@@ -137,7 +43,7 @@ export function TransferWorkflowCard({
   workflow: Workflow;
   onRefresh: () => Promise<void>;
 }) {
-  const state = workflow.state as TransferState;
+  const state = (workflow.presentation?.transfer_state ?? workflow.state) as TransferState;
   const required = state.required_input;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,12 +95,11 @@ export function TransferWorkflowCard({
           </p>
           <p className="mt-1 text-xs text-slate-500">版本 {workflow.version}</p>
         </div>
-        <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600">
-          {workflow.status}
-        </span>
+        <StatusBadge status={workflow.presentation?.business_success === false && workflow.status === "SUCCEEDED" ? "WAITING_EXTERNAL" : workflow.status} />
       </div>
 
       {workflow.risk_decision && <RiskDetails risk={workflow.risk_decision} />}
+      <WorkflowTimeline workflow={workflow} />
 
       {workflow.status === "WAITING_FOR_INPUT" && required?.type === "RECIPIENT_QUERY" && (
         <div className="mt-3">
@@ -231,7 +136,7 @@ export function TransferWorkflowCard({
       {workflow.status === "WAITING_FOR_INPUT" && required?.type === "PAYEE_SELECTION" && (
         <div className="mt-3 space-y-2">
           <p className="text-sm font-semibold text-slate-900">请选择收款人</p>
-          {required.options.filter(isPayee).map((option) => (
+          {(workflow.presentation?.payee_options ?? []).map((option) => (
             <div key={option.payee_id} className="rounded-md border border-amber-200 bg-white p-2">
               <p className="text-sm font-semibold text-slate-900">{option.display_name}</p>
               <p className="text-xs text-slate-500">
@@ -256,12 +161,12 @@ export function TransferWorkflowCard({
       {workflow.status === "WAITING_FOR_INPUT" && required?.type === "SOURCE_ACCOUNT_SELECTION" && (
         <div className="mt-3 space-y-2">
           <p className="text-sm font-semibold text-slate-900">请选择付款账户</p>
-          {(required.options as AccountOption[]).map((option) => (
+          {(workflow.presentation?.account_options ?? []).map((option) => (
             <div key={option.account_id} className="rounded-md border border-amber-200 bg-white p-2">
               <p className="text-sm font-semibold text-slate-900">{option.display_name}</p>
               <p className="text-xs text-slate-500">{option.masked_number}</p>
               <p className="mt-1 text-xs text-slate-700">
-                可用余额 {money(option.available_balance, option.currency)}
+                可用余额 {option.available_balance_display}
               </p>
               <button
                 disabled={busy}
@@ -315,9 +220,9 @@ export function TransferWorkflowCard({
       {workflow.status === "READY_FOR_REVIEW" && state.review_payload && (
         <div className="mt-3 rounded-md border border-emerald-200 bg-white p-3">
           <p className="text-sm font-semibold text-emerald-800">转账信息已准备完成，尚未提交。</p>
-          <ReviewDetails state={state} />
+          <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
           <p className="mt-3 text-[11px] leading-5 text-slate-500">
-            READY_FOR_REVIEW 仅表示当前草稿通过初步校验，不代表已批准，也不保证提交时余额仍然充足。
+            等待确认仅表示当前草稿通过初步校验，不代表已批准，也不保证提交时余额仍然充足。
           </p>
           <button
             disabled={busy}
@@ -335,7 +240,7 @@ export function TransferWorkflowCard({
         <div className="mt-3 rounded-md border border-blue-200 bg-white p-3">
           <p className="text-sm font-semibold text-blue-900">转账信息已确认</p>
           <p className="mt-1 text-xs text-slate-600">需要完成强身份验证（模拟）后才能继续</p>
-          <ReviewDetails state={state} />
+          <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
           {workflow.approval_summary?.expires_at && (
             <p className="mt-2 text-[11px] text-slate-500">
               确认有效至 {expiresAt(workflow.approval_summary.expires_at)}
@@ -398,12 +303,12 @@ export function TransferWorkflowCard({
               ? "强身份验证已完成"
               : "用户确认已完成，无需强验证"}
           </p>
-          <ReviewDetails state={state} />
+          <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
           <p className="mt-3 rounded bg-amber-50 p-2 text-xs font-semibold text-amber-800">
             尚未提交转账
           </p>
           <p className="mt-2 text-[11px] leading-5 text-slate-500">
-            READY_FOR_COMMIT 表示当前 payload 已批准并满足当前风险所需的安全控制。提交前会再次评估风险。
+            可以提交表示当前内容已批准并满足当前风险所需的安全控制。提交前会再次评估风险。
           </p>
           <p className="mt-3 text-xs font-semibold text-red-700">
             这一步将真正提交资金转账
@@ -435,7 +340,7 @@ export function TransferWorkflowCard({
               <p className="mt-2 text-xs text-slate-700">请勿重复操作</p>
             </>
           )}
-          <ReviewDetails state={state} />
+          <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
           <button
             disabled={busy}
             onClick={() => void reconcile()}
@@ -449,7 +354,7 @@ export function TransferWorkflowCard({
       {workflow.status === "SUCCEEDED" && operation?.status === "SUCCEEDED" && (
         <div className="mt-3 rounded-md border border-emerald-200 bg-white p-3">
           <p className="text-sm font-semibold text-emerald-800">转账成功</p>
-          <ReviewDetails state={state} />
+          <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
           {operation.provider_reference && (
             <p className="mt-3 text-xs text-slate-600">
               银行参考号：{operation.provider_reference}
@@ -520,7 +425,7 @@ export function TransferWorkflowCard({
               <div>
                 <p className="text-xs font-semibold text-slate-700">更换收款人</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {(state.payee_options ?? []).map((option) => (
+                  {(workflow.presentation?.payee_options ?? []).map((option) => (
                     <button
                       key={option.payee_id}
                       disabled={busy || state.draft.payee_id === option.payee_id}
@@ -539,7 +444,7 @@ export function TransferWorkflowCard({
               <div>
                 <p className="text-xs font-semibold text-slate-700">更换付款账户</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {(state.source_account_options ?? []).map((option) => (
+                  {(workflow.presentation?.account_options ?? []).map((option) => (
                     <button
                       key={option.account_id}
                       disabled={busy || state.draft.source_account_id === option.account_id}
@@ -573,7 +478,7 @@ export function TransferWorkflowCard({
               <p className="mt-1">如需再次转账，请重新发起。</p>
             </>
           )}
-          {state.validation?.issues.map((issue) => (
+          {state.validation?.issues?.map((issue) => (
             <p key={issue.code}>{issue.code}：{issue.message}</p>
           ))}
         </div>

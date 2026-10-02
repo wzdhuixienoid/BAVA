@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.application.transfer_risk_facts import TransferRiskFactsService
+from banking_api.application.workflow_projection import workflow_presentation
 from banking_api.config.settings import get_settings
 from banking_api.domain.approval import ApprovalSummary, ApprovalType
 from banking_api.domain.enums import (
@@ -59,7 +60,10 @@ from banking_api.workflows.transfer.models import (
     TransferIntent,
     TransferWorkflowState,
 )
-from banking_api.workflows.transfer.risk import TransferRiskPolicy
+from banking_api.workflows.transfer.risk import (
+    TransferRiskCurrencyUnsupportedError,
+    TransferRiskPolicy,
+)
 
 
 class WorkflowNotFoundError(Exception):
@@ -263,9 +267,7 @@ class WorkflowService:
         subscription_id: str,
         expected_version: int,
     ) -> Workflow:
-        model, state = await self._load_subscription_action(
-            workflow_id, user_id, expected_version
-        )
+        model, state = await self._load_subscription_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.WAITING_FOR_INPUT:
             raise WorkflowActionError("WORKFLOW_NOT_WAITING_FOR_SUBSCRIPTION")
         if subscription_id not in {
@@ -796,6 +798,10 @@ class WorkflowService:
         authorization = state.authorization
         if authorization is None or state.review_payload is None:
             raise WorkflowActionError("APPROVAL_NOT_FOUND")
+        try:
+            self.risk_policy.require_supported_currency(state.review_payload.currency)
+        except TransferRiskCurrencyUnsupportedError as exc:
+            raise WorkflowActionError(exc.code) from exc
         approval = await self.approvals.get_for_workflow_user(
             authorization.approval_id, model.workflow_id, model.user_id
         )
@@ -975,6 +981,18 @@ class WorkflowService:
             status=model.status,
             version=model.version,
             state=model.state_json,
+            presentation=workflow_presentation(
+                status=model.status,
+                transfer=transfer_state,
+                subscription=(
+                    SubscriptionCancelWorkflowState.model_validate(model.state_json)
+                    if transfer_state is None
+                    else None
+                ),
+                approval=approval,
+                reauth=reauth,
+                operation=operation,
+            ),
             risk_level=(
                 transfer_state.risk_decision.level
                 if transfer_state is not None and transfer_state.risk_decision is not None
@@ -1026,6 +1044,10 @@ class WorkflowService:
     ) -> TransferRiskDecision:
         if state.review_payload is None:
             raise WorkflowActionError("TRANSFER_RISK_FACTS_MISSING")
+        try:
+            self.risk_policy.require_supported_currency(state.review_payload.currency)
+        except TransferRiskCurrencyUnsupportedError as exc:
+            raise WorkflowActionError(exc.code) from exc
         evaluated_at = _as_utc(self.clock())
         facts = await self.risk_facts.for_user(
             user_id=user_id,

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { components } from "@banking/api-client";
+import { statusDisplay } from "@/lib/presentation/status";
 import { api } from "@/lib/api/client";
 
 type Event = components["schemas"]["Event"];
@@ -32,10 +33,6 @@ const labels: Record<string, string> = {
   "operation.succeeded": "银行已确认执行成功",
   "operation.failed": "银行确认执行失败",
 };
-const planStatuses: Record<string, string> = {
-  RUNNING: "执行中", WAITING_USER: "等待你的操作", WAITING_EXTERNAL: "等待外部结果",
-  PAUSED: "已转为手动处理", COMPLETED: "已完成", FAILED: "失败", CANCELLED: "已取消",
-};
 
 const toolLabels: Record<string, string> = {
   list_accounts: "账户列表", get_balance: "账户余额", get_spending_summary: "收支汇总",
@@ -61,7 +58,7 @@ function description(event: Event): string | undefined {
   }
   if (event.event_type === "task.progress" && typeof event.data.message === "string") return event.data.message;
   if (event.event_type === "plan.state_changed" && typeof event.data.to_status === "string") {
-    const status = planStatuses[event.data.to_status];
+    const status = statusDisplay(event.data.to_status).label;
     return status ? `计划${status}` : undefined;
   }
   return labels[event.event_type];

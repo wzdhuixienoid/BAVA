@@ -16,6 +16,10 @@ from banking_api.workflows.transfer.models import (
     TransferValidationResult,
     TransferWorkflowState,
 )
+from banking_api.workflows.transfer.risk import (
+    TransferRiskCurrencyUnsupportedError,
+    TransferRiskPolicy,
+)
 from banking_api.workflows.transfer.validation import amount_is_valid, normalize_hint
 
 TRANSFER_CALLER = "workflow:transfer"
@@ -147,6 +151,12 @@ class TransferWorkflowEngine:
             )
         else:
             draft.currency = draft.currency.upper()
+
+        try:
+            TransferRiskPolicy.require_supported_currency(draft.currency)
+        except TransferRiskCurrencyUnsupportedError as exc:
+            state.risk_decision = None
+            return self._failed(state, exc.code, exc.message)
 
         balance = await self._get_balance(selected_account["account_id"], principal=principal)
         available = Decimal(str(balance["balance"]))

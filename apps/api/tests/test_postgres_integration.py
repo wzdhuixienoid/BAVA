@@ -467,13 +467,14 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
     assert task.status is TaskStatus.COMPLETED
     assert task.version == 8
     assert isinstance(task.input, dict)
-    assert task.output == {
+    assert {key: value for key, value in task.output.items() if key != "account_results"} == {
         "agent_id": "agent:minimal-banking",
         "assistant_message_id": str(detail.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
         "requested_output": "ANSWER",
     }
+    assert task.model_dump(mode="json")["output"]["account_results"][1]["balance"] == "23864.52"
     assert detail.messages[-1].content == "工资卡余额为 23,864.52 元。"
     assert [event.sequence for event in events] == sorted(event.sequence for event in events)
     assert [event.event_type for event in events].count("tool.call.completed") == 2

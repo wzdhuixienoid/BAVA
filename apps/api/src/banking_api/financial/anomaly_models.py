@@ -2,7 +2,9 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from banking_api.financial.report_formatter import ReportFormatter
 
 
 class TransactionAnomalyType(StrEnum):
@@ -43,6 +45,48 @@ class TransactionAnomalyItem(BaseModel):
     reason_codes: list[str]
     evidence: dict[TransactionAnomalyType, TransactionAnomalyEvidence]
     related_transaction_ids: list[str] = Field(default_factory=list, max_length=10)
+    amount_display: str = ""
+    evidence_display: dict[TransactionAnomalyType, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def format_display(self):
+        formatter = ReportFormatter()
+        self.amount_display = formatter.money(self.amount, self.currency)
+        labels = {
+            "baseline_median": "历史中位数",
+            "amount": "本笔金额",
+            "ratio": "金额倍数",
+            "sample_count": "历史样本数",
+            "merchant_seen_in_lookback": "历史出现过商户",
+            "duplicate_count": "重复扣费笔数",
+            "window_minutes": "时间窗口（分钟）",
+            "previous_amount": "上期金额",
+            "current_amount": "本期金额",
+            "increase_percent": "涨幅",
+        }
+        monetary = {"baseline_median", "amount", "previous_amount", "current_amount"}
+        self.evidence_display = {}
+        for rule, evidence in self.evidence.items():
+            lines = []
+            for field, value in evidence.model_dump().items():
+                if value is None:
+                    continue
+                display = (
+                    formatter.money(value, self.currency)
+                    if field in monetary
+                    else (
+                        formatter.percentage_change(value)
+                        if field == "increase_percent"
+                        else "是"
+                        if value is True
+                        else "否"
+                        if value is False
+                        else str(value)
+                    )
+                )
+                lines.append(f"{labels[field]}：{display}")
+            self.evidence_display[rule] = lines
+        return self
 
 
 class TransactionAnomalySnapshot(BaseModel):

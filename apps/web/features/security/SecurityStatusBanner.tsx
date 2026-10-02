@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/agent-ui/StatusBadge";
 import type { components } from "@banking/api-client";
 
 type SecurityStatus = components["schemas"]["SecurityStatus"];
@@ -15,7 +16,7 @@ export function SecurityStatusBanner({ status }: { status: SecurityStatus | null
     : "请稍后重试";
   return (
     <div className="border-b border-red-200 bg-red-50 px-6 py-4 text-red-900" role="status">
-      <p className="font-bold">安全保护已启动</p>
+      <p className="font-bold">安全保护已启动 <StatusBadge status={status.status} /></p>
       <p className="mt-1 text-sm">{reason}</p>
       <p className="mt-2 text-xs font-semibold">恢复时间：{restoreAt}</p>
     </div>

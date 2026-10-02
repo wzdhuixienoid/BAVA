@@ -2,6 +2,7 @@ import json
 from typing import TYPE_CHECKING
 from uuid import uuid5
 
+from banking_api.application.account_results import build_account_results
 from banking_api.application.plan_service import plan_event, step_event
 from banking_api.application.workflow_service import WorkflowService
 from banking_api.domain.enums import (
@@ -28,6 +29,7 @@ from banking_api.planning.registry import PlanCapabilityRegistry
 from banking_api.planning.validator import PlanValidationError, PlanValidator
 from banking_api.runtime.base import AgentRunRequest, AgentRuntimeError
 from banking_api.runtime.event_publisher import EventPublisher
+from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 
 if TYPE_CHECKING:
     from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -331,6 +333,11 @@ class PlanExecutionService:
                     mode="json"
                 )
             }
+            snapshot = build_financial_analysis_snapshot(facts)
+            if snapshot.spending_summary is not None and snapshot.category_breakdown is not None:
+                output["financial_display"] = (
+                    MonthlySpendingReportSkill().build_core(snapshot).model_dump(mode="json")
+                )
             anomaly = next(
                 (
                     f.output["snapshot"]
@@ -358,9 +365,7 @@ class PlanExecutionService:
         else:
             output = {
                 "account_results": [
-                    f.output
-                    for f in facts
-                    if f.capability_id in {"account.list", "account.get_balance"}
+                    result.model_dump(mode="json") for result in build_account_results(facts)
                 ]
             }
         if len(json.dumps(output, ensure_ascii=False).encode()) > 65536:

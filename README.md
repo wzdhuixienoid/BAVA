@@ -1,15 +1,10 @@
 # AI Banking Agent
 
-当前版本：`v0.8.2`
+当前版本：`v0.9.1`
 
-学习文档（按当前源码与项目 Codex 对话整理）：
+版本主题：比赛产品体验与可视化。保留 Phase A 的 CNY-only 安全基线与账户 authoritative facts，提供金融总览、风险与业务流程、真实 Plan DAG 和条件决策展示，以及可复现的 development/test Demo reset。
 
-- [每一步的功能实现与网页测试教程](docs/learning-guide-v0.8.2.md)
-- [当前系统架构图](docs/system-architecture-v0.8.2.md)
-- [核心算法说明](docs/core-algorithms-v0.8.2.md)
-- [网页工作台改进与验收](docs/web-workbench-ui-improvements.md)
-
-面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
+面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。写业务成功展示必须同时满足 `Workflow SUCCEEDED` 与 `Operation SUCCEEDED`，由对应 Mock Provider 最终确认。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
 
@@ -25,7 +20,9 @@
 
 | 用户需求 | 执行者 | 能力 |
 |---|---|---|
-| 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` |
+| 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` → typed `AccountListResult` / `AccountBalanceResult` |
+| 金融总览 Dashboard | 只读 Domain API projection | 有效账户余额、月收入/支出/环比、分类分布、主要交易、订阅成本与异常卡片 |
+| 风险、业务流程与条件展示 | 后端 typed presentation → Web UI | RiskDecision、Workflow 时间线、真实 DAG / Guard、Condition TRUE/FALSE、集中中文状态 |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
 | 异常交易分析 | `agent:financial-analysis` | `transaction.detect_anomalies` → bounded deterministic Snapshot |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
@@ -67,12 +64,30 @@ Durable Task Execution: COMPLETE
 
 ### GREEN / YELLOW / RED
 
+比赛环境当前 Transfer Risk Policy 仅支持 CNY。非 CNY 转账 fail closed，返回稳定领域错误 `TRANSFER_RISK_CURRENCY_UNSUPPORTED`，不进行 FX，也不使用原币种直接套用 1000 阈值。币种校验存在于 server-side deterministic policy，并在 Workflow 与 Operation 创建边界调用；即使新增 USD 付款账户，USD 同币种请求也不会获得 YELLOW / RED decision、创建 Operation、消费 Approval、创建有效 Reauthentication 或调用转账 Provider。付款账户与请求币种不一致时仍保留原有 `CURRENCY_MISMATCH` 拒绝。
+
 | 业务风险 | 确定性规则 | 用户控制 |
 |---|---|---|
 | GREEN（绿色） | 纯查询 / read-only financial tools | 自动执行，无 Approval，无 Reauthentication |
 | YELLOW（黄色） | 可管理订阅取消 | Approval，无 Reauthentication |
 | YELLOW（黄色） | 当日已成功 + 执行中 + 本笔 `<= 1000.00 CNY` | Approval |
 | RED（红色） | 当日已成功 + 执行中 + 本笔 `> 1000.00 CNY` | Approval + Reauthentication |
+
+### Critical Banking Facts 与自然语言解释
+
+写业务最终成功状态由 Workflow / Operation / Provider authoritative state 决定，Task `COMPLETED` 只表示该任务完成，不能代表转账或订阅取消成功。
+
+关键金融事实逐步采用 typed structured result 向产品层暴露。账户查询的 `Task.output.account_results` 保存银行 Tool 的 `AccountListResult` / `AccountBalanceResult`，包含账户展示身份、币种、Decimal 字符串余额、后端确定性格式化的 `balance_display` 与服务器查询时间 `as_of`。账户列表最多 100 项，Task 账户结果最多 100 项；沿用 Principal ownership 和 masked number，既有 `account_id` 仅作为所属用户的资源标识。Plan 账户查询复用同一结果格式，既有分析和业务状态接口保持原有结构。
+
+账户余额已经不再以 LLM 自由文本作为唯一产品事实源。对话中的账户卡片直接读取结构化结果，即使 assistant prose 错误地声称“余额是 1 元”，卡片仍展示 Tool 的真实余额与后端展示值；浏览器不解析 Markdown 金额，不使用 `Number()` 计算或格式化余额，也不做汇率转换。余额 Tool 读取的是 fixture balance 减成功 Provider ledger debits 的有效余额，`as_of` 表示服务器此次读取事实的时间，历史 Task 结果保留查询时快照。
+
+产品 UI 延续 `critical fact → typed authoritative backend result`、`explanation → LLM prose` 的边界。Critical Banking Facts 包括账户身份、余额、消费分析核心金额、风险等级、Condition actual / threshold / TRUE-FALSE、Approval / Reauthentication / Workflow / Operation 状态、Provider final result、订阅当前状态，以及异常交易 rule / severity / evidence。v0.9.1 为现有结果补充确定性 display field 和只读 projection，复用已有统计、风险与状态语义，没有通用 FactEngine。
+
+`/dashboard` 默认展示比赛 fixture 的 2026 年 8 月数据，可选择月份并刷新。对话中的消费指标卡消费 `Task.output.financial_display`；Dashboard 与月报复用同一 Financial Analytics / Report formatter。浏览器不扫描 raw transactions 汇总，不计算环比、风险或条件，不转换币种。订阅成本按币种分别展示；取消入口仅读取后端 `cancellable`。异常卡片明确“异常提示 ≠ 已确认欺诈”。
+
+结构化结果优先展示，较长的 LLM 说明可以展开查看。风险卡直接读取后端 RiskDecision 的本笔、日成功、执行中、含本笔 exposure、阈值、业务日期与认证要求；业务时间线读取后端 Workflow presentation。`UNKNOWN` 显示“结果确认中”，不进入完成索引；Approval、Reauthentication、Task 完成均不代表业务成功。
+
+LLM 自然语言承担解释职责，不拥有余额、金额、风险、Principal、权限或执行状态的决定权。当前没有对所有 LLM 输出进行逐句 semantic entailment 验证，也不展示隐藏推理或 Chain-of-Thought。
 
 Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINESS_TIMEZONE` 的自然日计算，默认时区为 `Asia/Shanghai`。执行中 exposure 包含 `CREATED / SUBMITTED / UNKNOWN` Operation，排除 `FAILED`；Provider 已成功的同一笔 Operation 不会重复计算。
 
@@ -106,7 +121,7 @@ Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINE
 
 Planner 只选择 `ACCOUNT_QUERY / FINANCIAL_ANALYSIS / SUBSCRIPTION_ANALYSIS / TRANSFER_WORKFLOW / SUBSCRIPTION_CANCEL_WORKFLOW`。Proposal 不接受业务内部 ID、业务金额 payload、权限、风险或 Tool（条件 threshold 是 Decimal 字符串）；写 Workflow 始终从原始用户 Message 提取意图，沿用原有 Policy、Approval、Reauthentication、Security Guard、Operation 和 Provider。
 
-v0.8.2 的数值条件只接受用户原始请求中明确给出的数值阈值；Planner 不能自行解释“够”“太多”“较高”等模糊表达为金额。确定性 grounding 仅匹配对应条件从句中的数值，转账等业务动作中的金额不能充当阈值。未给明确阈值时 fail closed，并提示用户提供明确金额；Planner 指定的币种也必须有原文依据，未写币种时沿用源结果的唯一币种规则。
+数值条件只接受用户原始请求中明确给出的数值阈值；Planner 不能自行解释“够”“太多”“较高”等模糊表达为金额。确定性 grounding 仅匹配对应条件从句中的数值，转账等业务动作中的金额不能充当阈值。未给明确阈值时 fail closed，并提示用户提供明确金额；Planner 指定的币种也必须有原文依据，未写币种时沿用源结果的唯一币种规则。
 
 `plans / plan_steps / plan_step_dependencies` 是固定持久化 DAG；`source_task_id` 唯一，Task retry 不再次规划。执行由原 Task worker 的 lease/attempt fence 保护，无独立 Plan worker。只读输出为 bounded structured facts；最终回答由服务器确定性整合这些事实，写步骤成功必须同时满足 Workflow 与 Operation `SUCCEEDED`。
 
@@ -320,6 +335,7 @@ docker compose up --build
 ```
 
 - Web：<http://localhost:3000>
+- Dashboard：<http://localhost:3000/dashboard>
 - Reports：<http://localhost:3000/reports>
 - API：<http://localhost:8000>
 - OpenAPI：<http://localhost:8000/docs>
@@ -396,6 +412,7 @@ uv run pytest
 pnpm api:generate
 pnpm web:lint
 pnpm web:typecheck
+pnpm --filter @banking/web test
 pnpm web:build
 ```
 
@@ -407,19 +424,41 @@ TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_te
   uv run pytest -m postgres
 ```
 
-真实 Provider 的完整报告链路 smoke：
+真实 LLM 与 synthetic 数据的完整报告链路 smoke（先为隔离库执行 migration）：
 
 ```bash
-DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking \
-LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/banking \
+APP_ENVIRONMENT=test AUTH_MODE=development \
+DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_test \
+LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/banking_test \
   uv run --project apps/api python scripts/smoke_report_product.py
 ```
 
 Smoke 验证 Router、Financial Agent、确定性工具、Skill、Report persistence、GET API、Golden core 和单一用户确认消息；不会输出 API Key 或 Chain-of-Thought。
 
+## 比赛 Demo reset
+
+只允许 `APP_ENVIRONMENT=development/test`，production 在连接数据库前拒绝。脚本不注册为业务 API 或 LLM Tool。先停止所有连接该 Demo 数据库的 API、Task、Operation recovery、Outbox worker，再执行显式用户范围清理：
+
+```bash
+docker compose stop api web
+APP_ENVIRONMENT=development AUTH_MODE=development \
+DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking \
+LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/banking \
+  uv run --project apps/api python scripts/reset_demo_state.py \
+  --user-id dev-user-001 --workers-stopped
+docker compose start api web
+```
+
+reset 清除指定用户的 Mock transfer/subscription ledger、Security Guard、Workflow、Approval、Reauthentication、Operation、Plan、Task、Report、Conversation、Message、Event/Outbox，以及对应 Task/Plan attempt 的 LangGraph checkpoint。保留其他用户、identity mapping、Alembic/checkpoint migration 和表结构；不删除数据库或 volume。应用与 checkpoint 必须在同一数据库，以保持事务内清理；存在未过期执行/发布 lease 时拒绝，停止 worker 后等待 lease 到期再重试。
+
+成功后工资卡恢复 `¥23,864.52`，当日 exposure 为零，星幕视频恢复 ACTIVE；重复 reset 不产生新状态。浏览器刷新后开始新演示。RED 的模拟验证码由本地 `MOCK_REAUTH_CODE` 决定，不是真实短信；示例配置使用 `change-me-for-local-development`。
+
+建议依次演示：账户 → 2026-08 Dashboard/报告 → 订阅/异常 → reset 后 500 元 YELLOW → reset 后 2,000 元 RED → 当日已有成功转账时 600 元 exposure RED → Condition TRUE/FALSE → 订阅取消 → UNKNOWN recovery → 最后 Security Guard。结束后 reset 恢复初始状态。
+
 ## 主要 API 与页面
 
 ```text
+GET  /api/v1/dashboard?month=2026-08
 POST /api/v1/conversations/{conversation_id}/messages
 GET  /api/v1/tasks/{task_id}
 GET  /api/v1/tasks/{task_id}/events
@@ -442,6 +481,7 @@ POST /api/v1/operations/{operation_id}/actions/reconcile
 
 ```text
 /                    Conversation Workspace
+/dashboard           Authoritative financial/account overview
 /reports             Report history
 /reports/{reportId}  Structured monthly report
 /subscriptions       Subscription overview
@@ -453,7 +493,7 @@ SSE connection 本身同样要求认证并先验证 Conversation ownership。OID
 
 `READY_FOR_COMMIT` 表示当前 payload 已审批并满足当前 RiskDecision 要求的控制；YELLOW 不需要 Reauthentication，RED 必须有效 Reauthentication。Commit 会在 Operation 创建前重新读取日 exposure 并评估风险。如 YELLOW 升级为 RED，保留 payload 未变的 Approval，不创建 Operation，转入 `REAUTH_REQUIRED`。风险在 payload 不变时不自动降级。
 
-Commit 的 user risk advisory lock 只覆盖“重读 exposure → 风险评估 → 授权校验 → Operation 创建 → 事务提交”，不覆盖 Provider I/O。它保护用户级日认证门槛；Mock Provider 的 account lock 保护账户余额，两者彼此独立。`SUBMITTED` 不是成功；`UNKNOWN` 只能查询原 Operation，不得新建或换 key 重提。只有 `Operation SUCCEEDED` 才能展示“转账成功”。
+Commit 的 user risk advisory lock 只覆盖“重读 exposure → 风险评估 → 授权校验 → Operation 创建 → 事务提交”，不覆盖 Provider I/O。它保护用户级日认证门槛；Mock Provider 的 account lock 保护账户余额，两者彼此独立。`SUBMITTED` 不是成功；`UNKNOWN` 只能查询原 Operation，不得新建或换 key 重提。只有 Workflow 与 Operation 同时 `SUCCEEDED` 才能展示“转账成功”。
 
 `CREATED / SUBMITTED / UNKNOWN` 会按持久化 `next_reconcile_at` 自动恢复。多个 API process 可各自运行 worker；PostgreSQL `FOR UPDATE SKIP LOCKED` 与有期 lease 保证同一 Operation 在有效 lease 内只有一个 claim。Provider/network I/O 不持有数据库行锁。
 
@@ -471,7 +511,7 @@ Security Guard 状态转移与新 Operation 创建共享同一个 Principal-scop
 
 ```text
 apps/api/                 FastAPI、LangGraph runtime、domain、persistence、tests
-apps/web/                 Next.js Conversation 与 Reports UI
+apps/web/                 Next.js Dashboard、Conversation、Reports、Subscription UI
 packages/api-client/      OpenAPI 生成的 TypeScript schema
 scripts/                  Golden generation 与 smoke scripts
 docs/                     版本交付、测试结果与设计记录
@@ -479,14 +519,13 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.8.2](docs/implementation-report-v0.8.2.md)
-- [Repository Tree v0.8.2](docs/repository-tree-v0.8.2.md)
-- [Test Results v0.8.2](docs/test-results-v0.8.2.md)
-- [Implementation Report v0.8.1](docs/implementation-report-v0.8.1.md)
-- [Repository Tree v0.8.1](docs/repository-tree-v0.8.1.md)
-- [Test Results v0.8.1](docs/test-results-v0.8.1.md)
+- [Implementation Report v0.9.1](docs/implementation-report-v0.9.1.md)
+- [Repository Tree v0.9.1](docs/repository-tree-v0.9.1.md)
+- [Test Results v0.9.1](docs/test-results-v0.9.1.md)
 
 ## 当前限制
+
+Dashboard 是复用既有服务的只读 projection，各服务读取有界快照，不提供跨服务原子快照。对话分析只展示实际完成的工具结果，未查询的 Top transactions 不由浏览器补算。LLM 路由、意图提取与报告说明可能失败；后端会保持既有校验并明确拒绝，用户可重试，不保证模型每次解释正确。历史 Task 是查询时快照，实时余额应重新查询或刷新 Dashboard。
 
 Plan 最多 8 步、2 个 CONDITION、一个写 Workflow，按 ordinal 顺序执行 ready steps；条件只有预注册 Predicate，不支持 ELSE、nested conditions、任意表达式、AND/OR、loops、多写 Workflow、动态重规划或自由 Agent 协商。复杂请求中的月度 Report Artifact 暂未作为 Plan Capability 注册，会整体拒绝；独立分析并生成报告仍走完整 Financial vertical slice。没有 Plan cancel API，业务取消沿用 Workflow。
 
@@ -506,8 +545,17 @@ EventBus 仍是 process-local：多 API process 下，某个 publisher 的本地
 真实 HTTP + 当前 LLM 的 Plan smoke 使用独立 synthetic 数据库和最新 API：
 
 ```bash
+# 单独终端启动隔离 API，先为 banking_test 执行 migration
+APP_ENVIRONMENT=test AUTH_MODE=development \
+DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_test \
+LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/banking_test \
+  uv run --project apps/api uvicorn banking_api.main:app --host 127.0.0.1 --port 8001
+```
+
+```bash
+APP_ENVIRONMENT=test AUTH_MODE=development \
 PLAN_SMOKE_BASE_URL=http://127.0.0.1:8001 \
   uv run --project apps/api python scripts/smoke_plan_product.py
 ```
 
-该脚本完成只读 DAG，以及一次明确 Approval + commit 的 synthetic 订阅取消，并核对原 Operation 幂等复用；不要指向真实业务环境。
+该脚本完成只读 DAG，以及一次明确 Approval + commit 的 synthetic 订阅取消，并核对原 Operation 幂等复用；不要指向真实业务环境。完成后停止临时 API。report smoke 自行运行 TaskRunner，不与该测试库的 API worker 并行；PostgreSQL fixture tests 也不能与该库 worker 同时运行。

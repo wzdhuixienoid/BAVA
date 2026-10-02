@@ -39,6 +39,7 @@ export default function HomePage() {
             智能银行服务
           </p>
           <h1 className="mt-2 text-xl font-semibold">银行助理工作台</h1>
+          <p className="mt-1 text-xs text-slate-400">v0.9.1 · 比赛产品体验与可视化</p>
         </div>
         <button
           className="mb-5 w-full rounded-lg bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 hover:bg-cyan-300"
@@ -46,6 +47,10 @@ export default function HomePage() {
         >
           + 新建对话
         </button>
+        <Link
+          href="/dashboard"
+          className="mb-3 block rounded-lg bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-cyan-100 hover:bg-slate-700"
+        >金融总览 Dashboard</Link>
         <Link
           href="/reports"
           className="mb-6 block w-full rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"

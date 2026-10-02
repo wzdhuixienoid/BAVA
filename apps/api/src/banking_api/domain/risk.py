@@ -2,7 +2,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
+
+from banking_api.financial.report_formatter import ReportFormatter
 
 
 class BusinessRiskLevel(StrEnum):
@@ -36,6 +38,24 @@ class TransferRiskDecision(BaseModel):
     projected_daily_total: Decimal
     threshold: Decimal
     evaluated_at: datetime
+    requested_amount_display: str = ""
+    daily_successful_total_display: str = ""
+    daily_in_flight_exposure_display: str = ""
+    projected_daily_total_display: str = ""
+    threshold_display: str = ""
+
+    @model_validator(mode="after")
+    def format_display(self):
+        formatter = ReportFormatter()
+        for field in (
+            "requested_amount",
+            "daily_successful_total",
+            "daily_in_flight_exposure",
+            "projected_daily_total",
+            "threshold",
+        ):
+            setattr(self, f"{field}_display", formatter.money(getattr(self, field), self.currency))
+        return self
 
     @field_serializer(
         "daily_successful_total",

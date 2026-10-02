@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from banking_api.domain.account import AccountListResult
 from banking_api.domain.enums import RiskLevel
 from banking_api.domain.principal import ExecutionPrincipal, Principal
 from banking_api.financial.errors import FinancialErrorCode
@@ -16,17 +17,7 @@ class ListAccountsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class AccountSummary(BaseModel):
-    account_id: str
-    display_name: str
-    account_type: str
-    masked_number: str
-    currency: str
-    status: str
-
-
-class ListAccountsOutput(BaseModel):
-    accounts: list[AccountSummary]
+ListAccountsOutput = AccountListResult
 
 
 class GetBalanceInput(BaseModel):

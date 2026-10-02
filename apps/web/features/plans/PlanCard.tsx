@@ -1,5 +1,8 @@
 "use client";
 
+import { ConditionCard } from "./ConditionCard";
+import { StatusBadge } from "@/components/agent-ui/StatusBadge";
+import { capabilityLabels, predicateLabels } from "@/lib/presentation/status";
 import { useState } from "react";
 import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
@@ -10,17 +13,6 @@ import { SubscriptionSummaryCard } from "@/features/subscriptions/SubscriptionSu
 type Plan = components["schemas"]["Plan"];
 type Workflow = components["schemas"]["Workflow"];
 type SubscriptionSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
-
-const predicates: Record<string, string> = {
-  ACCOUNT_BALANCE_AT_LEAST: "账户余额",
-  MONTHLY_SPENDING_AT_LEAST: "本月支出",
-  SUBSCRIPTION_MONTHLY_COST_AT_LEAST: "每月订阅成本",
-};
-const labels: Record<string, string> = {
-  RUNNING: "执行中", PENDING: "等待前置步骤", WAITING_USER: "等待你的操作",
-  WAITING_EXTERNAL: "等待外部结果", PAUSED: "已转为手动处理", COMPLETED: "已完成",
-  FAILED: "执行失败", CANCELLED: "已取消", SKIPPED: "前置步骤未完成，已跳过",
-};
 
 export function PlanCard({ plan, workflows, onRefresh, processOnly = false }: {
   plan: Plan; workflows: Workflow[]; onRefresh: () => Promise<void>; processOnly?: boolean;
@@ -39,10 +31,11 @@ export function PlanCard({ plan, workflows, onRefresh, processOnly = false }: {
     <section className={processOnly ? "border-l-2 border-slate-200 pl-4 text-xs" : "rounded-lg border border-indigo-200 bg-white p-3 text-sm"}>
       <div className="flex items-start justify-between gap-3">
         <p className="font-semibold text-indigo-950">{plan.goal_summary}</p>
-        <span className="shrink-0 rounded bg-indigo-50 px-2 py-1 text-xs">{labels[plan.status]}</span>
+        <StatusBadge status={plan.status} />
       </div>
       {plan.manual_takeover && <p className="mt-3 rounded bg-amber-50 p-2 text-xs">自动任务编排已暂停。你可以继续手动处理当前业务步骤。</p>}
-      <ol className="mt-3 space-y-3">
+      <p className="mt-2 text-xs text-slate-500">Plan DAG · 箭头与依赖来自后端计划；条件 TRUE 分支进入流程，FALSE 分支跳过受保护步骤。</p>
+      <ol aria-label="计划依赖图" className="mt-3 space-y-3">
         {plan.steps.map((step, index) => {
           const workflow = workflows.find((item) => item.workflow_id === step.linked_workflow_id);
           const decision = step.condition_decision;
@@ -52,13 +45,14 @@ export function PlanCard({ plan, workflows, onRefresh, processOnly = false }: {
             <li key={step.step_id} className={processOnly ? "py-1" : "rounded border border-slate-200 p-2"}>
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium">{index + 1}. {step.display_title}</p>
-                <span className="text-xs text-slate-600">{step.status === "COMPLETED" ? "✓ " : ""}{decision ? (decision.outcome === "TRUE" ? "条件满足" : "条件未满足") : step.error_code === "CONDITION_NOT_MET" ? "条件未满足，已跳过" : labels[step.status]}</span>
+                <StatusBadge status={step.status} />
               </div>
-              {step.depends_on.length > 0 && <p className="mt-1 text-xs text-slate-500">依赖：{step.depends_on.map((id) => `步骤 ${positions.get(id)}`).join("、")}</p>}
-              {spec && <p className="mt-2 text-xs text-slate-700">条件：{predicates[spec.predicate]}不少于 {spec.threshold} {spec.currency ?? "源结果币种"}</p>}
-              {decision && <p className="mt-1 text-xs text-slate-700">实际值：{decision.actual_value} {decision.currency} · 阈值：{decision.threshold_value} {decision.currency}</p>}
-              {step.guard_condition_step_id && <p className="mt-1 text-xs text-slate-500">仅在步骤 {positions.get(step.guard_condition_step_id)} 条件满足时执行</p>}
-              {step.error_code === "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-slate-600">条件未满足，后续步骤已跳过</p>}
+              <p className="mt-1 text-xs text-indigo-700">{step.step_kind === "CONDITION" ? "条件节点" : "能力节点"} · {step.capability ? capabilityLabels[step.capability] : "确定性条件判断"}</p>
+              {step.depends_on.length > 0 && <p className="mt-1 text-xs text-slate-500">↓ 前置依赖：{step.depends_on.map((id) => `步骤 ${positions.get(id)}`).join("、")}</p>}
+              {spec && <p className="mt-2 text-xs text-slate-700">条件：{predicateLabels[spec.predicate]} {spec.threshold} {spec.currency ?? "源结果币种"}</p>}
+              {decision && <ConditionCard decision={decision} sourceLabel={`步骤 ${positions.get(decision.source_step_id) ?? "待同步"}`} />}
+              {step.guard_condition_step_id && <p className="mt-1 text-xs text-slate-500">Guard：步骤 {positions.get(step.guard_condition_step_id)} → TRUE 才能执行</p>}
+              {step.error_code === "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-slate-600">FALSE → 此写步骤已跳过，未执行转账或取消</p>}
               {step.error_code && step.error_code !== "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-red-700">{step.error_code}</p>}
               {!processOnly && snapshot && <SubscriptionSummaryCard snapshot={snapshot} />}
               {!processOnly && workflow?.workflow_type === "TRANSFER" && <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />}

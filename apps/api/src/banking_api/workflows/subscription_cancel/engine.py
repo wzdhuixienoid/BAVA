@@ -66,6 +66,7 @@ class SubscriptionCancellationWorkflow:
                 status=item.status.value,
                 amount=item.last_charge_amount,
                 currency=item.currency,
+                cancellable=item.cancellable,
             )
             for item in matches
         ]

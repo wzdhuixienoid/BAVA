@@ -80,6 +80,7 @@ class MockBankService:
             "account_id": account["account_id"],
             "display_name": account["display_name"],
             "masked_number": account["masked_number"],
+            "account_type": account["account_type"],
             "currency": account["currency"],
             "balance": Decimal(account["balance"]),
         }

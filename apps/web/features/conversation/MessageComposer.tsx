@@ -3,7 +3,11 @@
 import { FormEvent, useState } from "react";
 
 export function MessageComposer({ onSend }: { onSend: (content: string) => Promise<void> }) {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const merchant = new URLSearchParams(window.location.search).get("cancel");
+    return merchant ? `取消${merchant}` : "";
+  });
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

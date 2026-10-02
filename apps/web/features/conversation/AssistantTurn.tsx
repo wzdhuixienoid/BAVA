@@ -1,4 +1,8 @@
 import type { components } from "@banking/api-client";
+import { PlanCard } from "@/features/plans/PlanCard";
+import { SpendingDashboard } from "@/features/dashboard/SpendingDashboard";
+import { AccountResults } from "@/features/accounts/AccountResults";
+import { accountResults } from "@/features/accounts/presentation";
 import { ReportCard } from "@/features/reports/ReportCard";
 import { WorkflowReceipt } from "@/features/results/WorkflowReceipt";
 import { TransferWorkflowCard } from "@/features/workflows/transfer/TransferWorkflowCard";
@@ -16,12 +20,13 @@ function ReadPreview({ output }: { output: Record<string, unknown> }) {
     display_name?: string; balance?: string; currency?: string;
     accounts?: Array<{ display_name: string; masked_number?: string }>;
   }> | undefined;
+  const legacyAccounts = accounts?.filter((account) => !("kind" in account));
   const analysis = output.analysis_snapshot as { spending_summary?: { period: string; total_spending: string; total_income: string; currency: string } } | undefined;
   const summary = analysis?.spending_summary;
-  if (!accounts && !summary) return null;
+  if (!legacyAccounts?.length && !summary) return null;
   return (
     <div className="rounded-lg bg-slate-50 p-3 text-sm leading-relaxed">
-      {accounts?.map((account, index) => <div key={index}>
+      {legacyAccounts?.map((account, index) => <div key={index}>
         {account.balance && <p>{account.display_name ?? "账户"}：余额 <strong>{account.balance} {account.currency}</strong></p>}
         {account.accounts?.map((item, position) => <p key={position}>{item.display_name} {item.masked_number}</p>)}
       </div>)}
@@ -46,6 +51,7 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
     .map((output) => [JSON.stringify(output.transaction_anomaly_snapshot), output.transaction_anomaly_snapshot as TransactionAnomalySnapshot])).values()];
   const highlight = (id: string) => highlightedResult === id ? "rounded-xl ring-2 ring-cyan-500 ring-offset-4" : "";
   const hasAnswer = turn.replies.some((message) => message.role === "ASSISTANT");
+  const accounts = accountResults(outputs);
 
   return (
     <article aria-label="助理回复" className="min-w-0 py-2 text-sm text-slate-800">
@@ -58,12 +64,11 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           <ResponseProcess turn={turn} activityRevision={activityRevision} onRefresh={onRefresh} />
         )}
         <div className="space-y-4">
-          {turn.replies.map((message) => <div key={message.message_id}>
-            {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
-            <MarkdownMessage content={message.content} />
-          </div>)}
-          {turn.tasks.map((task) => typeof task.error?.message === "string" ? <p key={task.task_id} role="alert" className="text-red-700">{task.error.message}</p> : null)}
+          {turn.tasks.map((task) => typeof task.error?.message === "string" ? <p key={task.task_id} role="alert" className="text-red-700">{task.error.code === "REPORT_NARRATIVE_VALIDATION_FAILED" ? "报告说明未通过安全校验，请重新生成。" : task.error.message}</p> : null)}
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}
+          {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
+          {accounts.length > 0 && <AccountResults results={accounts} />}
+          {outputs.filter((output) => output.financial_display).map((output, index) => <SpendingDashboard key={index} spending={output.financial_display as components["schemas"]["MonthlySpendingReportCore"]} />)}
           {subscriptions.map((snapshot, index) => <SubscriptionSummaryCard key={index} snapshot={snapshot} />)}
           {anomalies.map((snapshot, index) => <TransactionAnomalyCard key={index} snapshot={snapshot} />)}
           {turn.reports.map((report) => {
@@ -82,6 +87,17 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
                 : <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
             </div>;
           })}
+          {(accounts.length > 0 || outputs.some((output) => output.financial_display) || subscriptions.length > 0 || anomalies.length > 0) ? <details className="rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-xs font-semibold text-slate-600">助理说明</summary><div className="mt-3 space-y-3">
+          {turn.replies.map((message) => <div key={message.message_id}>
+            {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
+            <MarkdownMessage content={message.content} />
+          </div>)}
+          </div></details> : <div className="space-y-3">
+          {turn.replies.map((message) => <div key={message.message_id}>
+            {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
+            <MarkdownMessage content={message.content} />
+          </div>)}
+          </div>}
         </div>
       </div>
     </article>

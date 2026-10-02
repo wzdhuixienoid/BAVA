@@ -12,6 +12,9 @@ EXTRACTION_INSTRUCTIONS = """
 
 只提取用户表达的语义值。禁止输出 payee_id、account_id、workflow_id 或任何内部 ID。
 金额必须使用十进制字符串；未说明的字段使用 null。不要猜测。
+currency 使用明确表达的 ISO 币种代码：人民币/元对应 CNY，美元对应 USD，欧元对应 EUR；
+没有表达币种时使用 null，不输出“元”等单位，不进行换汇。
+复合条件请求中 amount 只提取转账动作的金额，余额条件阈值不是转账金额。
 不要输出解释、Markdown 或推理过程。
 """.strip()
 

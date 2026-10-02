@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from banking_api import __version__
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
@@ -149,7 +150,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="AI 银行助理 API",
-        version="0.8.2",
+        version=__version__,
         lifespan=lifespan,
     )
     application.add_middleware(

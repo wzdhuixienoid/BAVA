@@ -10,11 +10,24 @@ from banking_api.domain.risk import (
 TRANSFER_DAILY_RISK_THRESHOLD = Decimal("1000.00")
 
 
+class TransferRiskCurrencyUnsupportedError(Exception):
+    code = "TRANSFER_RISK_CURRENCY_UNSUPPORTED"
+    message = "比赛环境转账风险策略仅支持 CNY，不支持其他币种或换汇。"
+
+    def __init__(self) -> None:
+        super().__init__(self.message)
+
+
 class TransferRiskPolicy:
     """Deterministic transfer control policy. It never consumes LLM output."""
 
     def __init__(self, threshold: Decimal = TRANSFER_DAILY_RISK_THRESHOLD) -> None:
         self.threshold = threshold
+
+    @staticmethod
+    def require_supported_currency(currency: str) -> None:
+        if currency != "CNY":
+            raise TransferRiskCurrencyUnsupportedError
 
     def evaluate(
         self,
@@ -26,10 +39,9 @@ class TransferRiskPolicy:
         in_flight_transfer_exposure_today: Decimal,
         evaluated_at: datetime,
     ) -> TransferRiskDecision:
+        self.require_supported_currency(currency)
         projected = (
-            successful_transfer_total_today
-            + in_flight_transfer_exposure_today
-            + requested_amount
+            successful_transfer_total_today + in_flight_transfer_exposure_today + requested_amount
         )
         if projected <= self.threshold:
             level = BusinessRiskLevel.YELLOW

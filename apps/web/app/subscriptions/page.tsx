@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
 import { SubscriptionSummaryCard } from "@/features/subscriptions/SubscriptionSummaryCard";
-import { money } from "@/features/subscriptions/presentation";
+
 
 type Snapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
 
@@ -37,8 +37,8 @@ export default function SubscriptionsPage() {
           <>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">活跃订阅</p><p className="mt-2 text-2xl font-bold">{active}</p></div>
-              <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">月度成本</p>{snapshot.monthly_cost_by_currency.map((item) => <p key={item.currency} className="mt-2 text-lg font-bold">{money(item.amount, item.currency)}</p>)}</div>
-              <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">预计年度成本</p>{snapshot.annual_projected_cost_by_currency.map((item) => <p key={item.currency} className="mt-2 text-lg font-bold">{money(item.amount, item.currency)}</p>)}</div>
+              <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">月度成本</p>{snapshot.monthly_cost_by_currency.map((item) => <p key={item.currency} className="mt-2 text-lg font-bold">{item.amount_display}</p>)}</div>
+              <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">预计年度成本</p>{snapshot.annual_projected_cost_by_currency.map((item) => <p key={item.currency} className="mt-2 text-lg font-bold">{item.amount_display}</p>)}</div>
             </div>
             <div className="mt-4 rounded-xl border bg-white p-4 text-sm text-slate-700">
               <p className="font-semibold">即将续费：{snapshot.upcoming_renewals.length} 项</p>

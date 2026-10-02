@@ -23,6 +23,7 @@ class SubscriptionCandidate(BaseModel):
     status: str
     amount: Decimal
     currency: str
+    cancellable: bool = False
 
 
 class SubscriptionCancelRequiredInputType(StrEnum):

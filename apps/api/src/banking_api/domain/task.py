@@ -3,13 +3,24 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+from typing_extensions import TypedDict
 
+from banking_api.domain.account import AccountQueryResults
 from banking_api.domain.enums import (
     ExecutorType,
     RequestedOutput,
     RuntimeBackend,
     TaskStatus,
 )
+from banking_api.financial.report_models import MonthlySpendingReportCore
+
+
+class TaskOutput(TypedDict, total=False):
+    # Keep existing result keys without refactoring unrelated snapshots or workflows.
+    __pydantic_config__ = ConfigDict(extra="allow")
+
+    account_results: AccountQueryResults
+    financial_display: MonthlySpendingReportCore
 
 
 class Task(BaseModel):
@@ -24,7 +35,7 @@ class Task(BaseModel):
     requested_output: RequestedOutput | None
     status: TaskStatus
     input: dict[str, Any]
-    output: dict[str, Any] | None
+    output: TaskOutput | None
     error: dict[str, Any] | None
     progress_message: str | None
     version: int

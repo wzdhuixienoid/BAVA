@@ -164,6 +164,7 @@ async def test_detected_only_cannot_create_approval_operation_or_provider_fact(a
     _, provider, _, _, _, _ = runtime
     assert workflow.status is WorkflowStatus.FAILED
     assert workflow.state["error_code"] == "SUBSCRIPTION_NOT_MANAGED"
+    assert workflow.state["candidates"][0]["cancellable"] is False
     async with app.state.test_session_factory() as session:
         assert await session.scalar(select(func.count()).select_from(ApprovalModel)) == 0
         assert await session.scalar(select(func.count()).select_from(OperationModel)) == 0
@@ -175,6 +176,7 @@ async def test_subscription_cancel_yellow_approval_no_reauth_and_idempotent_succ
     bank, provider, transfer_engine, subscription_engine, _, _ = runtime
     assert workflow.status is WorkflowStatus.READY_FOR_REVIEW
     assert workflow.risk_level.value == "YELLOW"
+    assert workflow.state["candidates"][0]["cancellable"] is True
     async with app.state.test_session_factory() as session:
         assert await session.scalar(select(func.count()).select_from(OperationModel)) == 0
         approved = await WorkflowService(

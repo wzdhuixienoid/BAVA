@@ -73,6 +73,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dashboard
+         * @description Principal-scoped read projection; reuse existing analytics and Provider balance.
+         */
+        get: operations["get_dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks": {
         parameters: {
             query?: never;
@@ -553,6 +573,66 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountBalanceResult */
+        AccountBalanceResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "ACCOUNT_BALANCE";
+            /** Account Id */
+            account_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Masked Number */
+            masked_number: string;
+            /** Account Type */
+            account_type: string;
+            /** Currency */
+            currency: string;
+            /** Balance */
+            balance: string;
+            /**
+             * Balance Display
+             * @default
+             */
+            balance_display: string;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+        };
+        /** AccountListResult */
+        AccountListResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "ACCOUNT_LIST";
+            /** Accounts */
+            accounts: components["schemas"]["AccountSummary"][];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+        };
+        /** AccountSummary */
+        AccountSummary: {
+            /** Account Id */
+            account_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Account Type */
+            account_type: string;
+            /** Masked Number */
+            masked_number: string;
+            /** Currency */
+            currency: string;
+            /** Status */
+            status: string;
+        };
         /**
          * ApprovalStatus
          * @enum {string}
@@ -624,6 +704,16 @@ export interface components {
              * Format: date-time
              */
             evaluated_at: string;
+            /**
+             * Actual Display
+             * @default
+             */
+            actual_display: string;
+            /**
+             * Threshold Display
+             * @default
+             */
+            threshold_display: string;
         };
         /**
          * ConditionPredicate
@@ -700,6 +790,26 @@ export interface components {
             currency: string;
             /** Amount */
             amount: string;
+            /**
+             * Amount Display
+             * @default
+             */
+            amount_display: string;
+        };
+        /** DashboardSnapshot */
+        DashboardSnapshot: {
+            /** Accounts */
+            accounts: components["schemas"]["AccountBalanceResult"][];
+            spending: components["schemas"]["MonthlySpendingReportCore"];
+            subscriptions: components["schemas"]["SubscriptionAnalysisSnapshot"];
+            anomalies: components["schemas"]["TransactionAnomalySnapshot"];
+            /** @default GREEN */
+            risk_level: components["schemas"]["BusinessRiskLevel"];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
         };
         /**
          * DataQualityStatus
@@ -822,6 +932,24 @@ export interface components {
             /** Insights */
             insights: components["schemas"]["ReportInsight"][];
         };
+        /** MonthlySpendingReportCore */
+        MonthlySpendingReportCore: {
+            /**
+             * Report Version
+             * @default 1
+             */
+            report_version: number;
+            /** Period */
+            period: string;
+            scope: components["schemas"]["ReportScope"];
+            overview: components["schemas"]["ReportOverview"];
+            period_comparison: components["schemas"]["ReportPeriodComparison"] | null;
+            /** Category Breakdown */
+            category_breakdown: components["schemas"]["ReportCategory"][];
+            /** Top Transactions */
+            top_transactions: components["schemas"]["ReportTopTransaction"][];
+            data_quality: components["schemas"]["ReportDataQuality"];
+        };
         /**
          * OperationResource
          * @description Frontend-safe operation resource; deliberately excludes key and payload.
@@ -898,6 +1026,19 @@ export interface components {
          * @enum {string}
          */
         OperationType: "TRANSFER" | "SUBSCRIPTION_CANCEL";
+        /** PayeeSummary */
+        PayeeSummary: {
+            /** Payee Id */
+            payee_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Bank Name */
+            bank_name: string;
+            /** Masked Account */
+            masked_account: string;
+            /** Phone Alias */
+            phone_alias: string;
+        };
         /** Plan */
         Plan: {
             /**
@@ -1296,6 +1437,101 @@ export interface components {
              */
             generated_at: string;
         };
+        /** SubscriptionCancelAuthorization */
+        SubscriptionCancelAuthorization: {
+            /**
+             * Approval Id
+             * Format: uuid
+             */
+            approval_id: string;
+            /** Approval Payload Hash */
+            approval_payload_hash: string;
+            /**
+             * Approval Expires At
+             * Format: date-time
+             */
+            approval_expires_at: string;
+        };
+        /** SubscriptionCancelDraft */
+        SubscriptionCancelDraft: {
+            /** Subscription Query */
+            subscription_query: string;
+            /** Subscription Id */
+            subscription_id?: string | null;
+        };
+        /** SubscriptionCancelRequiredInput */
+        SubscriptionCancelRequiredInput: {
+            type: components["schemas"]["SubscriptionCancelRequiredInputType"];
+            /** Message */
+            message: string;
+            /** Options */
+            options: components["schemas"]["SubscriptionCandidate"][];
+        };
+        /**
+         * SubscriptionCancelRequiredInputType
+         * @enum {string}
+         */
+        SubscriptionCancelRequiredInputType: "SUBSCRIPTION_SELECTION";
+        /** SubscriptionCancelReviewPayload */
+        SubscriptionCancelReviewPayload: {
+            /**
+             * Action
+             * @default SUBSCRIPTION_CANCEL
+             */
+            action: string;
+            /** Subscription Id */
+            subscription_id: string;
+            /** User Id */
+            user_id: string;
+            /** Merchant */
+            merchant: string;
+            /** Plan Name */
+            plan_name: string | null;
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /** Next Billing At */
+            next_billing_at: string | null;
+        };
+        /** SubscriptionCancelWorkflowState */
+        SubscriptionCancelWorkflowState: {
+            draft: components["schemas"]["SubscriptionCancelDraft"];
+            required_input?: components["schemas"]["SubscriptionCancelRequiredInput"] | null;
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: components["schemas"]["SubscriptionCandidate"][];
+            review_payload?: components["schemas"]["SubscriptionCancelReviewPayload"] | null;
+            authorization?: components["schemas"]["SubscriptionCancelAuthorization"] | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+        };
+        /** SubscriptionCandidate */
+        SubscriptionCandidate: {
+            /** Subscription Id */
+            subscription_id: string | null;
+            /** Merchant */
+            merchant: string;
+            /** Plan Name */
+            plan_name: string | null;
+            /** Management Type */
+            management_type: string;
+            /** Status */
+            status: string;
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Cancellable
+             * @default false
+             */
+            cancellable: boolean;
+        };
         /** SubscriptionItem */
         SubscriptionItem: {
             /** Subscription Id */
@@ -1330,6 +1566,35 @@ export interface components {
             price_change_percent?: string | null;
             /** Cancellable */
             cancellable: boolean;
+            /**
+             * Last Charge Display
+             * @default
+             */
+            last_charge_display: string;
+            /** Price Change Display */
+            price_change_display?: string | null;
+            /** Price Change Percent Display */
+            price_change_percent_display?: string | null;
+            /**
+             * Monthly Cost
+             * @default 0
+             */
+            monthly_cost: string;
+            /**
+             * Annual Projected Cost
+             * @default 0
+             */
+            annual_projected_cost: string;
+            /**
+             * Monthly Cost Display
+             * @default
+             */
+            monthly_cost_display: string;
+            /**
+             * Annual Projected Cost Display
+             * @default
+             */
+            annual_projected_cost_display: string;
         };
         /**
          * SubscriptionManagementType
@@ -1365,10 +1630,7 @@ export interface components {
             input: {
                 [key: string]: unknown;
             };
-            /** Output */
-            output: {
-                [key: string]: unknown;
-            } | null;
+            output: components["schemas"]["TaskOutput"] | null;
             /** Error */
             error: {
                 [key: string]: unknown;
@@ -1388,11 +1650,199 @@ export interface components {
              */
             updated_at: string;
         };
+        /** TaskOutput */
+        TaskOutput: {
+            /** Account Results */
+            account_results?: (components["schemas"]["AccountListResult"] | components["schemas"]["AccountBalanceResult"])[];
+            financial_display?: components["schemas"]["MonthlySpendingReportCore"];
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * TaskStatus
          * @enum {string}
          */
         TaskStatus: "PENDING" | "RUNNING" | "INTERRUPTED" | "WAITING_USER" | "WAITING_EXTERNAL" | "COMPLETED" | "FAILED" | "CANCELLED" | "SKIPPED";
+        /** TransactionAnomalyEvidence */
+        TransactionAnomalyEvidence: {
+            /** Baseline Median */
+            baseline_median?: string | null;
+            /** Amount */
+            amount?: string | null;
+            /** Ratio */
+            ratio?: string | null;
+            /** Sample Count */
+            sample_count?: number | null;
+            /** Merchant Seen In Lookback */
+            merchant_seen_in_lookback?: boolean | null;
+            /** Duplicate Count */
+            duplicate_count?: number | null;
+            /** Window Minutes */
+            window_minutes?: number | null;
+            /** Previous Amount */
+            previous_amount?: string | null;
+            /** Current Amount */
+            current_amount?: string | null;
+            /** Increase Percent */
+            increase_percent?: string | null;
+        };
+        /** TransactionAnomalyItem */
+        TransactionAnomalyItem: {
+            /** Transaction Id */
+            transaction_id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Merchant Display */
+            merchant_display: string;
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /** Anomaly Types */
+            anomaly_types: components["schemas"]["TransactionAnomalyType"][];
+            severity: components["schemas"]["TransactionAnomalySeverity"];
+            /** Reason Codes */
+            reason_codes: string[];
+            /** Evidence */
+            evidence: {
+                [key: string]: components["schemas"]["TransactionAnomalyEvidence"];
+            };
+            /** Related Transaction Ids */
+            related_transaction_ids?: string[];
+            /**
+             * Amount Display
+             * @default
+             */
+            amount_display: string;
+            /** Evidence Display */
+            evidence_display?: {
+                [key: string]: string[];
+            };
+        };
+        /**
+         * TransactionAnomalySeverity
+         * @enum {string}
+         */
+        TransactionAnomalySeverity: "MEDIUM" | "HIGH";
+        /** TransactionAnomalySnapshot */
+        TransactionAnomalySnapshot: {
+            /** User Scope */
+            user_scope: string;
+            /**
+             * Analysis Period Started At
+             * Format: date-time
+             */
+            analysis_period_started_at: string;
+            /**
+             * Analysis Period Ended At
+             * Format: date-time
+             */
+            analysis_period_ended_at: string;
+            /** Baseline Lookback Days */
+            baseline_lookback_days: number;
+            /** Insufficient Baseline */
+            insufficient_baseline: boolean;
+            /** Anomalies */
+            anomalies: components["schemas"]["TransactionAnomalyItem"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /**
+         * TransactionAnomalyType
+         * @enum {string}
+         */
+        TransactionAnomalyType: "AMOUNT_SPIKE" | "RAPID_DUPLICATE" | "NEW_MERCHANT_HIGH_AMOUNT" | "SUBSCRIPTION_PRICE_SPIKE";
+        /** TransferAccountOption */
+        TransferAccountOption: {
+            /** Account Id */
+            account_id: string;
+            /** Display Name */
+            display_name: string;
+            /** Masked Number */
+            masked_number: string;
+            /** Currency */
+            currency: string;
+            /** Available Balance Display */
+            available_balance_display: string;
+        };
+        /** TransferAuthorizationSnapshot */
+        TransferAuthorizationSnapshot: {
+            /**
+             * Approval Id
+             * Format: uuid
+             */
+            approval_id: string;
+            /** Approval Payload Hash */
+            approval_payload_hash: string;
+            /**
+             * Approval Expires At
+             * Format: date-time
+             */
+            approval_expires_at: string;
+            /** Reauth Id */
+            reauth_id?: string | null;
+            /** Reauth Verified At */
+            reauth_verified_at?: string | null;
+            /** Reauth Expires At */
+            reauth_expires_at?: string | null;
+        };
+        /** TransferDraft */
+        TransferDraft: {
+            /** Recipient Query */
+            recipient_query?: string | null;
+            /** Payee Id */
+            payee_id?: string | null;
+            /** Amount */
+            amount?: string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Source Account Hint */
+            source_account_hint?: string | null;
+            /** Source Account Id */
+            source_account_id?: string | null;
+        };
+        /** TransferRequiredInput */
+        TransferRequiredInput: {
+            type: components["schemas"]["TransferRequiredInputType"];
+            /** Options */
+            options?: {
+                [key: string]: unknown;
+            }[];
+            /** Message */
+            message: string;
+        };
+        /**
+         * TransferRequiredInputType
+         * @enum {string}
+         */
+        TransferRequiredInputType: "PAYEE_SELECTION" | "SOURCE_ACCOUNT_SELECTION" | "AMOUNT" | "RECIPIENT_QUERY";
+        /** TransferReviewPayload */
+        TransferReviewPayload: {
+            /** Source Account Id */
+            source_account_id: string;
+            /** Source Account Display Name */
+            source_account_display_name: string;
+            /** Source Account Masked Number */
+            source_account_masked_number: string;
+            /** Payee Id */
+            payee_id: string;
+            /** Payee Display Name */
+            payee_display_name: string;
+            /** Payee Bank Name */
+            payee_bank_name: string;
+            /** Payee Masked Account */
+            payee_masked_account: string;
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+        };
         /** TransferRiskDecision */
         TransferRiskDecision: {
             level: components["schemas"]["BusinessRiskLevel"];
@@ -1424,6 +1874,69 @@ export interface components {
              * Format: date-time
              */
             evaluated_at: string;
+            /**
+             * Requested Amount Display
+             * @default
+             */
+            requested_amount_display: string;
+            /**
+             * Daily Successful Total Display
+             * @default
+             */
+            daily_successful_total_display: string;
+            /**
+             * Daily In Flight Exposure Display
+             * @default
+             */
+            daily_in_flight_exposure_display: string;
+            /**
+             * Projected Daily Total Display
+             * @default
+             */
+            projected_daily_total_display: string;
+            /**
+             * Threshold Display
+             * @default
+             */
+            threshold_display: string;
+        };
+        /** TransferValidationIssue */
+        TransferValidationIssue: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** TransferValidationResult */
+        TransferValidationResult: {
+            /** Is Valid */
+            is_valid: boolean;
+            /**
+             * Validated At
+             * Format: date-time
+             */
+            validated_at: string;
+            /** Available Balance */
+            available_balance?: string | null;
+            /** Issues */
+            issues?: components["schemas"]["TransferValidationIssue"][];
+        };
+        /** TransferWorkflowState */
+        TransferWorkflowState: {
+            draft: components["schemas"]["TransferDraft"];
+            required_input?: components["schemas"]["TransferRequiredInput"] | null;
+            validation?: components["schemas"]["TransferValidationResult"] | null;
+            review_payload?: components["schemas"]["TransferReviewPayload"] | null;
+            risk_decision?: components["schemas"]["TransferRiskDecision"] | null;
+            authorization?: components["schemas"]["TransferAuthorizationSnapshot"] | null;
+            /** Payee Options */
+            payee_options?: {
+                [key: string]: unknown;
+            }[];
+            /** Source Account Options */
+            source_account_options?: {
+                [key: string]: unknown;
+            }[];
         };
         /** ValidationError */
         ValidationError: {
@@ -1485,6 +1998,7 @@ export interface components {
             approval_summary?: components["schemas"]["ApprovalSummary"] | null;
             reauth_summary?: components["schemas"]["ReauthenticationSummary"] | null;
             operation_summary?: components["schemas"]["OperationSummary"] | null;
+            presentation?: components["schemas"]["WorkflowPresentation"] | null;
             /**
              * Created At
              * Format: date-time
@@ -1496,6 +2010,44 @@ export interface components {
              */
             updated_at: string;
         };
+        /** WorkflowPresentation */
+        WorkflowPresentation: {
+            /** Business Success */
+            business_success: boolean;
+            /** Approval Required */
+            approval_required: boolean | null;
+            /** Reauthentication Required */
+            reauthentication_required: boolean | null;
+            /** Amount Display */
+            amount_display: string | null;
+            transfer_state?: components["schemas"]["TransferWorkflowState"] | null;
+            subscription_state?: components["schemas"]["SubscriptionCancelWorkflowState"] | null;
+            /**
+             * Account Options
+             * @default []
+             */
+            account_options: components["schemas"]["TransferAccountOption"][];
+            /**
+             * Payee Options
+             * @default []
+             */
+            payee_options: components["schemas"]["PayeeSummary"][];
+            /** Stages */
+            stages: components["schemas"]["WorkflowStage"][];
+        };
+        /** WorkflowStage */
+        WorkflowStage: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            status: components["schemas"]["WorkflowStageStatus"];
+        };
+        /**
+         * WorkflowStageStatus
+         * @enum {string}
+         */
+        WorkflowStageStatus: "PENDING" | "RUNNING" | "WAITING_USER" | "COMPLETED" | "SKIPPED" | "FAILED" | "CANCELLED" | "UNKNOWN" | "EXPIRED" | "INVALIDATED";
         /**
          * WorkflowStatus
          * @enum {string}
@@ -1643,6 +2195,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: {
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSnapshot"];
                 };
             };
             /** @description Validation Error */

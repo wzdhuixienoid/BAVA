@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PlanCard } from "@/features/plans/PlanCard";
 import { TaskActivity, useTaskActivity } from "@/features/tasks/TaskActivity";
 import { responseState, type ConversationTurn } from "./timeline";
 
-export function ResponseProcess({ turn, activityRevision, onRefresh }: {
+export function ResponseProcess({ turn, activityRevision }: {
   turn: ConversationTurn;
   activityRevision: number;
   onRefresh: () => Promise<void>;
@@ -29,7 +28,6 @@ export function ResponseProcess({ turn, activityRevision, onRefresh }: {
       </summary>
       <div className="mt-4 space-y-4">
         <TaskActivity {...activity} />
-        {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={turn.workflows} onRefresh={onRefresh} processOnly />)}
       </div>
     </details>
   );

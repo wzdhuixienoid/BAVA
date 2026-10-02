@@ -10,6 +10,7 @@ from banking_api.domain.enums import WorkflowStatus
 from banking_api.domain.operation import OperationSummary
 from banking_api.domain.reauthentication import ReauthenticationSummary
 from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
+from banking_api.domain.workflow_presentation import WorkflowPresentation
 
 
 class WorkflowType(StrEnum):
@@ -35,5 +36,6 @@ class Workflow(BaseModel):
     approval_summary: ApprovalSummary | None = None
     reauth_summary: ReauthenticationSummary | None = None
     operation_summary: OperationSummary | None = None
+    presentation: WorkflowPresentation | None = None
     created_at: datetime
     updated_at: datetime

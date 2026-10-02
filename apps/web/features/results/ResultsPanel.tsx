@@ -24,7 +24,7 @@ export function ResultsPanel({ reports, workflows, onLocateResult }: {
     ...workflows.filter(isConfirmedWorkflow).map((workflow) => {
       const transfer = workflow.workflow_type === "TRANSFER";
       const name = reviewField(workflow, transfer ? "payee_display_name" : "merchant");
-      const amount = `${reviewField(workflow, "amount")} ${reviewField(workflow, "currency")}`;
+      const amount = workflow.presentation?.amount_display ?? `${reviewField(workflow, "amount")} ${reviewField(workflow, "currency")}`;
       return {
         id: `workflow-${workflow.workflow_id}`,
         time: workflow.operation_summary?.completed_at ?? workflow.updated_at,

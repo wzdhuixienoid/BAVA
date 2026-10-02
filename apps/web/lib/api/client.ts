@@ -1,4 +1,5 @@
 import type { components } from "@banking/api-client";
+import { errorDisplay } from "../presentation/errors";
 
 type Conversation = components["schemas"]["Conversation"];
 type ConversationCreate = components["schemas"]["ConversationCreate"];
@@ -41,12 +42,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       typeof rawDetail === "string"
         ? rawDetail
         : rawDetail?.code ?? rawDetail?.message ?? "请求失败";
-    throw new Error(`请求失败（${response.status}）：${detail}`);
+    throw new Error(`请求失败（${response.status}）：${errorDisplay(detail)}`);
   }
   return response.json() as Promise<T>;
 }
 
 export const api = {
+  getDashboard: (month: string) => request<components["schemas"]["DashboardSnapshot"]>(
+    `/api/v1/dashboard?month=${encodeURIComponent(month)}`,
+  ),
   listPlans: (conversationId: string) => request<components["schemas"]["Plan"][]>(
     `/api/v1/plans?conversation_id=${encodeURIComponent(conversationId)}`,
   ),

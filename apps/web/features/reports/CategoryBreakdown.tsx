@@ -18,6 +18,9 @@ export function CategoryBreakdown({ categories }: { categories: Category[] }) {
                 </span>
               </div>
               <p className="mt-1 text-xs text-slate-400">{item.transaction_count} 笔</p>
+              <div aria-label={`${categoryLabel(item.category)}占比 ${item.share_display}`} className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-cyan-500" style={{ width: item.share_display }} />
+              </div>
             </div>
             <div className="text-right">
               <p className="font-semibold text-slate-950">{item.amount_display}</p>

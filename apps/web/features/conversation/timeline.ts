@@ -74,6 +74,7 @@ export function buildConversationTurns({ messages, tasks, plans, workflows, repo
 }
 
 export function isConfirmedWorkflow(workflow: Workflow): boolean {
+  if (workflow.presentation) return workflow.presentation.business_success;
   return workflow.status === "SUCCEEDED" && workflow.operation_summary?.status === "SUCCEEDED";
 }
 

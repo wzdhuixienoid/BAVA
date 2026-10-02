@@ -114,11 +114,14 @@ class SubscriptionAnalysisService:
             if item.status is not SubscriptionStatus.ACTIVE:
                 continue
             if item.billing_interval is BillingInterval.MONTHLY:
-                monthly[item.currency] += item.last_charge_amount
-                annual[item.currency] += item.last_charge_amount * Decimal("12")
+                item.monthly_cost = item.last_charge_amount
+                item.annual_projected_cost = item.last_charge_amount * Decimal("12")
             else:
-                annual[item.currency] += item.last_charge_amount
-                monthly[item.currency] += item.last_charge_amount / Decimal("12")
+                item.annual_projected_cost = item.last_charge_amount
+                item.monthly_cost = item.last_charge_amount / Decimal("12")
+            item.format_display()
+            monthly[item.currency] += item.monthly_cost
+            annual[item.currency] += item.annual_projected_cost
 
         cutoff = now + timedelta(days=upcoming_days)
         upcoming = [
@@ -159,9 +162,7 @@ class SubscriptionAnalysisService:
                 CurrencyCost(currency=currency, amount=amount)
                 for currency, amount in sorted(annual.items())
             ],
-            upcoming_renewals=sorted(
-                upcoming, key=lambda item: item.next_billing_at or now
-            )[:20],
+            upcoming_renewals=sorted(upcoming, key=lambda item: item.next_billing_at or now)[:20],
             price_changes=[item for item in ordered if item.price_change_amount is not None][:20],
             duplicate_candidates=duplicates,
             generated_at=now,

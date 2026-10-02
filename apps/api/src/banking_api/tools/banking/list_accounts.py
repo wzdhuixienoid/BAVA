@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
 from banking_api.tools.models import (
@@ -14,7 +16,10 @@ TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 def build_list_accounts_tool(bank: MockBankService) -> ToolSpec:
     def handler(context: ToolExecutionContext, _: ListAccountsInput) -> ListAccountsOutput:
-        return ListAccountsOutput(accounts=bank.list_accounts(user_id=context.principal.user_id))
+        return ListAccountsOutput(
+            accounts=bank.list_accounts(user_id=context.principal.user_id),
+            as_of=datetime.now(UTC),
+        )
 
     return ToolSpec(
         capability_id="account.list",

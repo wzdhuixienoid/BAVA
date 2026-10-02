@@ -4,7 +4,9 @@ from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from banking_api.financial.report_formatter import ReportFormatter
 
 MAX_PLAN_STEPS = 8
 
@@ -85,6 +87,19 @@ class ConditionDecision(BaseModel):
     currency: str
     outcome: Literal["TRUE", "FALSE"]
     evaluated_at: datetime
+    actual_display: str = ""
+    threshold_display: str = ""
+
+    @model_validator(mode="after")
+    def format_display(self):
+        formatter = ReportFormatter()
+        object.__setattr__(
+            self, "actual_display", formatter.money(Decimal(self.actual_value), self.currency)
+        )
+        object.__setattr__(
+            self, "threshold_display", formatter.money(Decimal(self.threshold_value), self.currency)
+        )
+        return self
 
 
 class StepProposalBase(BaseModel):

@@ -2,7 +2,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from banking_api.financial.report_formatter import ReportFormatter
 
 
 class BillingInterval(StrEnum):
@@ -39,11 +41,44 @@ class SubscriptionItem(BaseModel):
     price_change_amount: Decimal | None = None
     price_change_percent: Decimal | None = None
     cancellable: bool
+    last_charge_display: str = ""
+    price_change_display: str | None = None
+    price_change_percent_display: str | None = None
+    monthly_cost: Decimal = Decimal("0")
+    annual_projected_cost: Decimal = Decimal("0")
+    monthly_cost_display: str = ""
+    annual_projected_cost_display: str = ""
+
+    @model_validator(mode="after")
+    def format_display(self):
+        formatter = ReportFormatter()
+        self.last_charge_display = formatter.money(self.last_charge_amount, self.currency)
+        self.price_change_display = (
+            formatter.money_change(self.price_change_amount, self.currency)
+            if self.price_change_amount is not None
+            else None
+        )
+        self.price_change_percent_display = (
+            formatter.percentage_change(self.price_change_percent)
+            if self.price_change_percent is not None
+            else None
+        )
+        self.monthly_cost_display = formatter.money(self.monthly_cost, self.currency)
+        self.annual_projected_cost_display = formatter.money(
+            self.annual_projected_cost, self.currency
+        )
+        return self
 
 
 class CurrencyCost(BaseModel):
     currency: str
     amount: Decimal
+    amount_display: str = ""
+
+    @model_validator(mode="after")
+    def format_display(self):
+        self.amount_display = ReportFormatter().money(self.amount, self.currency)
+        return self
 
 
 class DuplicateCandidate(BaseModel):

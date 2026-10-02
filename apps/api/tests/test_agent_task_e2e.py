@@ -61,13 +61,17 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
         )
 
     assert task.status is TaskStatus.COMPLETED
-    assert task.output == {
+    assert {key: value for key, value in task.output.items() if key != "account_results"} == {
         "agent_id": "agent:minimal-banking",
         "assistant_message_id": str(loaded.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
         "requested_output": "ANSWER",
     }
+    results = task.model_dump(mode="json")["output"]["account_results"]
+    assert [result["kind"] for result in results] == ["ACCOUNT_LIST", "ACCOUNT_BALANCE"]
+    assert results[1]["balance"] == "23864.52"
+    assert results[1]["balance_display"] == "¥23,864.52"
     assert task.version == 8
     assert task.executor_id == "agent:minimal-banking"
     assert loaded.messages[-1].content == "工资卡余额为 23,864.52 元。"

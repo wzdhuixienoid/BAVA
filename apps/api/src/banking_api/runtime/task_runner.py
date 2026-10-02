@@ -10,6 +10,7 @@ from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.models import AgentDefinition
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT_ID
+from banking_api.application.account_results import build_account_results
 from banking_api.application.conversation_service import to_message
 from banking_api.application.plan_execution_service import PlanExecutionService, fail_plan
 from banking_api.application.report_service import (
@@ -62,6 +63,7 @@ from banking_api.skill_runtime.executor import (
 from banking_api.skills.models import SkillDefinition
 from banking_api.skills.monthly_spending_report import (
     MONTHLY_SPENDING_REPORT_SKILL_ID,
+    MonthlySpendingReportSkill,
 )
 from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
 from banking_api.workflows.subscription_cancel.intent_extractor import (
@@ -766,10 +768,18 @@ class InProcessTaskRunner:
             "tool_calls": tool_calls,
             "requested_output": requested_output.value,
         }
+        if agent_id == MINIMAL_BANKING_AGENT.agent_id:
+            output["account_results"] = [
+                result.model_dump(mode="json")
+                for result in build_account_results(successful_tool_results)
+            ]
         if agent_id == FINANCIAL_ANALYSIS_AGENT_ID:
-            output["analysis_snapshot"] = build_financial_analysis_snapshot(
-                successful_tool_results
-            ).model_dump(mode="json")
+            snapshot = build_financial_analysis_snapshot(successful_tool_results)
+            output["analysis_snapshot"] = snapshot.model_dump(mode="json")
+            if snapshot.spending_summary is not None and snapshot.category_breakdown is not None:
+                output["financial_display"] = (
+                    MonthlySpendingReportSkill().build_core(snapshot).model_dump(mode="json")
+                )
             anomaly_result = next(
                 (
                     item

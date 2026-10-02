@@ -52,7 +52,10 @@ from banking_api.workflows.transfer.engine import (
     TransferWorkflowEngineError,
 )
 from banking_api.workflows.transfer.models import TransferWorkflowState
-from banking_api.workflows.transfer.risk import TransferRiskPolicy
+from banking_api.workflows.transfer.risk import (
+    TransferRiskCurrencyUnsupportedError,
+    TransferRiskPolicy,
+)
 
 
 class OperationNotFoundError(Exception):
@@ -181,6 +184,10 @@ class OperationService:
         authorization = state.authorization
         if authorization is None or state.review_payload is None:
             raise OperationActionError("TRANSFER_AUTHORIZATION_MISSING")
+        try:
+            self.risk_policy.require_supported_currency(state.review_payload.currency)
+        except TransferRiskCurrencyUnsupportedError as exc:
+            raise OperationActionError(exc.code) from exc
         approval = await self.approvals.get_for_workflow_user_for_update(
             authorization.approval_id, workflow_id, user_id
         )
@@ -211,6 +218,11 @@ class OperationService:
             raise OperationActionError("FINAL_VALIDATION_UNAVAILABLE") from exc
         if validation_status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
             await self._fail_final_validation(workflow, state)
+            if state.validation is not None and any(
+                issue.code == TransferRiskCurrencyUnsupportedError.code
+                for issue in state.validation.issues
+            ):
+                raise OperationActionError(TransferRiskCurrencyUnsupportedError.code)
             raise OperationActionError("FINAL_TRANSFER_VALIDATION_FAILED")
         current_hash = transfer_payload_hash(state.review_payload)
         if current_hash != approval.payload_hash:
@@ -230,13 +242,10 @@ class OperationService:
             in_flight_transfer_exposure_today=facts.in_flight_exposure,
             evaluated_at=now,
         )
-        risk = self.risk_policy.retain_stricter(
-            state.risk_decision, fresh_risk, at_commit=True
-        )
+        risk = self.risk_policy.retain_stricter(state.risk_decision, fresh_risk, at_commit=True)
         state.risk_decision = risk
         escalated = (
-            previous_level is BusinessRiskLevel.YELLOW
-            and risk.level is BusinessRiskLevel.RED
+            previous_level is BusinessRiskLevel.YELLOW and risk.level is BusinessRiskLevel.RED
         )
         if risk.required_reauthentication:
             if authorization.reauth_id is None:
