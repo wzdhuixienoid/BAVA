@@ -598,6 +598,48 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** ConditionDecision */
+        ConditionDecision: {
+            predicate: components["schemas"]["ConditionPredicate"];
+            /**
+             * Source Step Id
+             * Format: uuid
+             */
+            source_step_id: string;
+            /** Source Output Hash */
+            source_output_hash: string;
+            /** Actual Value */
+            actual_value: string;
+            /** Threshold Value */
+            threshold_value: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "TRUE" | "FALSE";
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+        };
+        /**
+         * ConditionPredicate
+         * @enum {string}
+         */
+        ConditionPredicate: "ACCOUNT_BALANCE_AT_LEAST" | "MONTHLY_SPENDING_AT_LEAST" | "SUBSCRIPTION_MONTHLY_COST_AT_LEAST";
+        /** ConditionSpec */
+        ConditionSpec: {
+            predicate: components["schemas"]["ConditionPredicate"];
+            /** Source Step Key */
+            source_step_key: string;
+            /** Threshold */
+            threshold: string;
+            /** Currency */
+            currency?: string | null;
+        };
         /** Conversation */
         Conversation: {
             /**
@@ -916,7 +958,12 @@ export interface components {
             step_key: string;
             /** Display Title */
             display_title: string;
-            capability: components["schemas"]["PlanCapability"];
+            step_kind: components["schemas"]["PlanStepKind"];
+            capability: components["schemas"]["PlanCapability"] | null;
+            condition_spec: components["schemas"]["ConditionSpec"] | null;
+            condition_decision: components["schemas"]["ConditionDecision"] | null;
+            /** Guard Condition Step Id */
+            guard_condition_step_id: string | null;
             status: components["schemas"]["PlanStepStatus"];
             /** Depends On */
             depends_on: string[];
@@ -931,6 +978,11 @@ export interface components {
             /** Rollback Allowed */
             rollback_allowed: boolean;
         };
+        /**
+         * PlanStepKind
+         * @enum {string}
+         */
+        PlanStepKind: "CAPABILITY" | "CONDITION";
         /**
          * PlanStepStatus
          * @enum {string}

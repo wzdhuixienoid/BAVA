@@ -19,9 +19,13 @@ from banking_api.persistence.repositories.messages import MessageRepository
 from banking_api.persistence.repositories.operations import OperationRepository
 from banking_api.persistence.repositories.plans import PlanRepository
 from banking_api.persistence.repositories.tasks import TaskExecutionClaim, TaskRepository
-from banking_api.planning.models import PlanCapability, PlanStatus, PlanStepStatus
+from banking_api.planning.condition_evaluator import (
+    ConditionEvaluationError,
+    PlanConditionEvaluator,
+)
+from banking_api.planning.models import ConditionSpec, PlanCapability, PlanStatus, PlanStepStatus
 from banking_api.planning.registry import PlanCapabilityRegistry
-from banking_api.planning.validator import PlanValidationError
+from banking_api.planning.validator import PlanValidationError, PlanValidator
 from banking_api.runtime.base import AgentRunRequest, AgentRuntimeError
 from banking_api.runtime.event_publisher import EventPublisher
 
@@ -37,6 +41,7 @@ class PlanExecutionService:
     def __init__(self, runner: "InProcessTaskRunner") -> None:
         self.runner = runner
         self.registry = PlanCapabilityRegistry()
+        self.condition_evaluator = PlanConditionEvaluator()
 
     async def execute(self, claim: TaskExecutionClaim, user_request: str) -> None:
         runner = self.runner
@@ -48,6 +53,7 @@ class PlanExecutionService:
                 raise PlanValidationError("PLAN_PLANNER_NOT_CONFIGURED")
             try:
                 validated = await runner.planner.propose(user_request)
+                validated = PlanValidator().validate_grounding(validated, user_request)
             except LLMProviderError as exc:
                 raise AgentRuntimeError(
                     "PLAN_PLANNER_UNAVAILABLE", "规划服务暂时不可用", retryable=exc.retryable
@@ -87,10 +93,38 @@ class PlanExecutionService:
                             for parent in dependencies.get(step.step_id, [])
                         ):
                             step.status = PlanStepStatus.SKIPPED
-                            step.error_code = "UPSTREAM_NOT_COMPLETED"
+                            parents = [
+                                by_id[parent] for parent in dependencies.get(step.step_id, [])
+                            ]
+                            step.error_code = (
+                                "CONDITION_NOT_MET"
+                                if not any(
+                                    parent.status
+                                    in {PlanStepStatus.FAILED, PlanStepStatus.CANCELLED}
+                                    or (
+                                        parent.status == PlanStepStatus.SKIPPED
+                                        and parent.error_code != "CONDITION_NOT_MET"
+                                    )
+                                    for parent in parents
+                                )
+                                else "UPSTREAM_NOT_COMPLETED"
+                            )
                             step.completed_at = utc_now()
                             await step_event(session, plan, step)
                             changed = True
+                # Decisions and directly guarded skips are persisted atomically below.
+                for step in steps:
+                    if step.status == PlanStepStatus.PENDING and step.guard_condition_step_id:
+                        guard = by_id[step.guard_condition_step_id]
+                        if guard.status == PlanStepStatus.COMPLETED:
+                            decision = guard.condition_decision_json
+                            if not decision or decision.get("outcome") not in {"TRUE", "FALSE"}:
+                                raise PlanValidationError("CONDITION_INPUT_UNAVAILABLE")
+                            if decision["outcome"] == "FALSE":
+                                step.status = PlanStepStatus.SKIPPED
+                                step.error_code = "CONDITION_NOT_MET"
+                                step.completed_at = utc_now()
+                                await step_event(session, plan, step)
                 candidate = next(
                     (
                         step
@@ -121,10 +155,17 @@ class PlanExecutionService:
                 await step_event(session, plan, candidate)
                 await session.commit()
                 step_id = candidate.step_id
-                capability = PlanCapability(candidate.capability)
+                capability = PlanCapability(candidate.capability) if candidate.capability else None
+                step_kind = candidate.step_kind
                 subtask_query = candidate.subtask_query
             try:
-                if self.registry.get(capability).read_only:
+                decision = None
+                if step_kind == "CONDITION":
+                    decision = await self._condition(claim, plan_id, step_id)
+                    output = None
+                    status = PlanStepStatus.COMPLETED
+                    workflow_id = None
+                elif self.registry.get(capability).read_only:
                     output = await self._read(
                         claim, step_id, capability, subtask_query or user_request
                     )
@@ -134,7 +175,7 @@ class PlanExecutionService:
                     workflow_id = await self._workflow(claim, capability, user_request)
                     output = None
                     status = None
-            except AgentRuntimeError as exc:
+            except (AgentRuntimeError, ConditionEvaluationError) as exc:
                 if exc.retryable:
                     raise
                 async with runner.session_factory() as session:
@@ -156,6 +197,20 @@ class PlanExecutionService:
                 plan = await repository.get(plan_id, claim.user_id, lock=True)
                 assert plan is not None
                 step = next(s for s in await repository.steps(plan_id) if s.step_id == step_id)
+                if decision is not None:
+                    if step.condition_decision_json is not None:
+                        raise PlanValidationError("CONDITION_DECISION_ALREADY_PERSISTED")
+                    step.condition_decision_json = decision.model_dump(mode="json")
+                    if decision.outcome == "FALSE":
+                        for guarded in await repository.steps(plan_id):
+                            if (
+                                guarded.guard_condition_step_id == step_id
+                                and guarded.status == PlanStepStatus.PENDING
+                            ):
+                                guarded.status = PlanStepStatus.SKIPPED
+                                guarded.error_code = "CONDITION_NOT_MET"
+                                guarded.completed_at = utc_now()
+                                await step_event(session, plan, guarded)
                 if workflow_id is not None:
                     step.linked_workflow_id = workflow_id
                     service = self._workflow_service(session)
@@ -217,6 +272,24 @@ class PlanExecutionService:
                     return
                 plan.status = PlanStatus.RUNNING
                 await session.commit()
+
+    async def _condition(self, claim, plan_id, step_id):  # type: ignore[no-untyped-def]
+        async with self.runner.session_factory() as session:
+            await self.runner._get_owned(TaskRepository(session), claim)
+            steps = await PlanRepository(session).steps(plan_id)
+            step = next(s for s in steps if s.step_id == step_id)
+            try:
+                spec = ConditionSpec.model_validate_json(json.dumps(step.condition_spec_json))
+                source = next(s for s in steps if s.step_key == spec.source_step_key)
+            except (ValueError, StopIteration) as exc:
+                raise ConditionEvaluationError("CONDITION_INPUT_UNAVAILABLE") from exc
+            return self.condition_evaluator.evaluate(
+                spec,
+                source_step_id=source.step_id,
+                source_capability=source.capability,
+                source_status=source.status,
+                output=source.output_json,
+            )
 
     async def _read(self, claim, step_id, capability, query):  # type: ignore[no-untyped-def]
         runner = self.runner
@@ -345,7 +418,11 @@ class PlanExecutionService:
 
     async def _finish(self, session, claim, plan, steps):  # type: ignore[no-untyped-def]
         task = await self.runner._get_owned(TaskRepository(session), claim, for_update=True)
-        success = all(step.status == PlanStepStatus.COMPLETED for step in steps)
+        success = all(
+            step.status == PlanStepStatus.COMPLETED
+            or (step.status == PlanStepStatus.SKIPPED and step.error_code == "CONDITION_NOT_MET")
+            for step in steps
+        )
         plan.status = PlanStatus.COMPLETED if success else PlanStatus.FAILED
         plan.version += 1
         plan.updated_at = utc_now()
@@ -395,6 +472,33 @@ def format_plan_answer(steps) -> str:  # type: ignore[no-untyped-def]
         "SUBSCRIPTION_CANCEL_WORKFLOW": "订阅取消结果",
     }
     for step in steps:
+        if step.step_kind == "CONDITION":
+            decision = step.condition_decision_json
+            if decision:
+                descriptions = {
+                    "ACCOUNT_BALANCE_AT_LEAST": "账户余额",
+                    "MONTHLY_SPENDING_AT_LEAST": "本月支出",
+                    "SUBSCRIPTION_MONTHLY_COST_AT_LEAST": "每月订阅成本",
+                }
+                parts.append(
+                    f"条件：{descriptions[decision['predicate']]}不少于 "
+                    f"{decision['threshold_value']} {decision['currency']}；实际 "
+                    f"{decision['actual_value']} {decision['currency']}，"
+                    + ("已满足。" if decision["outcome"] == "TRUE" else "未满足。")
+                )
+            continue
+        if step.status == PlanStepStatus.SKIPPED and step.error_code == "CONDITION_NOT_MET":
+            parts.append(
+                "条件未满足，因此没有启动后续"
+                + (
+                    "转账流程。"
+                    if step.capability == "TRANSFER_WORKFLOW"
+                    else "订阅取消流程。"
+                    if step.capability == "SUBSCRIPTION_CANCEL_WORKFLOW"
+                    else "查询步骤。"
+                )
+            )
+            continue
         facts = step.output_json or {}
         lines = []
         for account in facts.get("account_results", []):

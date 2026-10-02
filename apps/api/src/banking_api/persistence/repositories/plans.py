@@ -6,7 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.persistence.models import PlanModel, PlanStepDependencyModel, PlanStepModel
-from banking_api.planning.models import PlanStatus, PlanStepStatus, ValidatedPlan
+from banking_api.planning.models import (
+    CapabilityStepProposal,
+    PlanStatus,
+    PlanStepStatus,
+    ValidatedPlan,
+)
 from banking_api.planning.registry import PlanCapabilityRegistry
 
 
@@ -66,15 +71,33 @@ class PlanRepository:
                 step_key=proposal.step_key,
                 ordinal=ordinal,
                 display_title=proposal.display_title,
-                capability=proposal.capability,
-                executor_kind=registry.get(proposal.capability).executor_kind,
+                step_kind=proposal.kind,
+                capability=proposal.capability
+                if isinstance(proposal, CapabilityStepProposal)
+                else None,
+                executor_kind=(
+                    registry.get(proposal.capability).executor_kind
+                    if isinstance(proposal, CapabilityStepProposal)
+                    else "CONDITION"
+                ),
+                condition_spec_json=(
+                    None
+                    if isinstance(proposal, CapabilityStepProposal)
+                    else proposal.condition.model_dump(mode="json")
+                ),
                 status=PlanStepStatus.PENDING,
-                subtask_query=proposal.subtask_query,
+                subtask_query=proposal.subtask_query
+                if isinstance(proposal, CapabilityStepProposal)
+                else None,
             )
             self.session.add(step)
             steps[step.step_key] = step
         await self.session.flush()
         for proposal in validated.proposal.steps:
+            if isinstance(proposal, CapabilityStepProposal) and proposal.guard_condition_step_key:
+                steps[proposal.step_key].guard_condition_step_id = steps[
+                    proposal.guard_condition_step_key
+                ].step_id
             for dependency in proposal.depends_on:
                 self.session.add(
                     PlanStepDependencyModel(

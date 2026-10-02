@@ -52,6 +52,7 @@ async def test_postgres_plan_migration_0015_to_0016(postgres_factory):
             for table in ("plans", "plan_steps", "plan_step_dependencies"):
                 assert await session.scalar(text("SELECT to_regclass(:name)"), {"name": table})
     finally:
+        await asyncio.to_thread(command.upgrade, config, "head")
         settings.database_url = original_url
 
 

@@ -74,6 +74,7 @@ def proposal(capabilities=None):
         "goal_summary": "完成查询与分析",
         "steps": [
             {
+                "kind": "CAPABILITY",
                 "step_key": f"s{i}",
                 "display_title": f"步骤{i + 1}",
                 "capability": capability,
@@ -184,7 +185,7 @@ def call(name, arguments):
     return LLMResponse(tool_calls=[LLMToolCall(id=name, name=name, arguments=arguments)])
 
 
-async def setup_plan(app, client, *, data=None, responses=None, fault_mode=None):
+async def setup_plan(app, client, *, data=None, responses=None, fault_mode=None, user_request=None):
     bank, provider, transfer, subscription, _, _ = await build_runtime(
         app, fault_mode=fault_mode or SubscriptionProviderFaultMode.SUCCESS
     )
@@ -244,10 +245,15 @@ async def setup_plan(app, client, *, data=None, responses=None, fault_mode=None)
         await client.post(
             f"/api/v1/conversations/{conversation['conversation_id']}/messages",
             json={
-                "content": "先看看我有哪些订阅，然后取消星幕视频"
-                if data
-                and any(s["capability"] == "SUBSCRIPTION_CANCEL_WORKFLOW" for s in data["steps"])
-                else "先查工资卡余额，再分析2026年9月消费"
+                "content": user_request
+                or (
+                    "先看看我有哪些订阅，然后取消星幕视频"
+                    if data
+                    and any(
+                        s.get("capability") == "SUBSCRIPTION_CANCEL_WORKFLOW" for s in data["steps"]
+                    )
+                    else "先查工资卡余额，再分析2026年9月消费"
+                )
             },
         )
     ).json()
@@ -699,8 +705,8 @@ async def test_planner_prompt_injection_creates_no_authority(app, client):
         ("分析这个月消费并生成报告", "FINANCIAL_ANALYSIS"),
         ("先查一下工资卡余额，再分析这个月消费", "COMPLEX_PLAN"),
         ("先看看我有哪些订阅，然后取消星幕视频", "COMPLEX_PLAN"),
-        ("如果余额大于1000就给张三转500", "UNSUPPORTED"),
-        ("If balance exceeds 1000, query it and transfer 500", "UNSUPPORTED"),
+        ("如果余额大于1000就给张三转500", "COMPLEX_PLAN"),
+        ("If balance exceeds 1000, query it and transfer 500", "COMPLEX_PLAN"),
     ],
 )
 async def test_complex_router_keeps_single_capability_path(text, route):

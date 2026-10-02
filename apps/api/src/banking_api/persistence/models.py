@@ -161,19 +161,13 @@ class SecurityGuardStateModel(Base):
     __tablename__ = "security_guard_states"
 
     user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    locked_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     lock_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    reauth_failure_count: Mapped[int] = mapped_column(
-        Integer, default=0, server_default=text("0")
-    )
+    reauth_failure_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     reauth_window_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    bypass_attempt_count: Mapped[int] = mapped_column(
-        Integer, default=0, server_default=text("0")
-    )
+    bypass_attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     bypass_window_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -462,7 +456,15 @@ class PlanStepModel(Base):
     step_key: Mapped[str] = mapped_column(String(64))
     ordinal: Mapped[int] = mapped_column(Integer)
     display_title: Mapped[str] = mapped_column(String(160))
-    capability: Mapped[str] = mapped_column(String(40))
+    step_kind: Mapped[str] = mapped_column(
+        String(20), default="CAPABILITY", server_default="CAPABILITY"
+    )
+    capability: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    condition_spec_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    condition_decision_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    guard_condition_step_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("plan_steps.id"), nullable=True, index=True
+    )
     executor_kind: Mapped[str] = mapped_column(String(20))
     status: Mapped[str] = mapped_column(String(30))
     subtask_query: Mapped[str | None] = mapped_column(String(500), nullable=True)

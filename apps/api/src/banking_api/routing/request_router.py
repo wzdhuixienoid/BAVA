@@ -25,7 +25,8 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 先分析订阅再取消订阅 -> COMPLEX_PLAN / ANSWER
 - 分析消费并生成报告仍由 FinancialAnalysis 完整完成，不拆计划
 - 单纯取消订阅不等于订阅分析，单纯转账不等于查询余额
-- 条件自动写入、循环、多笔写操作、不支持业务 -> UNSUPPORTED / ANSWER
+- 条件判断（余额、月消费、订阅月成本达到阈值）及条件后续动作 -> COMPLEX_PLAN / ANSWER
+- 其他条件或 ELSE 请求也交给 COMPLEX_PLAN 确定性拒绝；循环及不支持业务不得执行
 - 不含转账的分析请求如果包含其他不支持内容，只处理可支持的分析部分
 - 投资、理财购买、卡片写操作或当前系统不支持的业务 -> UNSUPPORTED / ANSWER
 
@@ -62,7 +63,7 @@ class RequestRouter:
                 normalized = "".join(user_request.casefold().split())
                 if has_conditional_control(user_request):
                     return RouteDecision(
-                        route=RequestRoute.UNSUPPORTED,
+                        route=RequestRoute.COMPLEX_PLAN,
                         requested_output=RequestedOutput.ANSWER,
                         confidence=decision.confidence,
                     )

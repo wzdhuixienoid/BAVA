@@ -11,6 +11,11 @@ type Plan = components["schemas"]["Plan"];
 type Workflow = components["schemas"]["Workflow"];
 type SubscriptionSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
 
+const predicates: Record<string, string> = {
+  ACCOUNT_BALANCE_AT_LEAST: "账户余额",
+  MONTHLY_SPENDING_AT_LEAST: "本月支出",
+  SUBSCRIPTION_MONTHLY_COST_AT_LEAST: "每月订阅成本",
+};
 const labels: Record<string, string> = {
   RUNNING: "执行中", PENDING: "等待前置步骤", WAITING_USER: "等待你的操作",
   WAITING_EXTERNAL: "等待外部结果", PAUSED: "已转为手动处理", COMPLETED: "已完成",
@@ -40,15 +45,21 @@ export function PlanCard({ plan, workflows, onRefresh }: {
       <ol className="mt-3 space-y-3">
         {plan.steps.map((step, index) => {
           const workflow = workflows.find((item) => item.workflow_id === step.linked_workflow_id);
+          const decision = step.condition_decision;
+          const spec = step.condition_spec;
           const snapshot = step.result_summary?.subscription_analysis_snapshot as SubscriptionSnapshot | undefined;
           return (
             <li key={step.step_id} className="rounded border border-slate-200 p-2">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium">{index + 1}. {step.display_title}</p>
-                <span className="text-xs text-slate-600">{step.status === "COMPLETED" ? "✓ " : ""}{labels[step.status]}</span>
+                <span className="text-xs text-slate-600">{step.status === "COMPLETED" ? "✓ " : ""}{decision ? (decision.outcome === "TRUE" ? "条件满足" : "条件未满足") : step.error_code === "CONDITION_NOT_MET" ? "条件未满足，已跳过" : labels[step.status]}</span>
               </div>
               {step.depends_on.length > 0 && <p className="mt-1 text-xs text-slate-500">依赖：{step.depends_on.map((id) => `步骤 ${positions.get(id)}`).join("、")}</p>}
-              {step.error_code && <p className="mt-2 text-xs text-red-700">{step.error_code}</p>}
+              {spec && <p className="mt-2 text-xs text-slate-700">条件：{predicates[spec.predicate]}不少于 {spec.threshold} {spec.currency ?? "源结果币种"}</p>}
+              {decision && <p className="mt-1 text-xs text-slate-700">实际值：{decision.actual_value} {decision.currency} · 阈值：{decision.threshold_value} {decision.currency}</p>}
+              {step.guard_condition_step_id && <p className="mt-1 text-xs text-slate-500">仅在步骤 {positions.get(step.guard_condition_step_id)} 条件满足时执行</p>}
+              {step.error_code === "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-slate-600">条件未满足，后续步骤已跳过</p>}
+              {step.error_code && step.error_code !== "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-red-700">{step.error_code}</p>}
               {snapshot && <SubscriptionSummaryCard snapshot={snapshot} />}
               {workflow?.workflow_type === "TRANSFER" && <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />}
               {workflow?.workflow_type === "SUBSCRIPTION_CANCEL" && <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}

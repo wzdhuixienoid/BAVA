@@ -1,6 +1,6 @@
 # AI Banking Agent
 
-当前版本：`v0.8.1`
+当前版本：`v0.8.2`
 
 面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
 
@@ -51,6 +51,8 @@ Durable Task Execution: COMPLETE
 安全熔断：COMPLETE
 受约束复杂任务规划：COMPLETE
 持久化 Task DAG：COMPLETE
+受约束条件节点：COMPLETE
+跨场景联动：COMPLETE
 中断 / Human-in-the-loop：COMPLETE
 有限安全回退：COMPLETE
 人工接管：COMPLETE
@@ -91,11 +93,23 @@ Transfer 最低为 YELLOW。日累计按 `Principal.user_id` 和 `BANKING_BUSINE
 ```text
 先查一下工资卡余额，再分析一下 2026 年 9 月的消费。
 先看看我有哪些订阅，然后取消星幕视频。
+查一下工资卡余额，如果余额不少于3000元，给张三转500元。
+看看我的订阅，如果每月订阅费用不少于100元，取消星幕视频。
 ```
 
-Planner 只选择 `ACCOUNT_QUERY / FINANCIAL_ANALYSIS / SUBSCRIPTION_ANALYSIS / TRANSFER_WORKFLOW / SUBSCRIPTION_CANCEL_WORKFLOW`。Proposal 不接受业务内部 ID、金额、权限、风险或 Tool；写 Workflow 始终从原始用户 Message 提取意图，沿用原有 Policy、Approval、Reauthentication、Security Guard、Operation 和 Provider。
+Planner 只选择 `ACCOUNT_QUERY / FINANCIAL_ANALYSIS / SUBSCRIPTION_ANALYSIS / TRANSFER_WORKFLOW / SUBSCRIPTION_CANCEL_WORKFLOW`。Proposal 不接受业务内部 ID、业务金额 payload、权限、风险或 Tool（条件 threshold 是 Decimal 字符串）；写 Workflow 始终从原始用户 Message 提取意图，沿用原有 Policy、Approval、Reauthentication、Security Guard、Operation 和 Provider。
+
+v0.8.2 的数值条件只接受用户原始请求中明确给出的数值阈值；Planner 不能自行解释“够”“太多”“较高”等模糊表达为金额。确定性 grounding 仅匹配对应条件从句中的数值，转账等业务动作中的金额不能充当阈值。未给明确阈值时 fail closed，并提示用户提供明确金额；Planner 指定的币种也必须有原文依据，未写币种时沿用源结果的唯一币种规则。
 
 `plans / plan_steps / plan_step_dependencies` 是固定持久化 DAG；`source_task_id` 唯一，Task retry 不再次规划。执行由原 Task worker 的 lease/attempt fence 保护，无独立 Plan worker。只读输出为 bounded structured facts；最终回答由服务器确定性整合这些事实，写步骤成功必须同时满足 Workflow 与 Operation `SUCCEEDED`。
+
+`CONDITION` 是 Step kind，不属于 Agent Tool 或 Capability。只支持账户余额、本月支出、月度订阅成本三个预注册 `*_AT_LEAST` predicate；最多两个条件，每个能力步骤最多一个 TRUE guard。Validator 强制 source capability 匹配、source 属于依赖、guard 指向 CONDITION 且属于依赖，无条件嵌套。
+
+`PlanConditionEvaluator` 只读取已完成 source 的 bounded output，使用现有 typed Snapshot 及 Decimal 比较。不同币种不换汇；省略币种仅允许唯一币种。Decision 保存实际值、阈值、币种、TRUE/FALSE、时间和 canonical JSON SHA-256。输入缺失/歧义或币种不合法会 FAILED，不伪装成 FALSE。
+
+FALSE 在同一事务中将直接 guarded Step 标记 `SKIPPED / CONDITION_NOT_MET`，不创建 Workflow、Approval、Reauthentication、Operation 或 Provider 写入。其他步骤正常完成时 Plan / Task 仍 COMPLETED。TRUE 只允许进入原 Workflow，不构成 Approval、不预留余额、不保证最终资金可用；Workflow / Provider 在确认与 commit 时仍重新验证。
+
+回退包含 CONDITION 的只读范围会清除 Decision，重新读取后计算新 hash。即使 FALSE 从未创建 Workflow，回退范围含写 Capability 仍拒绝。接管后 resume 读取已持久 Decision 和当前业务状态，不重新规划或重算已完成条件。
 
 PlanCard 显示依赖和中文状态，关联业务继续使用原 Workflow Card。等待用户时 Step / Plan / Task 为 `WAITING_USER`；Operation 尚未收敛时为 `WAITING_EXTERNAL`。Workflow 状态事件在同一 transaction 中幂等重新调度原 Task。人工接管暂停编排并 fence 当前执行；业务卡片仍可操作，必须明确 resume 才能继续自动执行。
 
@@ -111,6 +125,8 @@ User Message
       └─ COMPLEX_PLAN → ConstrainedPlanner → PlanValidator
           → Persistent Plan DAG → TaskExecutionWorker / PlanExecutionService
               ├─ existing read-only Agent → bounded structured result
+              │   → Deterministic CONDITION → TRUE → existing Workflow
+              │                            → FALSE → guarded Step SKIPPED
               └─ existing Workflow → Policy → Approval → Reauthentication
                   → SecurityGuard → Operation → Provider
 ```
@@ -456,13 +472,16 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
+- [Implementation Report v0.8.2](docs/implementation-report-v0.8.2.md)
+- [Repository Tree v0.8.2](docs/repository-tree-v0.8.2.md)
+- [Test Results v0.8.2](docs/test-results-v0.8.2.md)
 - [Implementation Report v0.8.1](docs/implementation-report-v0.8.1.md)
 - [Repository Tree v0.8.1](docs/repository-tree-v0.8.1.md)
 - [Test Results v0.8.1](docs/test-results-v0.8.1.md)
 
 ## 当前限制
 
-Plan 最多 8 步、一个写 Workflow，按 ordinal 顺序执行 ready steps；不支持条件节点、循环、数据流表达式、多笔金融副作用、动态重规划或自由 Agent 协商。复杂请求中的月度 Report Artifact 暂未作为 Plan Capability 注册，会整体拒绝；独立分析并生成报告仍走完整 Financial vertical slice。没有 Plan cancel API，业务取消沿用 Workflow。
+Plan 最多 8 步、2 个 CONDITION、一个写 Workflow，按 ordinal 顺序执行 ready steps；条件只有预注册 Predicate，不支持 ELSE、nested conditions、任意表达式、AND/OR、loops、多写 Workflow、动态重规划或自由 Agent 协商。复杂请求中的月度 Report Artifact 暂未作为 Plan Capability 注册，会整体拒绝；独立分析并生成报告仍走完整 Financial vertical slice。没有 Plan cancel API，业务取消沿用 Workflow。
 
 
 当前写入仅限比赛 synthetic banking environment 中的持久化 `MockTransferProvider` 和正式 `MockSubscriptionProvider`；未连接真实商户订阅 API。RED 强验证使用 `MockReauthenticationProvider`。

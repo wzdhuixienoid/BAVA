@@ -406,7 +406,7 @@ class InProcessTaskRunner:
                 {
                     "category": "PLAN",
                     "code": exc.code,
-                    "message": "当前计划无法安全执行，或包含不支持的能力",
+                    "message": exc.message,
                     "retryable": False,
                 },
                 policy=policy,

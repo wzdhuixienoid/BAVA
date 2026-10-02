@@ -4,14 +4,25 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from banking_api.planning.models import PlanCapability, PlanStatus, PlanStepStatus
+from banking_api.planning.models import (
+    ConditionDecision,
+    ConditionSpec,
+    PlanCapability,
+    PlanStatus,
+    PlanStepKind,
+    PlanStepStatus,
+)
 
 
 class PlanStep(BaseModel):
     step_id: UUID
     step_key: str
     display_title: str
-    capability: PlanCapability
+    step_kind: PlanStepKind
+    capability: PlanCapability | None
+    condition_spec: ConditionSpec | None
+    condition_decision: ConditionDecision | None
+    guard_condition_step_id: UUID | None
     status: PlanStepStatus
     depends_on: list[UUID]
     linked_workflow_id: UUID | None

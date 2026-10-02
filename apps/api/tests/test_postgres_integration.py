@@ -280,7 +280,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0016"
+        assert revision == "0017"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"

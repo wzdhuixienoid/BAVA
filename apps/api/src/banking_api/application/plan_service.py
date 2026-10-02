@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from uuid import UUID
 
 from sqlalchemy import select
@@ -9,7 +10,7 @@ from banking_api.domain.enums import TaskStatus
 from banking_api.domain.plan import Plan, PlanStep
 from banking_api.persistence.models import PlanModel, PlanStepModel, TaskModel, utc_now
 from banking_api.persistence.repositories.plans import PlanRepository
-from banking_api.planning.models import PlanCapability, PlanStatus, PlanStepStatus
+from banking_api.planning.models import ConditionSpec, PlanCapability, PlanStatus, PlanStepStatus
 from banking_api.planning.registry import PlanCapabilityRegistry
 from banking_api.runtime.event_publisher import EventPublisher
 
@@ -39,7 +40,8 @@ def rollback_safe(
     affected = descendants(target, dependencies)
     registry = PlanCapabilityRegistry()
     return all(
-        registry.get(PlanCapability(step.capability)).read_only and step.linked_workflow_id is None
+        (step.step_kind == "CONDITION" or registry.get(PlanCapability(step.capability)).read_only)
+        and step.linked_workflow_id is None
         for step in steps
         if step.step_id in affected
     )
@@ -68,6 +70,8 @@ async def step_event(session: AsyncSession, plan: PlanModel, step: PlanStepModel
             "plan_id": str(plan.plan_id),
             "step_id": str(step.step_id),
             "capability": step.capability,
+            "step_kind": step.step_kind,
+            "condition_decision": step.condition_decision_json,
             "to_status": step.status,
             "reason_code": step.error_code,
             "linked_workflow_id": str(step.linked_workflow_id) if step.linked_workflow_id else None,
@@ -116,7 +120,15 @@ class PlanService:
                     step_id=step.step_id,
                     step_key=step.step_key,
                     display_title=step.display_title,
+                    step_kind=step.step_kind,
                     capability=step.capability,
+                    condition_spec=(
+                        ConditionSpec.model_validate_json(json.dumps(step.condition_spec_json))
+                        if step.condition_spec_json
+                        else None
+                    ),
+                    condition_decision=step.condition_decision_json,
+                    guard_condition_step_id=step.guard_condition_step_id,
                     status=step.status,
                     depends_on=dependencies.get(step.step_id, []),
                     linked_workflow_id=step.linked_workflow_id,
@@ -186,6 +198,7 @@ class PlanService:
                 if step.step_id in affected:
                     step.status = PlanStepStatus.PENDING
                     step.output_json = None
+                    step.condition_decision_json = None
                     step.error_code = None
                     step.error_message = None
                     step.started_at = None
