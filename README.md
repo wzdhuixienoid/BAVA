@@ -2,6 +2,12 @@
 
 当前版本：`v0.8.2`
 
+学习文档（按当前源码与项目 Codex 对话整理）：
+
+- [每一步的功能实现与网页测试教程](docs/learning-guide-v0.8.2.md)
+- [当前系统架构图](docs/system-architecture-v0.8.2.md)
+- [核心算法说明](docs/core-algorithms-v0.8.2.md)
+
 面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
