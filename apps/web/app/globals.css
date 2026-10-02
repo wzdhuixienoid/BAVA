@@ -14,3 +14,32 @@ body { margin: 0; min-height: 100vh; }
 button, input { font: inherit; }
 button:disabled { cursor: not-allowed; opacity: 0.55; }
 
+.message-markdown { overflow-wrap: anywhere; line-height: 1.7; }
+.message-markdown > :first-child { margin-top: 0; }
+.message-markdown > :last-child { margin-bottom: 0; }
+.message-markdown p, .message-markdown ul, .message-markdown ol,
+.message-markdown blockquote, .message-markdown pre,
+.message-markdown table { margin: 0.75em 0; }
+.message-markdown h1, .message-markdown h2, .message-markdown h3,
+.message-markdown h4, .message-markdown h5, .message-markdown h6 {
+  margin: 1em 0 0.5em; font-weight: 700; line-height: 1.4;
+}
+.message-markdown h1 { font-size: 1.4em; }
+.message-markdown h2 { font-size: 1.25em; }
+.message-markdown h3 { font-size: 1.1em; }
+.message-markdown ul { list-style: disc; padding-left: 1.5em; }
+.message-markdown ol { list-style: decimal; padding-left: 1.5em; }
+.message-markdown li + li { margin-top: 0.25em; }
+.message-markdown li > p { margin: 0.25em 0; }
+.message-markdown .contains-task-list { list-style: none; padding-left: 0; }
+.message-markdown input[type="checkbox"] { margin-right: 0.5em; }
+.message-markdown a { color: #0e7490; text-decoration: underline; text-underline-offset: 2px; }
+.message-markdown blockquote { border-left: 3px solid #94a3b8; padding-left: 1em; color: #475569; }
+.message-markdown code { border-radius: 4px; background: #e2e8f0; padding: 0.15em 0.35em; font-size: 0.85em; }
+.message-markdown pre { overflow-x: auto; border-radius: 8px; background: #0f172a; color: #e2e8f0; padding: 1em; }
+.message-markdown pre code { background: transparent; padding: 0; font-size: 0.85em; }
+.message-markdown table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.message-markdown th, .message-markdown td { border: 1px solid #cbd5e1; padding: 0.5em 0.75em; text-align: left; }
+.message-markdown th { background: #e2e8f0; font-weight: 600; }
+.message-markdown hr { margin: 1em 0; border-color: #cbd5e1; }
+.message-markdown img { max-width: 100%; height: auto; border-radius: 8px; }

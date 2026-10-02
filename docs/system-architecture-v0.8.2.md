@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TB
-    U[用户] --> WEB[Next.js 工作台<br/>聊天 / Task / Plan / 业务卡片<br/>Reports / Subscriptions]
+    U[用户] --> WEB[Next.js 工作台<br/>统一助理回复：过程 / 确认 / 结果<br/>完成事件索引 / Reports / Subscriptions]
     IDP[外部 OIDC IdP] --> AUTH
     WEB -->|HTTP / Bearer| API[FastAPI Domain API]
     API --> AUTH[认证边界<br/>JWT / 身份映射 / Principal]
@@ -64,6 +64,8 @@ flowchart TB
 ```
 
 Application 表、checkpoint 表与 Mock Provider ledger 可以在同一 PostgreSQL 部署，图中分开用于说明职责。Agent 结果由 Application 构造快照；报告 Skill 仅在独立报告路径执行，Plan 尚不支持 Report Artifact Capability。
+
+前端按来源消息与 Task 关联将执行过程、Plan、Workflow 和最终结果放入同一条助理回复。SSE 通知触发资源与执行记录刷新，右侧完成事件索引通过结果 ID 定位正文，具体交互见[网页工作台改进与验收](web-workbench-ui-improvements.md)。
 
 ## 2. 写业务的执行与授权边界
 

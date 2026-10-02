@@ -78,6 +78,8 @@ export const api = {
   listTasks: (conversationId: string) =>
     request<Task[]>(`/api/v1/tasks?conversation_id=${encodeURIComponent(conversationId)}`),
   getTask: (taskId: string) => request<Task>(`/api/v1/tasks/${taskId}`),
+  listTaskEvents: (taskId: string) =>
+    request<components["schemas"]["Event"][]>(`/api/v1/tasks/${encodeURIComponent(taskId)}/events`),
   listWorkflows: (conversationId: string) =>
     request<Workflow[]>(
       `/api/v1/workflows?conversation_id=${encodeURIComponent(conversationId)}`,

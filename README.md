@@ -7,6 +7,7 @@
 - [每一步的功能实现与网页测试教程](docs/learning-guide-v0.8.2.md)
 - [当前系统架构图](docs/system-architecture-v0.8.2.md)
 - [核心算法说明](docs/core-algorithms-v0.8.2.md)
+- [网页工作台改进与验收](docs/web-workbench-ui-improvements.md)
 
 面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。只有 `Operation SUCCEEDED` 才能表示转账或订阅取消已被对应 Mock Provider 最终确认。
 

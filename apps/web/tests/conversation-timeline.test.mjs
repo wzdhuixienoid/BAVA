@@ -1,0 +1,76 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildConversationTurns, isConfirmedWorkflow, responseState } from "../features/conversation/timeline.ts";
+
+const message = (message_id, role) => ({ message_id, role, content: message_id });
+const task = (task_id, source, answer, status = "COMPLETED") => ({
+  task_id, status, input: source ? { message_id: source } : {},
+  output: answer ? { assistant_message_id: answer } : null,
+});
+const build = (resources) => buildConversationTurns({ messages: [], tasks: [], plans: [], workflows: [], reports: [], ...resources });
+
+test("processing and completed answer retain the same assistant turn", () => {
+  const pending = build({ messages: [message("u1", "USER")], tasks: [task("t1", "u1", null, "RUNNING")] });
+  const completed = build({ messages: [message("u1", "USER"), message("a1", "ASSISTANT")], tasks: [task("t1", "u1", "a1")] });
+  assert.equal(pending.length, 1);
+  assert.equal(completed.length, 1);
+  assert.equal(pending[0].id, completed[0].id);
+  assert.equal(completed[0].replies[0].message_id, "a1");
+});
+
+test("concurrent replies are associated by source IDs even when they finish out of order", () => {
+  const turns = build({
+    messages: [message("u1", "USER"), message("u2", "USER"), message("a2", "ASSISTANT"), message("a1", "ASSISTANT")],
+    tasks: [task("t1", "u1", "a1"), task("t2", "u2", "a2")],
+  });
+  assert.deepEqual(turns.map((turn) => [turn.user.message_id, turn.replies.map((reply) => reply.message_id)]), [["u1", ["a1"]], ["u2", ["a2"]]]);
+  assert.equal(turns.flatMap((turn) => turn.replies).length, 2);
+});
+
+test("legacy messages and tasks can share a reply without an answer ID", () => {
+  const [turn] = build({ messages: [message("u1", "USER"), message("a1", "ASSISTANT")], tasks: [task("t1", "u1")] });
+  assert.equal(turn.tasks[0].task_id, "t1");
+  assert.equal(turn.replies[0].message_id, "a1");
+});
+
+test("answer linkage recovers a legacy task whose input lacks the message ID", () => {
+  const turns = build({ messages: [message("u1", "USER"), message("a1", "ASSISTANT")], tasks: [task("t1", null, "a1")] });
+  assert.equal(turns.length, 1);
+  assert.equal(turns[0].tasks[0].task_id, "t1");
+});
+
+test("all persisted results stay in the conversation even when task output is cleared", () => {
+  const [turn] = build({
+    messages: [message("u1", "USER")], tasks: [task("t1", "u1", null, "RUNNING")],
+    reports: [{ report_id: "r1", source_task_id: "t1" }, { report_id: "r2", source_task_id: "t1" }],
+    plans: [{ plan_id: "p1", source_task_id: "t1", status: "RUNNING" }],
+    workflows: [{ workflow_id: "w1", source_task_id: "t1", status: "READY_FOR_REVIEW" }],
+  });
+  assert.deepEqual(turn.reports.map((report) => report.report_id), ["r1", "r2"]);
+  assert.equal(turn.plans.length, 1);
+  assert.equal(turn.workflows.length, 1);
+});
+
+test("orphaned artifacts have a central response so every index entry can be located", () => {
+  const [turn] = build({
+    reports: [{ report_id: "r1", source_task_id: "old-task" }],
+    workflows: [{ workflow_id: "w1", source_task_id: "old-task" }],
+  });
+  assert.equal(turn.tasks.length, 0);
+  assert.equal(turn.reports.length, 1);
+  assert.equal(turn.workflows.length, 1);
+});
+
+test("a completed draft task does not complete a pending banking workflow", () => {
+  const [turn] = build({ tasks: [task("t1", null)], workflows: [{ source_task_id: "t1", status: "READY_FOR_REVIEW" }] });
+  assert.equal(responseState(turn).label, "等待你的操作");
+});
+
+test("a success receipt requires both workflow and operation confirmation", () => {
+  assert.equal(isConfirmedWorkflow({ status: "SUCCEEDED", operation_summary: { status: "UNKNOWN" } }), false);
+  assert.equal(isConfirmedWorkflow({ status: "COMMITTING", operation_summary: { status: "SUCCEEDED" } }), false);
+  assert.equal(isConfirmedWorkflow({ status: "SUCCEEDED", operation_summary: { status: "SUCCEEDED" } }), true);
+  const [turn] = build({ tasks: [task("t1", null)], workflows: [{ source_task_id: "t1", status: "SUCCEEDED", operation_summary: { status: "UNKNOWN" } }] });
+  assert.equal(responseState(turn).active, true);
+  assert.equal(responseState(turn).label, "正在等待银行确认结果");
+});

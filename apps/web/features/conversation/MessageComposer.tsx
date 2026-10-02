@@ -5,22 +5,28 @@ import { FormEvent, useState } from "react";
 export function MessageComposer({ onSend }: { onSend: (content: string) => Promise<void> }) {
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const value = content.trim();
     if (!value || sending) return;
     setSending(true);
+    setError(null);
     try {
       await onSend(value);
       setContent("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "消息发送失败，请重试。");
     } finally {
       setSending(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="flex gap-3 border-t border-slate-200 p-4">
+    <form onSubmit={submit} className="shrink-0 border-t border-slate-200 bg-white p-4">
+      {error && <p role="alert" className="mb-2 text-xs text-red-700">{error}</p>}
+      <div className="flex gap-3">
       <input
         aria-label="消息"
         value={content}
@@ -34,6 +40,7 @@ export function MessageComposer({ onSend }: { onSend: (content: string) => Promi
       >
         {sending ? "发送中…" : "发送"}
       </button>
+      </div>
     </form>
   );
 }

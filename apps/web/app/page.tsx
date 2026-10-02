@@ -32,11 +32,11 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 bg-white shadow-sm md:grid-cols-[280px_1fr]">
-      <aside className="border-b border-slate-200 bg-slate-950 p-5 text-white md:border-b-0 md:border-r">
+    <main className="mx-auto grid h-dvh min-h-0 max-w-[1600px] grid-cols-1 grid-rows-[160px_minmax(0,1fr)] overflow-hidden bg-white shadow-sm md:grid-cols-[260px_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
+      <aside aria-label="对话导航" className="min-h-0 overflow-y-auto overscroll-contain border-b border-slate-200 bg-slate-950 p-5 text-white md:border-b-0 md:border-r">
         <div className="mb-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            只读智能银行服务
+            智能银行服务
           </p>
           <h1 className="mt-2 text-xl font-semibold">银行助理工作台</h1>
         </div>
@@ -87,11 +87,11 @@ export default function HomePage() {
           ))}
         </nav>
       </aside>
-      <section className="min-w-0">
+      <section className="min-h-0 min-w-0 overflow-hidden">
         {selectedId ? (
-          <ConversationPanel conversationId={selectedId} />
+          <ConversationPanel key={selectedId} conversationId={selectedId} />
         ) : (
-          <div className="grid min-h-screen place-items-center p-8 text-center text-slate-500">
+          <div className="grid h-full place-items-center p-8 text-center text-slate-500">
             新建一个对话，查询账户、分析消费或管理订阅。
           </div>
         )}

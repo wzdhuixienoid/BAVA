@@ -22,8 +22,8 @@ const labels: Record<string, string> = {
   FAILED: "执行失败", CANCELLED: "已取消", SKIPPED: "前置步骤未完成，已跳过",
 };
 
-export function PlanCard({ plan, workflows, onRefresh }: {
-  plan: Plan; workflows: Workflow[]; onRefresh: () => Promise<void>;
+export function PlanCard({ plan, workflows, onRefresh, processOnly = false }: {
+  plan: Plan; workflows: Workflow[]; onRefresh: () => Promise<void>; processOnly?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export function PlanCard({ plan, workflows, onRefresh }: {
   const positions = new Map(plan.steps.map((step, index) => [step.step_id, index + 1]));
   const canTakeOver = ["RUNNING", "WAITING_USER", "WAITING_EXTERNAL"].includes(plan.status);
   return (
-    <section className="rounded-lg border border-indigo-200 bg-white p-3 text-sm">
+    <section className={processOnly ? "border-l-2 border-slate-200 pl-4 text-xs" : "rounded-lg border border-indigo-200 bg-white p-3 text-sm"}>
       <div className="flex items-start justify-between gap-3">
         <p className="font-semibold text-indigo-950">{plan.goal_summary}</p>
         <span className="shrink-0 rounded bg-indigo-50 px-2 py-1 text-xs">{labels[plan.status]}</span>
@@ -49,7 +49,7 @@ export function PlanCard({ plan, workflows, onRefresh }: {
           const spec = step.condition_spec;
           const snapshot = step.result_summary?.subscription_analysis_snapshot as SubscriptionSnapshot | undefined;
           return (
-            <li key={step.step_id} className="rounded border border-slate-200 p-2">
+            <li key={step.step_id} className={processOnly ? "py-1" : "rounded border border-slate-200 p-2"}>
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium">{index + 1}. {step.display_title}</p>
                 <span className="text-xs text-slate-600">{step.status === "COMPLETED" ? "✓ " : ""}{decision ? (decision.outcome === "TRUE" ? "条件满足" : "条件未满足") : step.error_code === "CONDITION_NOT_MET" ? "条件未满足，已跳过" : labels[step.status]}</span>
@@ -60,9 +60,9 @@ export function PlanCard({ plan, workflows, onRefresh }: {
               {step.guard_condition_step_id && <p className="mt-1 text-xs text-slate-500">仅在步骤 {positions.get(step.guard_condition_step_id)} 条件满足时执行</p>}
               {step.error_code === "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-slate-600">条件未满足，后续步骤已跳过</p>}
               {step.error_code && step.error_code !== "CONDITION_NOT_MET" && <p className="mt-2 text-xs text-red-700">{step.error_code}</p>}
-              {snapshot && <SubscriptionSummaryCard snapshot={snapshot} />}
-              {workflow?.workflow_type === "TRANSFER" && <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />}
-              {workflow?.workflow_type === "SUBSCRIPTION_CANCEL" && <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
+              {!processOnly && snapshot && <SubscriptionSummaryCard snapshot={snapshot} />}
+              {!processOnly && workflow?.workflow_type === "TRANSFER" && <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />}
+              {!processOnly && workflow?.workflow_type === "SUBSCRIPTION_CANCEL" && <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
               {step.rollback_allowed && step.status !== "PENDING" && <button disabled={busy} className="mt-2 text-xs font-medium text-indigo-700 disabled:opacity-40" onClick={() => void act(() => api.rollbackPlan(plan.plan_id, step.step_id))}>回退并重新执行</button>}
             </li>
           );
