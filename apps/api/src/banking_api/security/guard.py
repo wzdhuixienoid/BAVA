@@ -72,9 +72,7 @@ class SecurityGuardService:
         self.publisher = EventPublisher(session)
         settings = get_settings()
         self.reauth_limit = settings.security_reauth_failure_limit
-        self.reauth_window = timedelta(
-            seconds=settings.security_reauth_failure_window_seconds
-        )
+        self.reauth_window = timedelta(seconds=settings.security_reauth_failure_window_seconds)
         self.bypass_limit = settings.security_bypass_limit
         self.bypass_window = timedelta(seconds=settings.security_bypass_window_seconds)
         self.lock_duration = timedelta(seconds=settings.security_write_lock_seconds)
@@ -89,14 +87,50 @@ class SecurityGuardService:
             await self.session.flush()
         return self._status(state)
 
-    async def require_write_allowed(self, user_id: str) -> None:
+    async def require_write_allowed(
+        self,
+        user_id: str,
+        *,
+        workflow_id: UUID | None = None,
+        conversation_id: UUID | None = None,
+        task_id: UUID | None = None,
+    ) -> None:
         await self._serialize(user_id)
         state = await self._load(user_id, for_update=True)
-        if state is None:
-            return
-        self._clear_expired(state, _as_utc(self.clock()))
-        status = self._status(state)
+        if state is not None:
+            self._clear_expired(state, _as_utc(self.clock()))
+        status = self._status(state) if state else SecurityStatus(status=SecurityGuardStatus.NORMAL)
+        if conversation_id is not None and workflow_id is not None:
+            await self.publisher.persist(
+                event_type="security.write_check",
+                conversation_id=conversation_id,
+                task_id=task_id,
+                data={
+                    "workflow_id": str(workflow_id),
+                    "status": status.status.value,
+                    "reason_code": status.reason_code.value if status.reason_code else None,
+                    "locked_until": status.locked_until.isoformat()
+                    if status.locked_until
+                    else None,
+                    "attempt_count": (
+                        state.bypass_attempt_count
+                        if state and status.reason_code is SecurityLockReason.CONTROL_BYPASS
+                        else state.reauth_failure_count
+                        if state
+                        else 0
+                    ),
+                    "window_seconds": int(
+                        (
+                            self.bypass_window
+                            if status.reason_code is SecurityLockReason.CONTROL_BYPASS
+                            else self.reauth_window
+                        ).total_seconds()
+                    ),
+                },
+            )
         if status.status is SecurityGuardStatus.WRITE_LOCKED:
+            if conversation_id is not None:
+                await self.session.commit()  # Persist the denial, never a business Operation.
             raise SecurityWriteLockedError(status)
 
     async def record_reauthentication_result(
@@ -220,9 +254,7 @@ class SecurityGuardService:
     async def _serialize(self, user_id: str) -> None:
         await acquire_security_user_lock(self.session, user_id)
 
-    async def _load(
-        self, user_id: str, *, for_update: bool
-    ) -> SecurityGuardStateModel | None:
+    async def _load(self, user_id: str, *, for_update: bool) -> SecurityGuardStateModel | None:
         statement = select(SecurityGuardStateModel).where(
             SecurityGuardStateModel.user_id == user_id
         )
@@ -333,4 +365,6 @@ class SecurityGuardService:
                 _as_utc(state.locked_until).isoformat() if state.locked_until else None
             ),
             "reason_code": state.lock_reason,
+            "status": "WRITE_LOCKED" if state.locked_until else "NORMAL",
+            "locked_at": state.updated_at.isoformat() if state.locked_until else None,
         }

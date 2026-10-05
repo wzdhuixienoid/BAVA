@@ -1,8 +1,8 @@
 # AI Banking Agent
 
-当前版本：`v0.9.1`
+当前版本：`v0.9.2`
 
-版本主题：比赛产品体验与可视化。保留 Phase A 的 CNY-only 安全基线与账户 authoritative facts，提供金融总览、风险与业务流程、真实 Plan DAG 和条件决策展示，以及可复现的 development/test Demo reset。
+版本主题：审计链、安全自评与 Demo Hardening。保留已有业务与可视化，新增 owner-scoped Audit Evidence Chain、严格币种 canonicalization、只读 Demo preflight 和报告稳定性验证脚本。完整自动回归、真实产品 smoke、10 次报告稳定性与 S1–S12 浏览器安全验收已通过；详细证据和限制见当前交付文档。
 
 面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度报告、安全转账、确定性异常交易提示、安全写熔断，以及订阅识别与取消。写业务成功展示必须同时满足 `Workflow SUCCEEDED` 与 `Operation SUCCEEDED`，由对应 Mock Provider 最终确认。
 
@@ -23,6 +23,8 @@
 | 查看账户、查询余额 | `agent:minimal-banking` | `account.list`、`account.get_balance` → typed `AccountListResult` / `AccountBalanceResult` |
 | 金融总览 Dashboard | 只读 Domain API projection | 有效账户余额、月收入/支出/环比、分类分布、主要交易、订阅成本与异常卡片 |
 | 风险、业务流程与条件展示 | 后端 typed presentation → Web UI | RiskDecision、Workflow 时间线、真实 DAG / Guard、Condition TRUE/FALSE、集中中文状态 |
+| 审计证据链 | owner-scoped 只读 Domain API | 持久 Event、风险历史、授权 hash、Guard、Operation / Provider、Condition 零写入证据；不暴露隐藏推理或凭证 |
+| Demo readiness / preflight | dev/test-only 只读 projection + CLI | version/head、初始余额/exposure、订阅、Guard、Mock modes 与无未收敛 Operation |
 | 月度支出、分类、环比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
 | 异常交易分析 | `agent:financial-analysis` | `transaction.detect_anomalies` → bounded deterministic Snapshot |
 | 生成月度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
@@ -420,7 +422,7 @@ PostgreSQL integration 必须使用库名包含 `test` 的隔离数据库：
 
 ```bash
 cd apps/api
-TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_test \
+TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_release_v092_test \
   uv run pytest -m postgres
 ```
 
@@ -434,6 +436,47 @@ LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/ba
 ```
 
 Smoke 验证 Router、Financial Agent、确定性工具、Skill、Report persistence、GET API、Golden core 和单一用户确认消息；不会输出 API Key 或 Chain-of-Thought。
+
+## Audit Evidence 与安全模型
+
+对话 Task 的“查看审计链”读取 `GET /api/v1/tasks/{task_id}/audit`，按数据库 Event.sequence 展示结构化决定、用户动作与资源关联，技术详情可查看 payload hash、exposure、Condition source hash 和 Provider reference。历史 Event 与当前资源快照分别展示，UNKNOWN 和风险升级不会被最终成功覆盖；旧版本未记录的细节不补造，超出 1000 Event 明确提示不完整。
+
+Audit 不复制完整 Prompt、不展示 LLM 隐藏推理/Chain-of-Thought、JWT、API key 或 OTP；Reauthentication 明确标注 Mock。应用 Event append-only 不等于数据库防篡改，dev/test reset 会清理该用户证据。详细安全自评和 Threat Model 见当前 Implementation Report。
+
+Prompt Injection 即使影响自然语言，也不能扩大 server Principal、Tool allowlist、Risk Policy、Approval/reauth、Workflow、Operation 或 Provider 的 authority。关键金融事实由 typed backend result 提供，写成功仍要求 Workflow + Operation 同为 SUCCEEDED。没有逐句 semantic entailment verifier。
+
+转账意图在共用后端提取边界严格规范 CNY/RMB/人民币/元/¥/￥；必须有原始消息表达或既有明确缺省规则，未知/矛盾表达不盲目转 CNY。非 CNY 仍由现有校验与 CNY-only Risk Policy fail closed。
+
+## 比赛前唯一推荐 prepare 流程
+
+1. 停止连接 Demo 库的 API/Web、Task、recovery、Outbox workers。
+2. 执行下节 owner-scoped reset，保留 migration/checkpoint schema。
+3. 启动 Docker product。dev/test 可显式使用 `DEMO_REFERENCE_TIME=2026-09-28T12:00:00Z docker compose up --build -d` 固定 synthetic 异常/续费窗口；生产禁止覆盖，默认真实时间。Risk business date、Approval/reauth TTL、Guard、Task lease、recovery 始终真实时间。
+4. 仓库根运行 `uv run --project apps/api python scripts/demo_preflight.py`；全部 PASS 后继续。脚本只读，API/Web 默认为 localhost:8000/3000，不打印密钥/OTP。
+5. 用另一隔离测试库运行 required smoke；停止该测试库的 worker 后执行 report product + stability，之后才启动该测试库 API 做 plan/audit/security HTTP smoke，避免多个 runner 抢同一 Task。不要将 smoke 指向真实业务环境。
+6. 开始 presentation；结束后再次 reset。
+
+报告稳定性至少 10 次（真实 LLM，有费用/延迟），不放宽 validator：
+
+```bash
+APP_ENVIRONMENT=test AUTH_MODE=development \
+DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_smoke_v092_test \
+LANGGRAPH_CHECKPOINT_DATABASE_URL=postgresql://banking:banking@localhost:5432/banking_smoke_v092_test \
+  uv run --project apps/api python scripts/smoke_report_stability.py --runs 10
+```
+
+上述隔离库须先 migration；真实 LLM 会接收必要 synthetic 查询/汇总。确保已授权当前配置的 LLM 目的地。脚本输出 successes / validation failures / golden mismatches / other failures，任何失败返回非零。
+
+已有 Plan HTTP smoke 配置保持有效。针对同一隔离 API（开发/测试、Mock Provider）新增：
+
+```bash
+AUDIT_SMOKE_BASE_URL=http://127.0.0.1:8001 \
+  uv run --project apps/api python scripts/smoke_audit_product.py
+SECURITY_SMOKE_BASE_URL=http://127.0.0.1:8001 \
+  uv run --project apps/api python scripts/smoke_security_product.py
+```
+
+Audit smoke 显式确认并提交一次 synthetic YELLOW 转账，核对完整链和 secret exclusion；security smoke 发送绕过确认的请求并直接尝试 commit，必须拒绝且零 Operation/Provider write。本轮四项产品 smoke 全部通过；固定报告场景实际重复 10 次，成功 10 次、narrative validation failure 与 golden mismatch 均为 0。这是有限测试窗口的证据，不保证任意输入或未来模型永远稳定。
 
 ## 比赛 Demo reset
 
@@ -462,6 +505,8 @@ GET  /api/v1/dashboard?month=2026-08
 POST /api/v1/conversations/{conversation_id}/messages
 GET  /api/v1/tasks/{task_id}
 GET  /api/v1/tasks/{task_id}/events
+GET  /api/v1/tasks/{task_id}/audit
+GET  /api/v1/demo/readiness   # dev/test only; read-only; production 404
 GET  /api/v1/reports
 GET  /api/v1/reports/{report_id}
 GET  /api/v1/subscriptions
@@ -519,9 +564,9 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
-- [Implementation Report v0.9.1](docs/implementation-report-v0.9.1.md)
-- [Repository Tree v0.9.1](docs/repository-tree-v0.9.1.md)
-- [Test Results v0.9.1](docs/test-results-v0.9.1.md)
+- [Implementation Report v0.9.2](docs/implementation-report-v0.9.2.md)
+- [Repository Tree v0.9.2](docs/repository-tree-v0.9.2.md)
+- [Test Results v0.9.2](docs/test-results-v0.9.2.md)
 
 ## 当前限制
 

@@ -48,6 +48,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getTaskAudit: (taskId: string) => request<components["schemas"]["AuditTrace"]>(
+    `/api/v1/tasks/${encodeURIComponent(taskId)}/audit`,
+  ),
   getDashboard: (month: string) => request<components["schemas"]["DashboardSnapshot"]>(
     `/api/v1/dashboard?month=${encodeURIComponent(month)}`,
   ),

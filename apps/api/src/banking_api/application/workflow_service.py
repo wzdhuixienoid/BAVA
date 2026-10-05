@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.application.transfer_risk_facts import TransferRiskFactsService
 from banking_api.application.workflow_projection import workflow_presentation
+from banking_api.audit.safety import workflow_evidence
 from banking_api.config.settings import get_settings
 from banking_api.domain.approval import ApprovalSummary, ApprovalType
 from banking_api.domain.enums import (
@@ -19,7 +20,11 @@ from banking_api.domain.enums import (
 from banking_api.domain.operation import OperationSummary
 from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.domain.reauthentication import ReauthenticationSummary
-from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
+from banking_api.domain.risk import (
+    SUBSCRIPTION_CANCEL_RISK_LEVEL,
+    BusinessRiskLevel,
+    TransferRiskDecision,
+)
 from banking_api.domain.workflow import Workflow, WorkflowType
 from banking_api.persistence.models import ApprovalModel, ReauthenticationModel, WorkflowModel
 from banking_api.persistence.repositories.approvals import ApprovalRepository
@@ -468,7 +473,7 @@ class WorkflowService:
     async def start_reauthentication(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> Workflow:
-        await self.security_guard.require_write_allowed(user_id)
+        await self._write_gate(workflow_id, user_id)
         model, state = await self._load_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.REAUTH_REQUIRED:
             raise WorkflowActionError("WORKFLOW_NOT_REAUTH_REQUIRED")
@@ -533,7 +538,7 @@ class WorkflowService:
         verification_code: str,
         expected_version: int,
     ) -> Workflow:
-        await self.security_guard.require_write_allowed(user_id)
+        await self._write_gate(workflow_id, user_id)
         model, state = await self._load_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.REAUTH_REQUIRED:
             raise WorkflowActionError("WORKFLOW_NOT_REAUTH_REQUIRED")
@@ -759,6 +764,13 @@ class WorkflowService:
             payload_hash=payload_hash,
             expires_at=now + self.approval_ttl,
             approval_type=ApprovalType.SUBSCRIPTION_CANCEL,
+        )
+        await self._persist_authorization_event(
+            model,
+            "approval.created",
+            approval_id=approval.approval_id,
+            status=approval.status.value,
+            expires_at=approval.expires_at,
         )
         approval.status = ApprovalStatus.APPROVED
         approval.approved_at = now
@@ -996,7 +1008,7 @@ class WorkflowService:
             risk_level=(
                 transfer_state.risk_decision.level
                 if transfer_state is not None and transfer_state.risk_decision is not None
-                else BusinessRiskLevel.YELLOW
+                else SUBSCRIPTION_CANCEL_RISK_LEVEL
                 if model.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL
                 else None
             ),
@@ -1104,11 +1116,36 @@ class WorkflowService:
             data["reauth_id"] = str(reauth_id)
         if expires_at is not None:
             data["expires_at"] = expires_at.isoformat()
+        if approval_id is not None:
+            approval = await self.approvals.get_for_workflow_user(
+                approval_id, model.workflow_id, model.user_id
+            )
+            if approval is not None:
+                data["payload_hash"] = approval.payload_hash
+        if reauth_id is not None:
+            reauth = await self.reauthentications.get_for_workflow_user(
+                reauth_id, model.workflow_id, model.user_id
+            )
+            if reauth is not None:
+                data["approval_id"] = str(reauth.approval_id)
+                data["method"] = "Mock Reauthentication"
+                data["attempt_count"] = reauth.attempt_count
         return await self.publisher.persist(
             event_type=event_type,
             conversation_id=model.conversation_id,
             task_id=model.source_task_id,
             data=data,
+        )
+
+    async def _write_gate(self, workflow_id: UUID, user_id: str) -> None:
+        model = await self.workflows.get_for_user(workflow_id, user_id)
+        if model is None:
+            raise WorkflowNotFoundError
+        await self.security_guard.require_write_allowed(
+            user_id,
+            workflow_id=model.workflow_id,
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
         )
 
     @staticmethod
@@ -1139,7 +1176,17 @@ class WorkflowService:
             "workflow_type": model.workflow_type.value,
             "status": model.status.value,
             "version": model.version,
+            "evidence": workflow_evidence(model.state_json),
         }
+        if (
+            model.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL
+            and model.state_json.get("review_payload") is not None
+        ):
+            data.update(
+                risk_level=SUBSCRIPTION_CANCEL_RISK_LEVEL.value,
+                required_approval=True,
+                required_reauthentication=False,
+            )
         required = model.state_json.get("required_input")
         if isinstance(required, dict) and required.get("type"):
             data["required_input_type"] = required["type"]

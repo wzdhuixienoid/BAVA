@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.application.transfer_risk_facts import TransferRiskFactsService
+from banking_api.audit.safety import workflow_evidence
 from banking_api.config.settings import get_settings
 from banking_api.domain.enums import (
     ApprovalStatus,
@@ -167,7 +168,7 @@ class OperationService:
             resource = self._resource(existing)
             await self.session.commit()
             return resource
-        await self.security_guard.require_write_allowed(user_id)
+        await self._write_gate(workflow_id, user_id)
         await self._serialize_user_risk(user_id)
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
         if workflow is None:
@@ -287,8 +288,9 @@ class OperationService:
         if updated is None:
             await self.session.rollback()
             raise OperationVersionConflictError
-        await self._operation_event(operation, "operation.created")
         await self._risk_event(updated, risk, escalated=escalated)
+        await self._operation_event(operation, "operation.created")
+        await self._approval_consumed(updated, approval, operation)
         await self.publisher.persist(
             event_type="workflow.committing",
             conversation_id=workflow.conversation_id,
@@ -308,7 +310,7 @@ class OperationService:
             resource = self._resource(existing)
             await self.session.commit()
             return resource
-        await self.security_guard.require_write_allowed(user_id)
+        await self._write_gate(workflow_id, user_id)
         if self.subscription_engine is None:
             raise OperationActionError("SUBSCRIPTION_WORKFLOW_NOT_CONFIGURED")
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
@@ -370,6 +372,7 @@ class OperationService:
             await self.session.rollback()
             raise OperationVersionConflictError
         await self._operation_event(operation, "operation.created")
+        await self._approval_consumed(updated, approval, operation)
         await self.publisher.persist(
             event_type="workflow.committing",
             conversation_id=workflow.conversation_id,
@@ -492,6 +495,7 @@ class OperationService:
             resource = self._resource(operation)
             await self.session.rollback()
             return resource
+        await self._operation_event(operation, "operation.reconcile_started")
         # End the snapshot transaction before any provider/network I/O.
         await self.session.commit()
         logger.info(
@@ -511,6 +515,8 @@ class OperationService:
         self, operation: OperationModel, *, lease_owner: str
     ) -> OperationModel:
         now = _as_utc(self.clock())
+        await self._operation_event(operation, "provider.submit_started")
+        await self.session.commit()
         try:
             operation_engine = self._operation_engine(operation.operation_type)
             output = await operation_engine.submit_operation(
@@ -824,6 +830,11 @@ class OperationService:
             "operation_type": operation.operation_type.value,
             "status": operation.status.value,
             "version": operation.version,
+            "payload_hash": operation.payload_hash,
+            "provider_mode": "Mock",
+            "actor_type": "USER"
+            if (operation.lease_owner or "").startswith("manual:")
+            else "RECOVERY_WORKER",
         }
         if operation.provider_reference is not None:
             data["provider_reference"] = operation.provider_reference
@@ -843,7 +854,34 @@ class OperationService:
             "workflow_type": model.workflow_type.value,
             "status": model.status.value,
             "version": model.version,
+            "evidence": workflow_evidence(model.state_json),
         }
+
+    async def _write_gate(self, workflow_id: UUID, user_id: str) -> None:
+        model = await self.workflows.get_for_user(workflow_id, user_id)
+        if model is None:
+            raise OperationNotFoundError
+        await self.security_guard.require_write_allowed(
+            user_id,
+            workflow_id=model.workflow_id,
+            conversation_id=model.conversation_id,
+            task_id=model.source_task_id,
+        )
+
+    async def _approval_consumed(self, workflow, approval, operation) -> None:
+        await self.publisher.persist(
+            event_type="approval.consumed",
+            conversation_id=workflow.conversation_id,
+            task_id=workflow.source_task_id,
+            data={
+                "workflow_id": str(workflow.workflow_id),
+                "approval_id": str(approval.approval_id),
+                "operation_id": str(operation.operation_id),
+                "status": approval.status.value,
+                "payload_hash": approval.payload_hash,
+                "consumed_at": approval.consumed_at.isoformat(),
+            },
+        )
 
     @staticmethod
     def _resource(model: OperationModel) -> OperationResource:

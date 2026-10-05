@@ -1,4 +1,5 @@
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
+from banking_api.config.demo_time import reference_now
 from banking_api.domain.enums import RiskLevel
 from banking_api.financial.anomaly_detector import TransactionAnomalyDetector
 from banking_api.financial.anomaly_models import (
@@ -16,6 +17,7 @@ def build_detect_anomalies_tool(detector: TransactionAnomalyDetector) -> ToolSpe
             snapshot=detector.detect(
                 user_id=context.principal.user_id,
                 analysis_days=arguments.analysis_days,
+                generated_at=reference_now(),
             )
         )
 

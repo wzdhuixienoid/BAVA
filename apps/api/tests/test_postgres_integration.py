@@ -2114,8 +2114,8 @@ async def test_transfer_operation_wins_then_security_lock_blocks_new_operation(
     signal_started = asyncio.Event()
 
     class PausingSecurityGuard(SecurityGuardService):
-        async def require_write_allowed(self, checked_user_id: str) -> None:
-            await super().require_write_allowed(checked_user_id)
+        async def require_write_allowed(self, checked_user_id: str, **context) -> None:
+            await super().require_write_allowed(checked_user_id, **context)
             operation_has_lock.set()
             await release_operation.wait()
 

@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
+from banking_api.config.demo_time import reference_now
 from banking_api.domain.account import AccountBalanceResult
 from banking_api.domain.dashboard import DashboardSnapshot
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot, ToolEvidence
@@ -60,8 +61,10 @@ async def get_dashboard(
         accounts=accounts,
         spending=MonthlySpendingReportSkill().build_core(snapshot),
         subscriptions=await SubscriptionAnalysisService(bank, session).analyze(
-            user_id=user_id, generated_at=now, upcoming_days=30
+            user_id=user_id, generated_at=reference_now(), upcoming_days=30
         ),
-        anomalies=TransactionAnomalyDetector(bank).detect(user_id=user_id, generated_at=now),
+        anomalies=TransactionAnomalyDetector(bank).detect(
+            user_id=user_id, generated_at=reference_now()
+        ),
         as_of=now,
     )

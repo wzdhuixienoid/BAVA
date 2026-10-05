@@ -15,6 +15,10 @@ class BusinessRiskLevel(StrEnum):
     RED = "RED"
 
 
+# Existing cancellation policy; shared by Workflow DTO and persisted evidence.
+SUBSCRIPTION_CANCEL_RISK_LEVEL = BusinessRiskLevel.YELLOW
+
+
 class RiskReasonCode(StrEnum):
     READ_ONLY_AUTOMATIC = "READ_ONLY_AUTOMATIC"
     DAILY_TRANSFER_WITHIN_LIMIT = "DAILY_TRANSFER_WITHIN_LIMIT"

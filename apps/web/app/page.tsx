@@ -39,7 +39,7 @@ export default function HomePage() {
             智能银行服务
           </p>
           <h1 className="mt-2 text-xl font-semibold">银行助理工作台</h1>
-          <p className="mt-1 text-xs text-slate-400">v0.9.1 · 比赛产品体验与可视化</p>
+          <p className="mt-1 text-xs text-slate-400">v0.9.2 · 审计链、安全自评与 Demo Hardening</p>
         </div>
         <button
           className="mb-5 w-full rounded-lg bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 hover:bg-cyan-300"

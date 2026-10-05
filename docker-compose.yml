@@ -22,6 +22,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://banking:banking@postgres:5432/banking}
       APP_ENVIRONMENT: ${APP_ENVIRONMENT}
       AUTH_MODE: ${AUTH_MODE}
+      DEMO_REFERENCE_TIME: ${DEMO_REFERENCE_TIME:-}
       DEVELOPMENT_USER_ID: ${DEVELOPMENT_USER_ID:-dev-user-001}
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_AUDIENCE: ${OIDC_AUDIENCE:-}

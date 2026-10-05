@@ -1,7 +1,8 @@
+from datetime import datetime
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from banking_api.domain.enums import RuntimeBackend
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
     security_bypass_window_seconds: int = Field(default=300, ge=1)
     security_write_lock_seconds: int = Field(default=900, ge=1)
     banking_business_timezone: str = "Asia/Shanghai"
+    demo_reference_time: datetime | None = None
     operation_recovery_enabled: bool = True
     operation_recovery_poll_interval_seconds: float = Field(default=5.0, gt=0)
     operation_recovery_lease_seconds: float = Field(default=60.0, gt=0)
@@ -67,8 +69,18 @@ class Settings(BaseSettings):
     task_worker_batch_size: int = Field(default=4, ge=1, le=100)
     task_worker_max_concurrency: int = Field(default=4, ge=1, le=100)
 
+    @field_validator("demo_reference_time", mode="before")
+    @classmethod
+    def empty_reference_time(cls, value):
+        return None if value == "" else value
+
     @model_validator(mode="after")
     def validate_security_and_worker_settings(self) -> "Settings":
+        if self.demo_reference_time is not None:
+            if self.app_environment == "production":
+                raise ValueError("DEMO_REFERENCE_TIME is forbidden in production")
+            if self.demo_reference_time.tzinfo is None:
+                raise ValueError("DEMO_REFERENCE_TIME must include a timezone")
         if self.app_environment == "production" and self.auth_mode == "development":
             raise ValueError("AUTH_MODE=development is forbidden in production")
         if self.auth_mode == "oidc":

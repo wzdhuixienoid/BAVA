@@ -5,10 +5,22 @@ from fastapi import APIRouter, HTTPException, Query
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
 from banking_api.application.task_service import TaskNotFoundError, TaskService
+from banking_api.audit.models import AuditTrace
+from banking_api.audit.projection import AuditProjection
 from banking_api.domain.event import Event
 from banking_api.domain.task import Task
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+@router.get("/{task_id}/audit", response_model=AuditTrace)
+async def get_task_audit(
+    task_id: UUID, session: SessionDependency, principal: PrincipalDependency
+) -> AuditTrace:
+    try:
+        return await AuditProjection(session).get(task_id, principal.user_id)
+    except TaskNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="未找到该任务") from exc
 
 
 @router.get("", response_model=list[Task])

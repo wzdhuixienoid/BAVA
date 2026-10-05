@@ -1,10 +1,11 @@
 from collections import Counter, defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from banking_api.config.demo_time import reference_now
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.models import MockSubscriptionCancellationModel
 from banking_api.subscriptions.detector import (
@@ -40,7 +41,7 @@ class SubscriptionAnalysisService:
         generated_at: datetime | None = None,
         upcoming_days: int = 7,
     ) -> SubscriptionAnalysisSnapshot:
-        now = generated_at or datetime.now(UTC)
+        now = generated_at or reference_now()
         detected = self.detector.detect(self.bank.list_transactions(user_id=user_id))
         contracts = self.bank.list_subscriptions(user_id=user_id)
         cancellations = await self._cancelled_ids(user_id)

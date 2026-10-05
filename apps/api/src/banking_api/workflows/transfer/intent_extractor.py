@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from banking_api.llm.models import LLMMessage, LLMRequest
 from banking_api.llm.provider import LLMProvider, LLMProviderError
+from banking_api.workflows.transfer.currency import canonicalize_currency
 from banking_api.workflows.transfer.models import TransferIntent
 
 EXTRACTION_INSTRUCTIONS = """
@@ -40,7 +41,9 @@ class TransferIntentExtractor:
                 if response.tool_calls or not response.content:
                     raise ValueError("non-structured response")
                 payload = self._parse_json(response.content)
-                return TransferIntent.model_validate(payload)
+                intent = TransferIntent.model_validate(payload)
+                intent.currency = canonicalize_currency(intent.currency, user_request)
+                return intent
             except (json.JSONDecodeError, ValidationError, TypeError, ValueError, LLMProviderError):
                 if attempt < self._max_retries:
                     messages = [

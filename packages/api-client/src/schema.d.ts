@@ -93,6 +93,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/demo/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness */
+        get: operations["readiness_api_v1_demo_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Audit */
+        get: operations["get_task_audit_api_v1_tasks__task_id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks": {
         parameters: {
             query?: never;
@@ -658,6 +692,124 @@ export interface components {
             expected_version: number;
         };
         /**
+         * AuditActor
+         * @enum {string}
+         */
+        AuditActor: "USER" | "SYSTEM" | "AGENT" | "WORKFLOW" | "SECURITY_GUARD" | "PROVIDER" | "RECOVERY_WORKER";
+        /** AuditEntry */
+        AuditEntry: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Sequence */
+            sequence: number;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Category */
+            category: string;
+            /** Event Type */
+            event_type: string;
+            actor_type: components["schemas"]["AuditActor"];
+            /** Resource Type */
+            resource_type: string;
+            /**
+             * Resource Id
+             * Format: uuid
+             */
+            resource_id: string;
+            /** Status */
+            status?: string | null;
+            /** Decision Summary */
+            decision_summary: string;
+            /** Related Resource Ids */
+            related_resource_ids?: {
+                [key: string]: string;
+            };
+            /** Facts */
+            facts?: components["schemas"]["AuditFact"][];
+            risk_decision?: components["schemas"]["TransferRiskDecision"] | null;
+            condition_decision?: components["schemas"]["ConditionDecision"] | null;
+        };
+        /** AuditFact */
+        AuditFact: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
+        /**
+         * AuditResource
+         * @description Explicit current resource snapshot, separate from immutable historical events.
+         */
+        AuditResource: {
+            /** Resource Type */
+            resource_type: string;
+            /**
+             * Resource Id
+             * Format: uuid
+             */
+            resource_id: string;
+            /** Status */
+            status: string;
+            /** Facts */
+            facts: components["schemas"]["AuditFact"][];
+        };
+        /** AuditTrace */
+        AuditTrace: {
+            /**
+             * Trace Id
+             * Format: uuid
+             */
+            trace_id: string;
+            /**
+             * Source Task Id
+             * Format: uuid
+             */
+            source_task_id: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Task Status */
+            task_status: string;
+            /** Entries */
+            entries: components["schemas"]["AuditEntry"][];
+            /** Resources */
+            resources: components["schemas"]["AuditResource"][];
+            write_evidence: components["schemas"]["AuditWriteEvidence"];
+            /** History Truncated */
+            history_truncated: boolean;
+            /** History Note */
+            history_note: string;
+        };
+        /** AuditWriteEvidence */
+        AuditWriteEvidence: {
+            /** Workflow Count */
+            workflow_count: number;
+            /** Approval Count */
+            approval_count: number;
+            /** Operation Count */
+            operation_count: number;
+            /** Provider Ledger Count */
+            provider_ledger_count: number;
+            /** Provider Submission Count */
+            provider_submission_count: number;
+            /** Skipped Write Step Ids */
+            skipped_write_step_ids: string[];
+            /** Business Success */
+            business_success: boolean;
+            /** No Write Started */
+            no_write_started: boolean;
+        };
+        /**
          * BillingInterval
          * @enum {string}
          */
@@ -816,6 +968,37 @@ export interface components {
          * @enum {string}
          */
         DataQualityStatus: "COMPLETE" | "PARTIAL";
+        /** DemoReadiness */
+        DemoReadiness: {
+            /** Version */
+            version: string;
+            /** Database Revision */
+            database_revision: string;
+            /** Owner Is Demo User */
+            owner_is_demo_user: boolean;
+            /** Expected Accounts Exist */
+            expected_accounts_exist: boolean;
+            /** Salary Balance Initial */
+            salary_balance_initial: boolean;
+            /** Daily Exposure Zero */
+            daily_exposure_zero: boolean;
+            /** Subscriptions Match Fixture */
+            subscriptions_match_fixture: boolean;
+            /** Security Guard Normal */
+            security_guard_normal: boolean;
+            /** Unresolved Operations */
+            unresolved_operations: number;
+            /** Provider Mode */
+            provider_mode: string;
+            /** Reauthentication Mode */
+            reauthentication_mode: string;
+            /** Llm Configured */
+            llm_configured: boolean;
+            /** Business Timezone */
+            business_timezone: string;
+            /** Reference Time */
+            reference_time: string | null;
+        };
         /** DuplicateCandidate */
         DuplicateCandidate: {
             /** Merchant */
@@ -2226,6 +2409,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardSnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    readiness_api_v1_demo_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoReadiness"];
+                };
+            };
+        };
+    };
+    get_task_audit_api_v1_tasks__task_id__audit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditTrace"];
                 };
             };
             /** @description Validation Error */

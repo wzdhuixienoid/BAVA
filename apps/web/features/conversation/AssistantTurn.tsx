@@ -2,6 +2,7 @@ import type { components } from "@banking/api-client";
 import { PlanCard } from "@/features/plans/PlanCard";
 import { SpendingDashboard } from "@/features/dashboard/SpendingDashboard";
 import { AccountResults } from "@/features/accounts/AccountResults";
+import { AuditPanel } from "@/features/audit/AuditPanel";
 import { accountResults } from "@/features/accounts/presentation";
 import { ReportCard } from "@/features/reports/ReportCard";
 import { WorkflowReceipt } from "@/features/results/WorkflowReceipt";
@@ -64,6 +65,7 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           <ResponseProcess turn={turn} activityRevision={activityRevision} onRefresh={onRefresh} />
         )}
         <div className="space-y-4">
+          {turn.tasks.map((task) => <AuditPanel key={task.task_id} taskId={task.task_id} revision={activityRevision} />)}
           {turn.tasks.map((task) => typeof task.error?.message === "string" ? <p key={task.task_id} role="alert" className="text-red-700">{task.error.code === "REPORT_NARRATIVE_VALIDATION_FAILED" ? "报告说明未通过安全校验，请重新生成。" : task.error.message}</p> : null)}
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
