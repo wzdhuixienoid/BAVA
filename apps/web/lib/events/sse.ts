@@ -1,6 +1,8 @@
 import { API_BASE_URL, getAuthorizationHeaders } from "@/lib/api/client";
 
 export const eventTypes = [
+  "conversation.updated",
+  "conversation.deleted",
   "conversation.message.created",
   "conversation.message.completed",
   "task.created",
@@ -66,6 +68,7 @@ export function subscribeToConversation(
     }
     if (data.length > 0 && eventTypes.includes(type as (typeof eventTypes)[number])) {
       onEvent(new MessageEvent(type, { data: data.join("\n") }));
+      if (type === "conversation.deleted") controller.abort();
     }
   }
 
@@ -81,6 +84,7 @@ export function subscribeToConversation(
             signal: controller.signal,
           },
         );
+        if (response.status === 404) { onEvent(new MessageEvent("conversation.deleted", { data: "{}" })); controller.abort(); return; }
         if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
         onConnectionChange(true);
         const reader = response.body.getReader();

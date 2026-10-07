@@ -17,7 +17,7 @@ def build_get_top_transactions_tool(analytics: FinancialAnalyticsService) -> Too
     return ToolSpec(
         capability_id="transaction.top_transactions",
         name="get_top_transactions",
-        description=("返回指定自然月金额最高的消费交易，结果按金额确定性排序，Top N 最多 20 条。"),
+        description=("返回指定自然月或自然年金额最高的消费交易，结果按金额确定性排序，Top N 最多 20 条。"),
         input_model=TopTransactionsInput,
         output_model=TopTransactions,
         risk_level=RiskLevel.R1_PRIVATE_READ,

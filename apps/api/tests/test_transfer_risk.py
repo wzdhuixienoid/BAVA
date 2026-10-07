@@ -3,6 +3,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from banking_test_helpers import authenticate_workflow, legacy_yellow_authorization
 from sqlalchemy import func, select
 from test_transfer_authorization import create_ready_workflow
 from test_transfer_operations import operation_runtime
@@ -87,18 +88,21 @@ async def test_read_only_is_green_and_transfer_policy_boundaries(app) -> None:
     }
     yellow = policy.evaluate(requested_amount=Decimal("200.00"), **common)
     red = policy.evaluate(requested_amount=Decimal("200.01"), **common)
-    assert yellow.level is BusinessRiskLevel.YELLOW
+    assert yellow.level is BusinessRiskLevel.RED
     assert yellow.projected_daily_total == Decimal("1000.00")
-    assert yellow.required_approval and not yellow.required_reauthentication
+    assert yellow.required_approval and yellow.required_reauthentication
     assert red.level is BusinessRiskLevel.RED
     assert red.projected_daily_total == Decimal("1000.01")
     assert red.required_approval and red.required_reauthentication
-    retained = policy.retain_stricter(red, yellow)
+    legacy = yellow.model_copy(
+        update={"level": BusinessRiskLevel.YELLOW, "required_reauthentication": False}
+    )
+    retained = policy.retain_stricter(red, legacy)
     assert retained.level is BusinessRiskLevel.RED
     assert RiskReasonCode.RISK_NOT_DOWNGRADED in retained.reason_codes
 
 
-async def test_yellow_approval_skips_reauthentication_and_commits(app) -> None:
+async def test_small_transfer_approval_requires_reauthentication_and_commits(app) -> None:
     _, _, _, engine = operation_runtime(app)
     workflow = await create_ready_workflow(
         app,
@@ -107,12 +111,14 @@ async def test_yellow_approval_skips_reauthentication_and_commits(app) -> None:
         user_id="risk-yellow-user",
         amount=Decimal("500.00"),
     )
-    assert workflow.risk_level is BusinessRiskLevel.YELLOW
+    assert workflow.risk_level is BusinessRiskLevel.RED
     assert workflow.risk_decision.projected_daily_total == Decimal("500.00")  # type: ignore[union-attr]
 
     ready = await approve(app, engine, workflow)
+    assert ready.status is WorkflowStatus.REAUTH_REQUIRED
+    ready = await authenticate_workflow(app, engine, ready)
     assert ready.status is WorkflowStatus.READY_FOR_COMMIT
-    assert ready.reauth_summary is None
+    assert ready.reauth_summary is not None
     async with app.state.test_session_factory() as session:
         reauth_count = await session.scalar(select(func.count()).select_from(ReauthenticationModel))
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
@@ -120,14 +126,14 @@ async def test_yellow_approval_skips_reauthentication_and_commits(app) -> None:
             user_id=ready.user_id,
             expected_version=ready.version,
         )
-    assert reauth_count == 0
+    assert reauth_count == 1
     assert operation.status is OperationStatus.SUCCEEDED
 
 
 @pytest.mark.parametrize(
     ("user_id", "amount", "expected"),
     [
-        ("risk-boundary-yellow-user", "200.00", BusinessRiskLevel.YELLOW),
+        ("risk-boundary-yellow-user", "200.00", BusinessRiskLevel.RED),
         ("risk-boundary-red-user", "200.01", BusinessRiskLevel.RED),
     ],
 )
@@ -174,6 +180,7 @@ async def test_commit_time_escalation_preserves_approval_and_creates_no_operatio
         amount=Decimal("600.00"),
     )
     ready = await approve(app, engine, workflow)
+    ready = await legacy_yellow_authorization(app, engine, ready)
     approval_id = ready.approval_summary.approval_id  # type: ignore[union-attr]
     await seed_provider_fact(app, user_id=ready.user_id, amount="500.00")
 
@@ -251,6 +258,7 @@ async def test_in_flight_unknown_and_provider_terminal_facts_are_not_double_coun
         amount=Decimal("400.00"),
     )
     ready = await approve(app, engine, workflow)
+    ready = await authenticate_workflow(app, engine, ready)
     async with app.state.test_session_factory() as session:
         created = await OperationService(session, app.state.event_bus, engine).prepare_transfer(
             ready.workflow_id,
@@ -265,9 +273,7 @@ async def test_in_flight_unknown_and_provider_terminal_facts_are_not_double_coun
         await session.commit()
 
     async with app.state.test_session_factory() as session:
-        facts = await TransferRiskFactsService(
-            session, business_timezone="Asia/Shanghai"
-        ).for_user(
+        facts = await TransferRiskFactsService(session, business_timezone="Asia/Shanghai").for_user(
             user_id=ready.user_id,
             currency="CNY",
             evaluated_at=datetime.now(UTC),
@@ -292,9 +298,7 @@ async def test_in_flight_unknown_and_provider_terminal_facts_are_not_double_coun
         )
     )
     async with app.state.test_session_factory() as session:
-        facts = await TransferRiskFactsService(
-            session, business_timezone="Asia/Shanghai"
-        ).for_user(
+        facts = await TransferRiskFactsService(session, business_timezone="Asia/Shanghai").for_user(
             user_id=ready.user_id,
             currency="CNY",
             evaluated_at=datetime.now(UTC),
@@ -312,9 +316,7 @@ async def test_business_day_and_user_isolation(app) -> None:
     await seed_provider_fact(
         app, user_id="risk-boundary-yellow-user", amount="300.00", at=current_day
     )
-    await seed_provider_fact(
-        app, user_id="risk-boundary-red-user", amount="900.00", at=current_day
-    )
+    await seed_provider_fact(app, user_id="risk-boundary-red-user", amount="900.00", at=current_day)
     await seed_provider_fact(
         app,
         user_id="risk-boundary-yellow-user",
@@ -323,9 +325,7 @@ async def test_business_day_and_user_isolation(app) -> None:
         at=current_day,
     )
     async with app.state.test_session_factory() as session:
-        facts = await TransferRiskFactsService(
-            session, business_timezone="Asia/Shanghai"
-        ).for_user(
+        facts = await TransferRiskFactsService(session, business_timezone="Asia/Shanghai").for_user(
             user_id="risk-boundary-yellow-user",
             currency="CNY",
             evaluated_at=datetime(2026, 9, 28, 16, 1, tzinfo=UTC),
@@ -344,6 +344,7 @@ async def test_cross_midnight_operation_keeps_creation_business_date(app) -> Non
         amount=Decimal("100.00"),
     )
     ready = await approve(app, engine, workflow)
+    ready = await authenticate_workflow(app, engine, ready)
     async with app.state.test_session_factory() as session:
         created = await OperationService(session, app.state.event_bus, engine).prepare_transfer(
             ready.workflow_id,

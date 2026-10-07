@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
+from banking_test_helpers import authenticate_workflow
 from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import ValidationError
 from test_transfer_authorization import create_ready_workflow
@@ -144,6 +145,7 @@ async def test_balance_after_successful_transfer_uses_provider_ledger(app, clien
         ready = await WorkflowService(session, app.state.event_bus, engine).approve(
             workflow.workflow_id, user_id=workflow.user_id, expected_version=workflow.version
         )
+    ready = await authenticate_workflow(app, engine, ready)
     async with app.state.test_session_factory() as session:
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
             ready.workflow_id, user_id=ready.user_id, expected_version=ready.version

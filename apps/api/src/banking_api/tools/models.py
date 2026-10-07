@@ -52,6 +52,15 @@ class SearchPayeesOutput(BaseModel):
     payees: list[PayeeSummary] = Field(max_length=10)
 
 
+class ListPayeesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    offset: int = Field(default=0, ge=0)
+
+
+class ListPayeesOutput(BaseModel):
+    payees: list[PayeeSummary] = Field(max_length=100)
+
+
 class TransferOperationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

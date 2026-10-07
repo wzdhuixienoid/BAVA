@@ -27,8 +27,8 @@ function SubscriptionRow({ item }: { item: Subscription }) {
         <dt className="text-slate-500">月度成本</dt><dd className="font-semibold">{item.monthly_cost_display ?? "未提供"}</dd>
         <dt className="text-slate-500">预计年度成本</dt><dd>{item.annual_projected_cost_display ?? "未提供"}</dd>
         <dt className="text-slate-500">周期</dt><dd>{item.billing_interval === "MONTHLY" ? "每月" : "每年"}</dd>
-        <dt className="text-slate-500">最近扣费</dt><dd>{item.last_charge_date}</dd>
-        <dt className="text-slate-500">当前金额</dt><dd className="font-semibold">{item.last_charge_display ?? `${item.last_charge_amount} ${item.currency}`}</dd>
+        <dt className="text-slate-500">最近扣费</dt><dd>{item.last_charge_date ?? "无历史扣费证据"}</dd>
+        <dt className="text-slate-500">当前金额</dt><dd className="font-semibold">{item.contract_amount_display ?? item.last_charge_display ?? `${item.last_charge_amount} ${item.currency}`}</dd>
         <dt className="text-slate-500">{item.next_billing_is_estimated ? "预计下次扣款" : "下次扣款"}</dt>
         <dd>{dateTime(item.next_billing_at)}</dd>
         <dt className="text-slate-500">证据</dt><dd>{item.evidence_count} 笔周期扣费</dd>
@@ -40,6 +40,7 @@ function SubscriptionRow({ item }: { item: Subscription }) {
         </p>
       )}
       {item.cancellable && item.subscription_id && <Link className="mt-3 inline-block rounded border border-amber-300 px-3 py-2 text-xs font-semibold text-amber-900" href={`/?cancel=${encodeURIComponent(item.merchant)}`}>发起取消确认</Link>}
+      {item.resumable && item.subscription_id && <Link className="mt-3 inline-block rounded border border-red-300 px-3 py-2 text-xs font-semibold text-red-800" href={`/?resume=${encodeURIComponent(item.merchant)}`}>重新订阅</Link>}
       {item.management_type === "DETECTED_ONLY" && (
         <p className="mt-2 text-xs leading-5 text-slate-600">
           检测到周期扣费，当前无法通过银行沙箱直接取消。

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from banking_api.domain.enums import TaskStatus
 from banking_api.domain.plan import Plan, PlanStep
 from banking_api.persistence.models import PlanModel, PlanStepModel, TaskModel, utc_now
+from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.plans import PlanRepository
 from banking_api.planning.models import ConditionSpec, PlanCapability, PlanStatus, PlanStepStatus
 from banking_api.planning.registry import PlanCapabilityRegistry
@@ -157,7 +158,12 @@ class PlanService:
         pointer = await self.plans.get(plan_id, user_id)
         if pointer is None:
             raise PlanNotFoundError
-        # Every Plan mutator locks Task then Plan. Invalidating the current Task
+        conversation = await ConversationRepository(self.session).get_for_user(
+            pointer.conversation_id, user_id, for_update=True
+        )
+        if conversation is None:
+            raise PlanNotFoundError
+        # Every Plan mutator locks Conversation, then Task and Plan. Invalidating the current Task
         # lease also fences an in-flight read call when a user interrupts it.
         task = await self.session.scalar(
             select(TaskModel)

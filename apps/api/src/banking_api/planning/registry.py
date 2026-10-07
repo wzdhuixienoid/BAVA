@@ -31,6 +31,9 @@ class PlanCapabilityRegistry:
             PlanCapability.TRANSFER_WORKFLOW: PlanCapabilityDefinition(
                 "workflow:transfer", "WORKFLOW"
             ),
+            PlanCapability.SUBSCRIPTION_RESUME_WORKFLOW: PlanCapabilityDefinition(
+                "workflow:subscription-resume", "WORKFLOW"
+            ),
             PlanCapability.SUBSCRIPTION_CANCEL_WORKFLOW: PlanCapabilityDefinition(
                 "workflow:subscription-cancel", "WORKFLOW"
             ),

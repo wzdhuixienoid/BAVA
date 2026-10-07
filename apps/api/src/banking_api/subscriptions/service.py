@@ -2,12 +2,11 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.config.demo_time import reference_now
 from banking_api.mock_bank.service import MockBankService
-from banking_api.persistence.models import MockSubscriptionCancellationModel
+from banking_api.subscriptions.contracts import effective_contracts
 from banking_api.subscriptions.detector import (
     MAX_EVIDENCE_IDS,
     SubscriptionDetector,
@@ -43,8 +42,10 @@ class SubscriptionAnalysisService:
     ) -> SubscriptionAnalysisSnapshot:
         now = generated_at or reference_now()
         detected = self.detector.detect(self.bank.list_transactions(user_id=user_id))
-        contracts = self.bank.list_subscriptions(user_id=user_id)
-        cancellations = await self._cancelled_ids(user_id)
+        contracts = await effective_contracts(self.bank, self.session, user_id)
+        cancellations = {
+            str(item["subscription_id"]) for item in contracts if item["status"] == "CANCELLED"
+        }
         contracts_by_key: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
         for contract in contracts:
             contracts_by_key[
@@ -89,6 +90,14 @@ class SubscriptionAnalysisService:
                 )
                 item = SubscriptionItem(
                     subscription_id=subscription_id,
+                    contract_version=int(contract["version"]),
+                    contract_amount=Decimal(str(contract["amount"])),
+                    billing_anchor_at=datetime.fromisoformat(
+                        str(contract["next_billing_at"]).replace("Z", "+00:00")
+                    )
+                    if contract.get("next_billing_at")
+                    else None,
+                    resumable=bool(contract["resumable"]),
                     merchant=str(contract["merchant"]),
                     plan_name=str(contract["plan_name"]),
                     management_type=SubscriptionManagementType.MANAGED,
@@ -109,17 +118,66 @@ class SubscriptionAnalysisService:
                 )
             items.append(item)
 
+        present = {item.subscription_id for item in items}
+        for contract in contracts:
+            if contract["subscription_id"] in present:
+                continue
+            items.append(
+                SubscriptionItem(
+                    subscription_id=contract["subscription_id"],
+                    merchant=contract["merchant"],
+                    plan_name=contract["plan_name"],
+                    management_type=SubscriptionManagementType.MANAGED,
+                    status=SubscriptionStatus(contract["status"]),
+                    billing_interval=BillingInterval(contract["billing_interval"]),
+                    last_charge_amount=Decimal("0"),
+                    currency=contract["currency"],
+                    last_charge_date=None,
+                    next_billing_at=(
+                        datetime.fromisoformat(
+                            str(contract["next_billing_at"]).replace("Z", "+00:00")
+                        )
+                        if contract.get("next_billing_at") and contract["status"] == "ACTIVE"
+                        else None
+                    ),
+                    next_billing_is_estimated=False,
+                    evidence_count=0,
+                    evidence_transaction_ids=[],
+                    cancellable=contract["cancellable"],
+                    resumable=contract["resumable"],
+                    contract_version=contract["version"],
+                    contract_amount=Decimal(str(contract["amount"])),
+                    billing_anchor_at=datetime.fromisoformat(
+                        str(contract["next_billing_at"]).replace("Z", "+00:00")
+                    )
+                    if contract.get("next_billing_at")
+                    else None,
+                )
+            )
+
         monthly: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
         annual: dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
         for item in items:
             if item.status is not SubscriptionStatus.ACTIVE:
                 continue
             if item.billing_interval is BillingInterval.MONTHLY:
-                item.monthly_cost = item.last_charge_amount
-                item.annual_projected_cost = item.last_charge_amount * Decimal("12")
+                item.monthly_cost = (
+                    item.contract_amount
+                    if item.contract_amount is not None
+                    else item.last_charge_amount
+                )
+                item.annual_projected_cost = item.monthly_cost * Decimal("12")
             else:
-                item.annual_projected_cost = item.last_charge_amount
-                item.monthly_cost = item.last_charge_amount / Decimal("12")
+                item.annual_projected_cost = (
+                    item.contract_amount
+                    if item.contract_amount is not None
+                    else item.last_charge_amount
+                )
+                item.monthly_cost = (
+                    item.contract_amount
+                    if item.contract_amount is not None
+                    else item.last_charge_amount / Decimal("12")
+                )
             item.format_display()
             monthly[item.currency] += item.monthly_cost
             annual[item.currency] += item.annual_projected_cost
@@ -178,15 +236,3 @@ class SubscriptionAnalysisService:
         if item is None:
             raise SubscriptionNotFoundError
         return item
-
-    async def _cancelled_ids(self, user_id: str) -> set[str]:
-        return set(
-            (
-                await self.session.execute(
-                    select(MockSubscriptionCancellationModel.subscription_id).where(
-                        MockSubscriptionCancellationModel.user_id == user_id,
-                        MockSubscriptionCancellationModel.status == "SUCCEEDED",
-                    )
-                )
-            ).scalars()
-        )

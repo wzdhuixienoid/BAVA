@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -50,10 +51,15 @@ class ConversationModel(Base):
     conversation_id: Mapped[UUID] = mapped_column("id", Uuid, primary_key=True, default=uuid4)
     user_id: Mapped[str] = mapped_column(String(255), index=True)
     title: Mapped[str] = mapped_column(String(255))
+    title_is_custom: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     messages: Mapped[list["MessageModel"]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
@@ -488,3 +494,42 @@ class PlanStepDependencyModel(Base):
     depends_on_step_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("plan_steps.id", ondelete="CASCADE"), primary_key=True
     )
+
+
+class PayeeModel(Base):
+    __tablename__ = "payees"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "display_name", "bank_name", "account_suffix", name="uq_payee_identity"
+        ),
+    )
+    payee_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    display_name: Mapped[str] = mapped_column(String(100))
+    bank_name: Mapped[str] = mapped_column(String(100))
+    account_suffix: Mapped[str] = mapped_column(String(4))
+    phone_alias: Mapped[str] = mapped_column(String(100), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class MockSubscriptionStateModel(Base):
+    __tablename__ = "mock_subscription_states"
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    subscription_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    status: Mapped[str] = mapped_column(String(20))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    next_billing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class MockSubscriptionActionModel(Base):
+    __tablename__ = "mock_subscription_actions"
+    provider_reference: Mapped[str] = mapped_column(String(255), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    subscription_id: Mapped[str] = mapped_column(String(255), index=True)
+    idempotency_key: Mapped[UUID] = mapped_column(Uuid, unique=True, index=True)
+    action: Mapped[str] = mapped_column(String(30))
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

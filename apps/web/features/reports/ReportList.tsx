@@ -15,7 +15,7 @@ export function ReportList({ reports }: { reports: ReportListItem[] }) {
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-700">月度消费报告</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-700">{report?.period.length === 4 ? "年度消费报告" : "月度消费报告"}</p>
               <h2 className="mt-1 text-lg font-semibold text-slate-950">{periodLabel(report.period)}消费报告</h2>
               <p className="mt-2 text-sm text-slate-600">{report.headline}</p>
               <p className="mt-3 text-xs text-slate-400">{dateTimeLabel(report.created_at)}</p>

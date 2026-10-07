@@ -51,7 +51,7 @@ export function statusDisplay(status: string): StatusDisplay {
 
 export const capabilityLabels: Record<components["schemas"]["PlanCapability"], string> = {
   ACCOUNT_QUERY: "账户查询", FINANCIAL_ANALYSIS: "消费分析", SUBSCRIPTION_ANALYSIS: "订阅分析",
-  TRANSFER_WORKFLOW: "转账流程", SUBSCRIPTION_CANCEL_WORKFLOW: "订阅取消流程",
+  TRANSFER_WORKFLOW: "转账流程", SUBSCRIPTION_RESUME_WORKFLOW: "订阅恢复流程", SUBSCRIPTION_CANCEL_WORKFLOW: "订阅取消流程",
 };
 export const predicateLabels: Record<components["schemas"]["ConditionPredicate"], string> = {
   ACCOUNT_BALANCE_AT_LEAST: "账户余额不少于", MONTHLY_SPENDING_AT_LEAST: "本月支出不少于",

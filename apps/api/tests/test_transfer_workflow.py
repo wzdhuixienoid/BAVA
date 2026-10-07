@@ -320,8 +320,10 @@ async def test_engine_validation_and_resolution_rules(app) -> None:
         TransferIntent(recipient_query="不存在", amount=Decimal("10")),
         principal=TEST_EXECUTION_PRINCIPAL,
     )
-    assert status.value == "FAILED"
-    assert missing.validation.issues[0].code == "PAYEE_NOT_FOUND"  # type: ignore[union-attr]
+    assert status.value == "WAITING_FOR_INPUT"
+    assert missing.required_input.type.value == "RECIPIENT_QUERY"
+    assert "未找到" in missing.required_input.message
+    assert missing.validation is None
 
     for value in (Decimal("0"), Decimal("-1"), Decimal("1.001")):
         status, invalid = await engine.start(

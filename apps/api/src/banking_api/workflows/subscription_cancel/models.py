@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class SubscriptionCancelIntent(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    action: Literal["SUBSCRIPTION_CANCEL", "SUBSCRIPTION_RESUME"] = "SUBSCRIPTION_CANCEL"
     subscription_query: str = Field(min_length=1, max_length=100)
 
 
@@ -24,6 +26,7 @@ class SubscriptionCandidate(BaseModel):
     amount: Decimal
     currency: str
     cancellable: bool = False
+    resumable: bool = False
 
 
 class SubscriptionCancelRequiredInputType(StrEnum):
@@ -37,7 +40,8 @@ class SubscriptionCancelRequiredInput(BaseModel):
 
 
 class SubscriptionCancelReviewPayload(BaseModel):
-    action: str = "SUBSCRIPTION_CANCEL"
+    action: Literal["SUBSCRIPTION_CANCEL", "SUBSCRIPTION_RESUME"] = "SUBSCRIPTION_CANCEL"
+    contract_version: int = 0
     subscription_id: str
     user_id: str
     merchant: str
@@ -51,6 +55,9 @@ class SubscriptionCancelAuthorization(BaseModel):
     approval_id: UUID
     approval_payload_hash: str
     approval_expires_at: datetime
+    reauth_id: UUID | None = None
+    reauth_verified_at: datetime | None = None
+    reauth_expires_at: datetime | None = None
 
 
 class SubscriptionCancelWorkflowState(BaseModel):

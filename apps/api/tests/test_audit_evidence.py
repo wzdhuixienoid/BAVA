@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from banking_test_helpers import authenticate_workflow, legacy_yellow_authorization
 from sqlalchemy import select
 from test_plan_conditions import conditional_runtime
 from test_subscriptions import create_workflow
@@ -54,6 +55,7 @@ async def test_transfer_audit_order_approval_provider_current_state_and_owner_is
 ):
     provider, engine, workflow = await ready(app)
     workflow = await action(app, engine, workflow, "approve")
+    workflow = await authenticate_workflow(app, engine, workflow)
     async with app.state.test_session_factory() as session:
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
             workflow.workflow_id, user_id=workflow.user_id, expected_version=workflow.version
@@ -73,7 +75,7 @@ async def test_transfer_audit_order_approval_provider_current_state_and_owner_is
         ("provider.submit_started", "operation.succeeded"),
     ):
         assert types.index(before) < types.index(after)
-    assert not any(e["event_type"].startswith("reauth.") for e in entries)
+    assert any(e["event_type"] == "reauth.verified" for e in entries)
     assert audit["write_evidence"]["business_success"] is True
     assert audit["write_evidence"]["provider_ledger_count"] == 1
     assert await provider.transfer_count() == 1
@@ -98,6 +100,7 @@ async def test_transfer_audit_order_approval_provider_current_state_and_owner_is
 async def test_risk_escalation_and_approval_mutation_keep_both_authorization_semantics(app):
     _, engine, workflow = await ready(app, "600")
     workflow = await action(app, engine, workflow, "approve")
+    workflow = await legacy_yellow_authorization(app, engine, workflow)
     await seed_provider_fact(app, user_id=workflow.user_id, amount="600")
     async with app.state.test_session_factory() as session:
         with pytest.raises(OperationActionError, match="TRANSFER_RISK_REAUTH_REQUIRED"):
@@ -106,7 +109,7 @@ async def test_risk_escalation_and_approval_mutation_keep_both_authorization_sem
             )
     audit = await trace(app, workflow)
     decisions = [e.risk_decision for e in audit.entries if e.risk_decision]
-    assert decisions[0].level.value == "YELLOW" and decisions[-1].level.value == "RED"
+    assert decisions[0].level.value == "RED" and decisions[-1].level.value == "RED"
     assert decisions[-1].projected_daily_total == Decimal("1200")
     async with app.state.test_session_factory() as session:
         current = await WorkflowService(session, app.state.event_bus, engine).get(
@@ -125,6 +128,7 @@ async def test_risk_escalation_and_approval_mutation_keep_both_authorization_sem
 async def test_unknown_reconcile_preserves_historical_unknown(app):
     _, engine, workflow = await ready(app, fault=TransferProviderFaultMode.TIMEOUT_AFTER_ACCEPT)
     workflow = await action(app, engine, workflow, "approve")
+    workflow = await authenticate_workflow(app, engine, workflow)
     async with app.state.test_session_factory() as session:
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
             workflow.workflow_id, user_id=workflow.user_id, expected_version=workflow.version

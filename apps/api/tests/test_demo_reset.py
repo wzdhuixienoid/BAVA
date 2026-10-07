@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from banking_test_helpers import authenticate_workflow
 from sqlalchemy import func, select
 from test_postgres_integration import postgres_factory  # noqa: F401
 from test_transfer_authorization import create_ready_workflow
@@ -50,16 +51,14 @@ async def test_demo_reset_restores_balance_guard_and_subscription_and_preserves_
             ready = await WorkflowService(session, app.state.event_bus, engine).approve(
                 workflow.workflow_id, user_id=user, expected_version=workflow.version
             )
+        ready = await authenticate_workflow(app, engine, ready)
         async with app.state.test_session_factory() as session:
             await OperationService(session, app.state.event_bus, engine).commit_workflow(
                 ready.workflow_id, user_id=user, expected_version=ready.version
             )
     async with app.state.test_session_factory() as session:
-        session.add(
-            SecurityGuardStateModel(
-                user_id="dev-user-001", locked_until=datetime.now(UTC) + timedelta(minutes=15)
-            )
-        )
+        guard = await session.get(SecurityGuardStateModel, "dev-user-001")
+        guard.locked_until = datetime.now(UTC) + timedelta(minutes=15)
         session.add(
             MockSubscriptionCancellationModel(
                 user_id="dev-user-001",

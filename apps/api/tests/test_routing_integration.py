@@ -55,9 +55,7 @@ def route_response(route: str, requested_output: str = "ANSWER") -> LLMResponse:
 
 
 def call(call_id: str, name: str, arguments: dict[str, object]) -> LLMResponse:
-    return LLMResponse(
-        tool_calls=[LLMToolCall(id=call_id, name=name, arguments=arguments)]
-    )
+    return LLMResponse(tool_calls=[LLMToolCall(id=call_id, name=name, arguments=arguments)])
 
 
 def build_routed_runner(app, responses):  # type: ignore[no-untyped-def]
@@ -364,17 +362,11 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
     assert task.output["skill_version"] == 1
     assert task.output["report_type"] == "MONTHLY_SPENDING"
     assert UUID(task.output["report_id"])
-    assert task.output["analysis_snapshot"]["spending_summary"][
-        "total_spending"
-    ] == "16547.30"
+    assert task.output["analysis_snapshot"]["spending_summary"]["total_spending"] == "16547.30"
 
     event_types = [event.event_type for event in events]
-    assert event_types.index("skill.run.started") < event_types.index(
-        "skill.run.completed"
-    )
-    assert event_types.index("skill.run.completed") < event_types.index(
-        "report.generated"
-    )
+    assert event_types.index("skill.run.started") < event_types.index("skill.run.completed")
+    assert event_types.index("skill.run.completed") < event_types.index("report.generated")
     assert event_types.index("report.generated") < event_types.index("task.completed")
     generated = next(event for event in events if event.event_type == "report.generated")
     assert generated.data_json == {
@@ -410,9 +402,7 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
         )
     assert str(report.report_id) == task.output["report_id"]
     assert report.content_json["overview"]["total_spending"] == "16547.30"
-    assert [message.content for message in assistant_messages] == [
-        "2026年8月消费报告已生成。"
-    ]
+    assert [message.content for message in assistant_messages] == ["2026年8月消费报告已生成。"]
     assert "数据收集完成" not in assistant_messages[0].content
     assert len(provider.requests) == 7
 
@@ -435,7 +425,7 @@ async def test_normal_financial_answer_does_not_create_report(app) -> None:
     assert reports == []
 
 
-async def test_incomplete_report_snapshot_fails_without_artifact(app) -> None:
+async def test_incomplete_report_snapshot_explains_missing_data_without_artifact(app) -> None:
     _, accepted = await accept(app, "生成2026年8月消费报告")
     runner, _ = build_routed_runner(
         app,
@@ -449,19 +439,51 @@ async def test_incomplete_report_snapshot_fails_without_artifact(app) -> None:
     await runner.run(accepted.task_id)
     task, events = await load_task_and_events(app, accepted.task_id)
 
-    assert task.status is TaskStatus.FAILED
-    assert task.error is not None
-    assert task.error["code"] == "REPORT_INPUT_INCOMPLETE"
-    assert "skill.run.started" in [event.event_type for event in events]
-    assert "skill.run.failed" in [event.event_type for event in events]
+    assert task.status is TaskStatus.COMPLETED
+    assert task.error is None
+    assert "skill.run.started" not in [event.event_type for event in events]
     assert "report.generated" not in [event.event_type for event in events]
     async with app.state.test_session_factory() as session:
         assert list((await session.execute(select(ReportModel))).scalars()) == []
 
 
-async def test_report_persistence_failure_emits_no_generated_event(
-    app, monkeypatch
-) -> None:  # type: ignore[no-untyped-def]
+async def test_yearly_report_pipeline_persists_year_period(app) -> None:
+    _, accepted = await accept(app, "2026年度账单报告")
+    runner, _ = build_routed_runner(
+        app,
+        [
+            route_response("FINANCIAL_ANALYSIS", "MONTHLY_REPORT"),
+            call("summary", "get_spending_summary", {"month": "2026"}),
+            call("categories", "get_category_breakdown", {"month": "2026"}),
+            call("compare", "compare_spending_periods", {"month": "2026"}),
+            call("top", "get_top_transactions", {"month": "2026", "limit": 5}),
+            LLMResponse(content="年度数据收集完成。"),
+            report_narrative(),
+        ],
+    )
+    await runner.run(accepted.task_id)
+    task, events = await load_task_and_events(app, accepted.task_id)
+    assert task.status is TaskStatus.COMPLETED
+    assert task.output["analysis_snapshot"]["period"] == "2026"
+    assert "report.generated" in [event.event_type for event in events]
+    async with app.state.test_session_factory() as session:
+        report = (await session.execute(select(ReportModel))).scalar_one()
+        assert report.period == "2026"
+        assert report.content_json["period_comparison"]["previous_period"] == "2025"
+        replies = list(
+            (
+                await session.execute(
+                    select(MessageModel).where(
+                        MessageModel.conversation_id == task.conversation_id,
+                        MessageModel.role == "ASSISTANT",
+                    )
+                )
+            ).scalars()
+        )
+        assert replies[-1].content == "2026年年度消费报告已生成。"
+
+
+async def test_report_persistence_failure_emits_no_generated_event(app, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     _, accepted = await accept(app, "生成2026年8月消费报告")
     runner, _ = build_routed_runner(
         app,

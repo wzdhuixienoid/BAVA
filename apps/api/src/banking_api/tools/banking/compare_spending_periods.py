@@ -19,7 +19,7 @@ def build_compare_spending_periods_tool(analytics: FinancialAnalyticsService) ->
         capability_id="transaction.compare_periods",
         name="compare_spending_periods",
         description=(
-            "将指定自然月与其上一个自然月的消费进行确定性比较，返回总额及分类的"
+            "将指定自然月与上月、或自然年与上年的消费进行确定性比较，返回总额及分类的"
             "绝对变化和百分比变化。"
         ),
         input_model=FinancialPeriodInput,

@@ -71,12 +71,15 @@ class OperationRepository:
         payload_hash: str,
         idempotency_key: UUID,
         next_reconcile_at: datetime,
+        resume: bool = False,
     ) -> OperationModel:
         model = OperationModel(
             user_id=user_id,
             workflow_id=workflow_id,
             approval_id=approval_id,
-            operation_type=OperationType.SUBSCRIPTION_CANCEL,
+            operation_type=OperationType.SUBSCRIPTION_RESUME
+            if resume
+            else OperationType.SUBSCRIPTION_CANCEL,
             payload_json=payload,
             payload_hash=payload_hash,
             idempotency_key=idempotency_key,
@@ -165,9 +168,7 @@ class OperationRepository:
         result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def get_for_workflow(
-        self, workflow_id: UUID, user_id: str
-    ) -> OperationModel | None:
+    async def get_for_workflow(self, workflow_id: UUID, user_id: str) -> OperationModel | None:
         result = await self.session.execute(
             select(OperationModel).where(
                 OperationModel.workflow_id == workflow_id,

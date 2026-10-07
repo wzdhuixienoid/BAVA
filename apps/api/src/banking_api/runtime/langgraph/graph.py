@@ -130,6 +130,17 @@ class LangGraphAgentRuntime:
                 runtime_messages=runtime_messages,
                 allowed_tools=allowed_tools,
             )
+            if (
+                agent.agent_id == "agent:financial-analysis"
+                and state["tool_call_count"] >= self.max_tool_calls
+            ):
+                llm_request = llm_request.model_copy(update={"tools": []})
+                llm_request.messages.append(
+                    LLMMessage(
+                        role="system",
+                        content="工具预算已用完。请依据成功结果回答；没有数据则说明无法分析该期间。禁止继续调用工具。",
+                    )
+                )
             await sink(
                 "llm.request.started",
                 {

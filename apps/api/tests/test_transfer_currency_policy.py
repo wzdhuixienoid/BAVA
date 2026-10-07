@@ -138,6 +138,7 @@ async def test_legacy_usd_authorization_cannot_create_operation_or_reauthenticat
         approval.payload_hash = transfer_payload_hash(state.review_payload)
         state.authorization.approval_payload_hash = approval.payload_hash
         model.state_json = state.model_dump(mode="json")
+        model.status = WorkflowStatus.READY_FOR_COMMIT
         await session.commit()
     async with app.state.test_session_factory() as session:
         with pytest.raises(OperationActionError, match=UNSUPPORTED):

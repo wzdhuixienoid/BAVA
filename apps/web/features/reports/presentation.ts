@@ -18,6 +18,7 @@ export function categoryLabel(category: string): string {
 
 export function periodLabel(period: string): string {
   const [year, month] = period.split("-");
+  if (!month) return `${year}年年度`;
   return `${year}年${Number(month)}月`;
 }
 

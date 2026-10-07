@@ -73,7 +73,11 @@ class TransferWorkflowEngine:
         payees = await self._search_payees(draft.recipient_query, principal=principal)
         state.payee_options = payees
         if not payees:
-            return self._failed(state, "PAYEE_NOT_FOUND", "未找到匹配的收款人。")
+            return self._waiting(
+                state,
+                TransferRequiredInputType.RECIPIENT_QUERY,
+                "未找到匹配的收款人，请选择已有收款人或新增收款人。",
+            )
         selected_payee = next((item for item in payees if item["payee_id"] == draft.payee_id), None)
         if draft.payee_id and selected_payee is None:
             return self._failed(state, "PAYEE_NOT_FOUND", "所选收款人不再可用。")

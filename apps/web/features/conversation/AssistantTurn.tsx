@@ -8,13 +8,11 @@ import { ReportCard } from "@/features/reports/ReportCard";
 import { WorkflowReceipt } from "@/features/results/WorkflowReceipt";
 import { TransferWorkflowCard } from "@/features/workflows/transfer/TransferWorkflowCard";
 import { SubscriptionCancellationCard } from "@/features/workflows/subscriptions/SubscriptionCancellationCard";
-import { SubscriptionSummaryCard } from "@/features/subscriptions/SubscriptionSummaryCard";
 import { TransactionAnomalyCard, type TransactionAnomalySnapshot } from "@/features/anomalies/TransactionAnomalyCard";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { ResponseProcess } from "./ResponseProcess";
 import { isConfirmedWorkflow, resultElementId, type ConversationTurn } from "./timeline";
 
-type SubscriptionSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
 
 function ReadPreview({ output }: { output: Record<string, unknown> }) {
   const accounts = output.account_results as Array<{
@@ -46,8 +44,6 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
     ...turn.tasks.map((task) => task.output),
     ...turn.plans.flatMap((plan) => plan.steps.filter((step) => step.status === "COMPLETED").map((step) => step.result_summary)),
   ].filter((output): output is Record<string, unknown> => Boolean(output));
-  const subscriptions = [...new Map(outputs.filter((output) => output.subscription_analysis_snapshot)
-    .map((output) => [JSON.stringify(output.subscription_analysis_snapshot), output.subscription_analysis_snapshot as SubscriptionSnapshot])).values()];
   const anomalies = [...new Map(outputs.filter((output) => output.transaction_anomaly_snapshot)
     .map((output) => [JSON.stringify(output.transaction_anomaly_snapshot), output.transaction_anomaly_snapshot as TransactionAnomalySnapshot])).values()];
   const highlight = (id: string) => highlightedResult === id ? "rounded-xl ring-2 ring-cyan-500 ring-offset-4" : "";
@@ -71,7 +67,6 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
           {accounts.length > 0 && <AccountResults results={accounts} />}
           {outputs.filter((output) => output.financial_display).map((output, index) => <SpendingDashboard key={index} spending={output.financial_display as components["schemas"]["MonthlySpendingReportCore"]} />)}
-          {subscriptions.map((snapshot, index) => <SubscriptionSummaryCard key={index} snapshot={snapshot} />)}
           {anomalies.map((snapshot, index) => <TransactionAnomalyCard key={index} snapshot={snapshot} />)}
           {turn.reports.map((report) => {
             const id = `report-${report.report_id}`;
@@ -89,7 +84,7 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
                 : <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
             </div>;
           })}
-          {(accounts.length > 0 || outputs.some((output) => output.financial_display) || subscriptions.length > 0 || anomalies.length > 0) ? <details className="rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-xs font-semibold text-slate-600">助理说明</summary><div className="mt-3 space-y-3">
+          {(accounts.length > 0 || outputs.some((output) => output.financial_display) || anomalies.length > 0) ? <details className="rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-xs font-semibold text-slate-600">助理说明</summary><div className="mt-3 space-y-3">
           {turn.replies.map((message) => <div key={message.message_id}>
             {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
             <MarkdownMessage content={message.content} />

@@ -116,6 +116,7 @@ class TransferWorkflowState(BaseModel):
 class SelectPayeeAction(BaseModel):
     payee_id: str = Field(min_length=1)
     expected_version: int = Field(ge=1)
+    recipient_query: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class SelectSourceAccountAction(BaseModel):

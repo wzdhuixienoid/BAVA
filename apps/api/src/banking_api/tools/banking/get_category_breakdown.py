@@ -18,7 +18,7 @@ def build_get_category_breakdown_tool(analytics: FinancialAnalyticsService) -> T
     return ToolSpec(
         capability_id="transaction.category_breakdown",
         name="get_category_breakdown",
-        description=("按自然月确定性汇总各消费分类的金额、交易笔数和占比，并按金额降序返回。"),
+        description=("按自然月或自然年确定性汇总各消费分类的金额、交易笔数和占比，并按金额降序返回。"),
         input_model=FinancialPeriodInput,
         output_model=CategoryBreakdown,
         risk_level=RiskLevel.R1_PRIVATE_READ,

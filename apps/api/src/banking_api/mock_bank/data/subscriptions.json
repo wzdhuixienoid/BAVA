@@ -8,7 +8,9 @@
     "billing_interval": "MONTHLY",
     "next_billing_at": "2026-10-08T12:00:00Z",
     "status": "ACTIVE",
-    "cancellable": true
+    "cancellable": true,
+    "resumption_supported": true,
+    "cancellation_supported": true
   },
   {
     "subscription_id": "sub_music",
@@ -19,7 +21,9 @@
     "billing_interval": "MONTHLY",
     "next_billing_at": "2026-10-12T12:00:00Z",
     "status": "ACTIVE",
-    "cancellable": true
+    "cancellable": true,
+    "resumption_supported": true,
+    "cancellation_supported": true
   },
   {
     "subscription_id": "sub_cloud",
@@ -30,7 +34,9 @@
     "billing_interval": "MONTHLY",
     "next_billing_at": "2026-10-16T12:00:00Z",
     "status": "ACTIVE",
-    "cancellable": true
+    "cancellable": true,
+    "resumption_supported": true,
+    "cancellation_supported": true
   },
   {
     "subscription_id": "sub_design",
@@ -41,7 +47,9 @@
     "billing_interval": "MONTHLY",
     "next_billing_at": "2026-10-20T12:00:00Z",
     "status": "ACTIVE",
-    "cancellable": true
+    "cancellable": true,
+    "resumption_supported": true,
+    "cancellation_supported": true
   },
   {
     "subscription_id": "sub_fitness",
@@ -52,6 +60,8 @@
     "billing_interval": "MONTHLY",
     "next_billing_at": null,
     "status": "CANCELLED",
-    "cancellable": false
+    "cancellable": false,
+    "resumption_supported": true,
+    "cancellation_supported": true
   }
 ]

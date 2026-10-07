@@ -2,6 +2,8 @@ import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
+from uuid import uuid4 as new_uuid
 
 import pytest
 import test_postgres_integration
@@ -28,7 +30,6 @@ from banking_api.application.operation_recovery_policy import OperationRecoveryP
 from banking_api.config.settings import get_settings
 from banking_api.llm.models import LLMResponse
 from banking_api.persistence.models import OperationModel
-from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.plans import PlanRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.planning.condition_evaluator import PlanConditionEvaluator
@@ -52,8 +53,13 @@ async def test_postgres_0016_to_0017_preserves_legacy_and_persists_condition(pos
         await asyncio.to_thread(command.downgrade, config, "0016")
         # Insert actual legacy rows while only the 0016 schema exists.
         async with postgres_factory() as session:
-            conversation = await ConversationRepository(session).create(
-                user_id="legacy", title="legacy"
+            conversation = SimpleNamespace(conversation_id=new_uuid())
+            await session.execute(
+                text(
+                    "INSERT INTO conversations (id,user_id,title,created_at,updated_at) "
+                    "VALUES (:id,'legacy','legacy',now(),now())"
+                ),
+                {"id": conversation.conversation_id},
             )
             task = await TaskRepository(session).create(
                 conversation_id=conversation.conversation_id,

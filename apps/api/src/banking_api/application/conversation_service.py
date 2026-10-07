@@ -1,17 +1,31 @@
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.domain.conversation import Conversation, ConversationDetail
-from banking_api.domain.enums import MessageRole, RuntimeBackend
+from banking_api.domain.enums import (
+    MessageRole,
+    OperationStatus,
+    RuntimeBackend,
+    TaskStatus,
+    WorkflowStatus,
+)
 from banking_api.domain.message import Message, MessageAccepted
+from banking_api.persistence.models import OperationModel, PlanModel, TaskModel, WorkflowModel
 from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.messages import MessageRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
+from banking_api.planning.models import PlanStatus
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
 
 BANKING_REQUEST_TASK_TYPE = "BANKING_REQUEST"
+
+
+class ConversationActiveError(Exception):
+    pass
 
 
 class ConversationNotFoundError(Exception):
@@ -49,6 +63,21 @@ class ConversationService:
         models = await self.conversations.list_for_user(user_id)
         return [to_conversation(model) for model in models]
 
+    async def rename(self, *, conversation_id: UUID, user_id: str, title: str) -> Conversation:
+        model = await self.conversations.get_for_user(conversation_id, user_id, for_update=True)
+        if model is None:
+            raise ConversationNotFoundError
+        model.title = title
+        model.title_is_custom = True
+        await self.publisher.persist(
+            event_type="conversation.updated",
+            conversation_id=conversation_id,
+            task_id=None,
+            data={"title": title},
+        )
+        await self.session.commit()
+        return to_conversation(model)
+
     async def get(self, *, conversation_id: UUID, user_id: str) -> ConversationDetail:
         model = await self.conversations.get_for_user(conversation_id, user_id)
         if model is None:
@@ -59,10 +88,76 @@ class ConversationService:
             messages=list(map(to_message, messages)),
         )
 
+    async def delete(self, *, conversation_id: UUID, user_id: str) -> None:
+        model = await self.conversations.get_for_user(
+            conversation_id, user_id, for_update=True, include_deleted=True
+        )
+        if model is None:
+            raise ConversationNotFoundError
+        if model.deleted_at is not None:
+            return
+        terminal_tasks = [
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.CANCELLED,
+            TaskStatus.SKIPPED,
+        ]
+        terminal_workflows = [
+            WorkflowStatus.SUCCEEDED,
+            WorkflowStatus.FAILED,
+            WorkflowStatus.CANCELLED,
+        ]
+        terminal_plans = [PlanStatus.COMPLETED, PlanStatus.FAILED, PlanStatus.CANCELLED]
+        checks = [
+            select(
+                exists().where(
+                    TaskModel.conversation_id == conversation_id,
+                    TaskModel.status.not_in(terminal_tasks),
+                )
+            ),
+            select(
+                exists().where(
+                    WorkflowModel.conversation_id == conversation_id,
+                    WorkflowModel.status.not_in(terminal_workflows),
+                )
+            ),
+            select(
+                exists().where(
+                    PlanModel.conversation_id == conversation_id,
+                    PlanModel.status.not_in(terminal_plans),
+                )
+            ),
+            select(
+                exists().where(
+                    OperationModel.workflow_id.in_(
+                        select(WorkflowModel.workflow_id).where(
+                            WorkflowModel.conversation_id == conversation_id
+                        )
+                    ),
+                    OperationModel.status.not_in(
+                        [OperationStatus.SUCCEEDED, OperationStatus.FAILED]
+                    ),
+                )
+            ),
+        ]
+        for statement in checks:
+            if await self.session.scalar(statement):
+                raise ConversationActiveError
+        model.deleted_at = datetime.now(UTC)
+        await self.publisher.persist(
+            event_type="conversation.deleted",
+            conversation_id=conversation_id,
+            task_id=None,
+            data={},
+        )
+        await self.session.commit()
+
     async def accept_message(
         self, *, conversation_id: UUID, user_id: str, content: str
     ) -> MessageAccepted:
-        conversation = await self.conversations.get_for_user(conversation_id, user_id)
+        conversation = await self.conversations.get_for_user(
+            conversation_id, user_id, for_update=True
+        )
         if conversation is None:
             raise ConversationNotFoundError
 

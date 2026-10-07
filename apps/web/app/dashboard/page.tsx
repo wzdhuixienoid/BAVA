@@ -25,7 +25,7 @@ export default function DashboardPage() {
   return <main className="min-h-screen min-w-0 bg-slate-50">
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-8 sm:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-semibold tracking-wider text-cyan-700">AI BANKING AGENT · v0.9.2</p><h1 className="mt-2 text-3xl font-semibold text-slate-950">金融总览</h1><p className="mt-2 text-sm text-slate-500">账户与消费事实由银行服务提供，金额按币种展示。</p></div>
+        <div><p className="text-xs font-semibold tracking-wider text-cyan-700">AI BANKING AGENT · v0.9.3</p><h1 className="mt-2 text-3xl font-semibold text-slate-950">金融总览</h1><p className="mt-2 text-sm text-slate-500">账户与消费事实由银行服务提供，金额按币种展示。</p></div>
         <nav className="flex flex-wrap gap-2 text-sm"><Link className="rounded-lg border bg-white px-3 py-2" href="/">对话工作台</Link><Link className="rounded-lg border bg-white px-3 py-2" href="/subscriptions">订阅总览</Link><Link className="rounded-lg border bg-white px-3 py-2" href="/reports">消费报告</Link></nav>
       </header>
       <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-3">

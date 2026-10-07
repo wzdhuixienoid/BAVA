@@ -11,6 +11,7 @@ from banking_api.domain.enums import OperationStatus
 class OperationType(StrEnum):
     TRANSFER = "TRANSFER"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
+    SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
 
 
 class Operation(BaseModel):

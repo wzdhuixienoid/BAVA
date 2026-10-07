@@ -3,7 +3,7 @@ import { categoryLabel } from "./presentation";
 
 type Category = components["schemas"]["ReportCategory"];
 
-export function CategoryBreakdown({ categories }: { categories: Category[] }) {
+export function CategoryBreakdown({ categories, yearly = false }: { categories: Category[]; yearly?: boolean }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-950">分类构成</h2>
@@ -26,7 +26,7 @@ export function CategoryBreakdown({ categories }: { categories: Category[] }) {
               <p className="font-semibold text-slate-950">{item.amount_display}</p>
               {item.absolute_change_display && (
                 <p className="mt-1 text-xs text-slate-500">
-                  较上月 {item.absolute_change_display} · {item.percentage_change_display ?? "—"}
+                  {yearly ? "较上年" : "较上月"} {item.absolute_change_display} · {item.percentage_change_display ?? "—"}
                 </p>
               )}
             </div>

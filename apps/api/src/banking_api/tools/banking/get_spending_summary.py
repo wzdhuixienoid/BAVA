@@ -17,7 +17,7 @@ def build_get_spending_summary_tool(analytics: FinancialAnalyticsService) -> Too
         capability_id="transaction.spending_summary",
         name="get_spending_summary",
         description=(
-            "按自然月确定性计算收入与消费汇总，返回总金额、交易笔数和币种；可选按账户范围筛选。"
+            "按自然月或自然年确定性计算收入与消费汇总，返回总金额、交易笔数和币种；可选按账户范围筛选。"
         ),
         input_model=FinancialPeriodInput,
         output_model=SpendingSummary,

@@ -5,16 +5,15 @@ import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
 import { StatusBadge } from "@/components/agent-ui/StatusBadge";
 import { RiskDetails } from "@/features/workflows/RiskDetails";
+import { ReauthenticationForm } from "@/features/workflows/ReauthenticationForm";
 import { WorkflowTimeline } from "@/features/workflows/WorkflowTimeline";
+import { PayeeSelector } from "./PayeeSelector";
 
 type Workflow = components["schemas"]["Workflow"];
 type TransferState = components["schemas"]["TransferWorkflowState"];
 
 function expiresAt(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "short", timeStyle: "medium" }).format(new Date(value));
 }
 
 function ReviewDetails({ state, amountDisplay }: { state: TransferState; amountDisplay?: string | null }) {
@@ -49,7 +48,6 @@ export function TransferWorkflowCard({
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [recipientQuery, setRecipientQuery] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
   const [editing, setEditing] = useState(false);
 
   async function act(action: () => Promise<unknown>) {
@@ -57,7 +55,6 @@ export function TransferWorkflowCard({
     setError(null);
     try {
       await action();
-      setVerificationCode("");
       await onRefresh();
     } catch (reason) {
       await onRefresh();
@@ -72,6 +69,7 @@ export function TransferWorkflowCard({
     workflow.status,
   );
   const operation = workflow.operation_summary;
+  const needsVerification = workflow.risk_decision?.required_reauthentication && workflow.reauth_summary?.status !== "VERIFIED";
   const cancellable = [
     "WAITING_FOR_INPUT",
     "READY_FOR_REVIEW",
@@ -95,68 +93,15 @@ export function TransferWorkflowCard({
           </p>
           <p className="mt-1 text-xs text-slate-500">版本 {workflow.version}</p>
         </div>
-        <StatusBadge status={workflow.presentation?.business_success === false && workflow.status === "SUCCEEDED" ? "WAITING_EXTERNAL" : workflow.status} />
+        <StatusBadge status={needsVerification && workflow.status === "READY_FOR_COMMIT" ? "REAUTH_REQUIRED" : workflow.presentation?.business_success === false && workflow.status === "SUCCEEDED" ? "WAITING_EXTERNAL" : workflow.status} />
       </div>
 
       {workflow.risk_decision && <RiskDetails risk={workflow.risk_decision} />}
       <WorkflowTimeline workflow={workflow} />
 
-      {workflow.status === "WAITING_FOR_INPUT" && required?.type === "RECIPIENT_QUERY" && (
-        <div className="mt-3">
-          <label className="text-sm font-semibold text-slate-900" htmlFor={`recipient-${workflow.workflow_id}`}>
-            收款人
-          </label>
-          <div className="mt-2 flex gap-2">
-            <input
-              id={`recipient-${workflow.workflow_id}`}
-              value={recipientQuery}
-              onChange={(event) => setRecipientQuery(event.target.value)}
-              className="min-w-0 flex-1 rounded border border-amber-200 bg-white px-2 py-1.5 text-sm"
-              placeholder="姓名或手机别名"
-            />
-            <button
-              disabled={busy || !recipientQuery.trim()}
-              onClick={() =>
-                void act(() =>
-                  api.setRecipientQuery(
-                    workflow.workflow_id,
-                    recipientQuery.trim(),
-                    workflow.version,
-                  ),
-                )
-              }
-              className="rounded bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              保存
-            </button>
-          </div>
-        </div>
-      )}
-
-      {workflow.status === "WAITING_FOR_INPUT" && required?.type === "PAYEE_SELECTION" && (
-        <div className="mt-3 space-y-2">
-          <p className="text-sm font-semibold text-slate-900">请选择收款人</p>
-          {(workflow.presentation?.payee_options ?? []).map((option) => (
-            <div key={option.payee_id} className="rounded-md border border-amber-200 bg-white p-2">
-              <p className="text-sm font-semibold text-slate-900">{option.display_name}</p>
-              <p className="text-xs text-slate-500">
-                {option.bank_name} · {option.masked_account} · {option.phone_alias}
-              </p>
-              <button
-                disabled={busy}
-                onClick={() =>
-                  void act(() =>
-                    api.selectPayee(workflow.workflow_id, option.payee_id, workflow.version),
-                  )
-                }
-                className="mt-2 rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
-              >
-                选择
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {((workflow.status === "WAITING_FOR_INPUT" && ["RECIPIENT_QUERY", "PAYEE_SELECTION"].includes(required?.type ?? "")) ||
+        (workflow.status === "FAILED" && !operation && state.validation?.issues?.some((issue) => issue.code === "PAYEE_NOT_FOUND"))) &&
+        <PayeeSelector workflow={workflow} busy={busy} act={act} />}
 
       {workflow.status === "WAITING_FOR_INPUT" && required?.type === "SOURCE_ACCOUNT_SELECTION" && (
         <div className="mt-3 space-y-2">
@@ -236,82 +181,24 @@ export function TransferWorkflowCard({
         </div>
       )}
 
-      {workflow.status === "REAUTH_REQUIRED" && state.review_payload && (
-        <div className="mt-3 rounded-md border border-blue-200 bg-white p-3">
-          <p className="text-sm font-semibold text-blue-900">转账信息已确认</p>
-          <p className="mt-1 text-xs text-slate-600">需要完成强身份验证（模拟）后才能继续</p>
-          <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
-          {workflow.approval_summary?.expires_at && (
-            <p className="mt-2 text-[11px] text-slate-500">
-              确认有效至 {expiresAt(workflow.approval_summary.expires_at)}
-            </p>
-          )}
-          {workflow.reauth_summary?.status === "PENDING" ? (
-            <div className="mt-3">
-              <label className="text-xs font-semibold text-slate-800" htmlFor={`reauth-${workflow.workflow_id}`}>
-                身份验证码
-              </label>
-              <div className="mt-2 flex gap-2">
-                <input
-                  id={`reauth-${workflow.workflow_id}`}
-                  type="password"
-                  autoComplete="one-time-code"
-                  value={verificationCode}
-                  onChange={(event) => setVerificationCode(event.target.value)}
-                  className="min-w-0 flex-1 rounded border border-blue-200 px-2 py-1.5 text-sm"
-                  placeholder="输入验证码"
-                />
-                <button
-                  disabled={busy || !verificationCode}
-                  onClick={() =>
-                    void act(() =>
-                      api.verifyTransferReauthentication(
-                        workflow.workflow_id,
-                        workflow.reauth_summary!.reauth_id,
-                        verificationCode,
-                        workflow.version,
-                      ),
-                    )
-                  }
-                  className="rounded bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                >
-                  验证
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              disabled={busy}
-              onClick={() =>
-                void act(() =>
-                  api.startTransferReauthentication(workflow.workflow_id, workflow.version),
-                )
-              }
-              className="mt-3 rounded bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              开始身份验证
-            </button>
-          )}
-        </div>
-      )}
+      {workflow.status === "REAUTH_REQUIRED" && <ReauthenticationForm workflow={workflow} busy={busy} act={act} />}
 
       {workflow.status === "READY_FOR_COMMIT" && state.review_payload && (
         <div className="mt-3 rounded-md border border-indigo-200 bg-white p-3">
           <p className="text-sm font-semibold text-indigo-900">转账信息已确认</p>
           <p className="mt-1 text-sm font-semibold text-emerald-700">
-            {workflow.risk_decision?.required_reauthentication
-              ? "强身份验证已完成"
-              : "用户确认已完成，无需强验证"}
+            {needsVerification ? "还需要完成强身份验证" : workflow.risk_decision?.required_reauthentication
+              ? "强身份验证已完成" : "用户确认已完成，无需强验证"}
           </p>
           <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
           <p className="mt-3 rounded bg-amber-50 p-2 text-xs font-semibold text-amber-800">
             尚未提交转账
           </p>
           <p className="mt-2 text-[11px] leading-5 text-slate-500">
-            可以提交表示当前内容已批准并满足当前风险所需的安全控制。提交前会再次评估风险。
+            {needsVerification ? "当前确认来自旧版本，补充强身份验证后才可提交。" : "可以提交表示当前内容已批准并满足当前风险所需的安全控制。提交前会再次评估风险。"}
           </p>
           <p className="mt-3 text-xs font-semibold text-red-700">
-            这一步将真正提交资金转账
+            {needsVerification ? "旧版本确认需要补充强验证后才能转账" : "这一步将真正提交资金转账"}
           </p>
           <button
             disabled={busy}
@@ -320,7 +207,7 @@ export function TransferWorkflowCard({
             }
             className="mt-2 rounded bg-red-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
-            提交转账
+            {needsVerification ? "去强验证" : "提交转账"}
           </button>
         </div>
       )}
@@ -422,25 +309,7 @@ export function TransferWorkflowCard({
                   修改金额
                 </button>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-700">更换收款人</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {(workflow.presentation?.payee_options ?? []).map((option) => (
-                    <button
-                      key={option.payee_id}
-                      disabled={busy || state.draft.payee_id === option.payee_id}
-                      onClick={() =>
-                        void act(() =>
-                          api.selectPayee(workflow.workflow_id, option.payee_id, workflow.version),
-                        )
-                      }
-                      className="rounded border px-2 py-1 text-[11px] disabled:opacity-40"
-                    >
-                      {option.display_name} · {option.bank_name} · {option.masked_account}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <PayeeSelector workflow={workflow} busy={busy} act={act} />
               <div>
                 <p className="text-xs font-semibold text-slate-700">更换付款账户</p>
                 <div className="mt-1 flex flex-wrap gap-1">

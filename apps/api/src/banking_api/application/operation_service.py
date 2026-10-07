@@ -146,7 +146,8 @@ class OperationService:
             await self.prepare_subscription_cancel(
                 workflow_id, user_id=user_id, expected_version=expected_version
             )
-            if workflow.workflow_type is WorkflowType.SUBSCRIPTION_CANCEL
+            if workflow.workflow_type
+            in {WorkflowType.SUBSCRIPTION_CANCEL, WorkflowType.SUBSCRIPTION_RESUME}
             else await self.prepare_transfer(
                 workflow_id, user_id=user_id, expected_version=expected_version
             )
@@ -316,7 +317,10 @@ class OperationService:
         workflow = await self.workflows.get_for_user_for_update(workflow_id, user_id)
         if workflow is None:
             raise OperationNotFoundError
-        if workflow.workflow_type is not WorkflowType.SUBSCRIPTION_CANCEL:
+        if workflow.workflow_type not in {
+            WorkflowType.SUBSCRIPTION_CANCEL,
+            WorkflowType.SUBSCRIPTION_RESUME,
+        }:
             raise OperationActionError("WORKFLOW_TYPE_MISMATCH")
         if workflow.version != expected_version:
             raise OperationVersionConflictError
@@ -335,6 +339,7 @@ class OperationService:
             raise OperationActionError("APPROVAL_NOT_CONSUMABLE")
         now = _as_utc(self.clock())
         if _as_utc(approval.expires_at) <= now:
+            await self._expire_approval(workflow, state, approval)
             raise OperationActionError("APPROVAL_EXPIRED")
         expected_hash = subscription_cancel_payload_hash(state.review_payload)
         if (
@@ -346,9 +351,31 @@ class OperationService:
             state, principal=ExecutionPrincipal.for_workflow(user_id)
         )
         if validation_status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
+            await self._fail_final_validation(workflow, state)
             raise OperationActionError(state.error_code or "SUBSCRIPTION_REVALIDATION_FAILED")
         if subscription_cancel_payload_hash(state.review_payload) != approval.payload_hash:
+            await self._expire_approval(workflow, state, approval)
             raise OperationActionError("APPROVAL_PAYLOAD_MISMATCH")
+        resume = workflow.workflow_type is WorkflowType.SUBSCRIPTION_RESUME
+        if (
+            state.draft.action != workflow.workflow_type.value
+            or state.review_payload.action != workflow.workflow_type.value
+        ):
+            raise OperationActionError("WORKFLOW_TYPE_MISMATCH")
+        if resume:
+            authorization = state.authorization
+            if authorization.reauth_id is None:
+                raise OperationActionError("REAUTH_REQUIRED")
+            reauth = await self.reauthentications.get_for_workflow_user_for_update(
+                authorization.reauth_id, workflow_id, user_id
+            )
+            if reauth is None or reauth.approval_id != approval.approval_id:
+                raise OperationActionError("REAUTH_APPROVAL_MISMATCH")
+            if reauth.status is not ReauthenticationStatus.VERIFIED:
+                raise OperationActionError("REAUTH_NOT_VERIFIED")
+            if _as_utc(reauth.expires_at) <= now:
+                await self._expire_reauthentication(workflow, state, reauth)
+                raise OperationActionError("REAUTH_EXPIRED")
         operation = await self.operations.create_subscription_cancel(
             user_id=user_id,
             workflow_id=workflow_id,
@@ -357,6 +384,7 @@ class OperationService:
             payload_hash=expected_hash,
             idempotency_key=uuid4(),
             next_reconcile_at=now,
+            resume=resume,
         )
         approval.status = ApprovalStatus.CONSUMED
         approval.consumed_at = now
@@ -519,7 +547,12 @@ class OperationService:
         await self.session.commit()
         try:
             operation_engine = self._operation_engine(operation.operation_type)
-            output = await operation_engine.submit_operation(
+            submit = (
+                operation_engine.submit_resume_operation
+                if operation.operation_type is OperationType.SUBSCRIPTION_RESUME
+                else operation_engine.submit_operation
+            )
+            output = await submit(
                 operation.operation_id,
                 principal=ExecutionPrincipal.for_recovery(operation.user_id),
             )
@@ -710,7 +743,10 @@ class OperationService:
     def _operation_engine(self, operation_type: OperationType):  # type: ignore[no-untyped-def]
         if operation_type is OperationType.TRANSFER:
             return self.engine
-        if operation_type is OperationType.SUBSCRIPTION_CANCEL and self.subscription_engine:
+        if (
+            operation_type in {OperationType.SUBSCRIPTION_CANCEL, OperationType.SUBSCRIPTION_RESUME}
+            and self.subscription_engine
+        ):
             return self.subscription_engine
         raise OperationActionError("OPERATION_TYPE_NOT_CONFIGURED")
 

@@ -30,6 +30,7 @@ from banking_api.planning.validator import PlanValidationError, PlanValidator
 from banking_api.runtime.base import AgentRunRequest, AgentRuntimeError
 from banking_api.runtime.event_publisher import EventPublisher
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
+from banking_api.subscriptions.answers import subscription_answer
 
 if TYPE_CHECKING:
     from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -366,7 +367,12 @@ class PlanExecutionService:
             output = {
                 "account_results": [
                     result.model_dump(mode="json") for result in build_account_results(facts)
-                ]
+                ],
+                "payee_results": [
+                    item.output
+                    for item in facts
+                    if item.capability_id in {"payee.list", "payee.search"}
+                ],
             }
         if len(json.dumps(output, ensure_ascii=False).encode()) > 65536:
             raise AgentRuntimeError("PLAN_OUTPUT_TOO_LARGE", "结构化结果超过计划存储上限")
@@ -410,6 +416,8 @@ class PlanExecutionService:
                 create = (
                     service.create_transfer
                     if capability == PlanCapability.TRANSFER_WORKFLOW
+                    else service.create_subscription_resume
+                    if capability == PlanCapability.SUBSCRIPTION_RESUME_WORKFLOW
                     else service.create_subscription_cancel
                 )
                 workflow = await create(
@@ -475,6 +483,7 @@ def format_plan_answer(steps) -> str:  # type: ignore[no-untyped-def]
         "SUBSCRIPTION_ANALYSIS": "订阅分析",
         "TRANSFER_WORKFLOW": "转账结果",
         "SUBSCRIPTION_CANCEL_WORKFLOW": "订阅取消结果",
+        "SUBSCRIPTION_RESUME_WORKFLOW": "订阅恢复结果",
     }
     for step in steps:
         if step.step_kind == "CONDITION":
@@ -498,6 +507,8 @@ def format_plan_answer(steps) -> str:  # type: ignore[no-untyped-def]
                 + (
                     "转账流程。"
                     if step.capability == "TRANSFER_WORKFLOW"
+                    else "订阅恢复流程。"
+                    if step.capability == "SUBSCRIPTION_RESUME_WORKFLOW"
                     else "订阅取消流程。"
                     if step.capability == "SUBSCRIPTION_CANCEL_WORKFLOW"
                     else "查询步骤。"
@@ -534,11 +545,22 @@ def format_plan_answer(steps) -> str:  # type: ignore[no-untyped-def]
                 f"{item.get('last_charge_amount', '')} {item.get('currency', '')}"
             )
         if facts.get("operation_status") == "SUCCEEDED":
-            lines.append("转账成功。" if facts["workflow_type"] == "TRANSFER" else "订阅已取消。")
+            lines.append(
+                {
+                    "TRANSFER": "转账成功。",
+                    "SUBSCRIPTION_CANCEL": "订阅已取消。",
+                    "SUBSCRIPTION_RESUME": "订阅已恢复续费，本次未扣款。",
+                }[facts["workflow_type"]]
+            )
         if not lines:
             lines.append(json.dumps(facts, ensure_ascii=False, separators=(",", ":")))
         parts.append("\n".join([titles[step.capability], *lines]))
-    return "\n\n".join(parts)
+    answer = "\n\n".join(parts)
+    return (
+        subscription_answer(answer)
+        if any("SUBSCRIPTION" in str(step.capability) for step in steps)
+        else answer
+    )
 
 
 async def fail_plan(session, task_id, code):  # type: ignore[no-untyped-def]

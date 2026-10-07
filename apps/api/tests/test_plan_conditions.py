@@ -9,6 +9,7 @@ from test_plans import call, claim_task, get_plan, lock_user, proposal, setup_pl
 
 from banking_api.application.plan_execution_service import PlanExecutionService
 from banking_api.application.task_execution_policy import TaskExecutionPolicy
+from banking_api.config.settings import get_settings
 from banking_api.llm.fake_provider import FakeLLMProvider
 from banking_api.llm.models import LLMResponse
 from banking_api.persistence.models import (
@@ -432,7 +433,7 @@ async def test_true_waits_for_user_and_reuses_immutable_decision(app, client):
     workflow_id = plan.steps[2].linked_workflow_id
     workflow = (await client.get(f"/api/v1/workflows/{workflow_id}")).json()
     assert workflow["status"] == "READY_FOR_REVIEW" and workflow["operation_summary"] is None
-    assert workflow["risk_level"] == "YELLOW"
+    assert workflow["risk_level"] == "RED"
     async with app.state.test_session_factory() as session:
         assert await session.scalar(select(func.count()).select_from(ApprovalModel)) == 0
         assert await session.scalar(select(func.count()).select_from(OperationModel)) == 0
@@ -441,10 +442,20 @@ async def test_true_waits_for_user_and_reuses_immutable_decision(app, client):
     assert (await get_plan(app, task_id)).steps[1].condition_decision == decision
     assert len(planner.requests) == 1 and len(runtime.requests) == 2
     assert (await client.post(f"/api/v1/plans/{plan.plan_id}/actions/take-over")).status_code == 200
-    for action in ("approve", "commit"):
+    for action in ("approve", "start-reauth", "verify-reauth", "commit"):
         response = await client.post(
             f"/api/v1/workflows/{workflow_id}/actions/{action}",
-            json={"expected_version": workflow["version"]},
+            json={
+                "expected_version": workflow["version"],
+                **(
+                    {
+                        "reauth_id": workflow["reauth_summary"]["reauth_id"],
+                        "verification_code": get_settings().mock_reauth_code,
+                    }
+                    if action == "verify-reauth"
+                    else {}
+                ),
+            },
         )
         assert response.status_code == 200, response.text
         workflow = response.json()

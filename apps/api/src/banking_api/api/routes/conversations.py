@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from banking_api.api.dependencies import (
     EventBusDependency,
@@ -9,13 +9,37 @@ from banking_api.api.dependencies import (
     TaskRunnerDependency,
 )
 from banking_api.application.conversation_service import (
+    ConversationActiveError,
     ConversationNotFoundError,
     ConversationService,
 )
-from banking_api.domain.conversation import Conversation, ConversationCreate, ConversationDetail
+from banking_api.domain.conversation import (
+    Conversation,
+    ConversationCreate,
+    ConversationDetail,
+    ConversationRename,
+)
 from banking_api.domain.message import MessageAccepted, MessageCreate
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
+
+
+@router.patch("/{conversation_id}", response_model=Conversation)
+async def rename_conversation(
+    conversation_id: UUID,
+    body: ConversationRename,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+) -> Conversation:
+    try:
+        return await ConversationService(session, bus).rename(
+            conversation_id=conversation_id,
+            user_id=principal.user_id,
+            title=body.title,
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="未找到该对话") from exc
 
 
 @router.post("", response_model=Conversation, status_code=status.HTTP_201_CREATED)
@@ -78,3 +102,27 @@ async def post_message(
     except ConversationNotFoundError as exc:
         raise HTTPException(status_code=404, detail="未找到该对话") from exc
     return accepted
+
+
+@router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_conversation(
+    conversation_id: UUID,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+) -> Response:
+    try:
+        await ConversationService(session, bus).delete(
+            conversation_id=conversation_id, user_id=principal.user_id
+        )
+    except ConversationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="未找到该对话") from exc
+    except ConversationActiveError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "CONVERSATION_HAS_ACTIVE_TASKS",
+                "message": "该对话还有未结束的任务，请先完成或取消相关流程。",
+            },
+        ) from exc
+    return Response(status_code=204)

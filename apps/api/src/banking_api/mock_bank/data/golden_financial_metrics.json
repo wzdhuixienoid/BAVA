@@ -1,5 +1,5 @@
 {
-  "fixture_version": "0.3.2",
+  "fixture_version": "0.9.3",
   "calculation_rules": {
     "valid_transaction_statuses": [
       "POSTED"
@@ -16,6 +16,2322 @@
     "period_interval": "left-closed, right-open calendar month"
   },
   "months": {
+    "2025-01": {
+      "summary": {
+        "period": "2025-01",
+        "total_income": "28620.00",
+        "total_spending": "9078.10",
+        "income_transaction_count": 3,
+        "spending_transaction_count": 55,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-01",
+        "total_spending": "9078.10",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6278846895275443099326951675"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1669.10",
+            "transaction_count": 20,
+            "share": "0.1838600588228814399488879832"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "849.00",
+            "transaction_count": 1,
+            "share": "0.09352177217699738932155406968"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "351.00",
+            "transaction_count": 3,
+            "share": "0.03866447824985404434848701821"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "204.00",
+            "transaction_count": 23,
+            "share": "0.02247166257256474372390698494"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01310846983399610050561240788"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009473347947257686079686277966"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007490554190854914574635661647"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003524966678049371564534429010"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-01",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00141",
+            "occurred_at": "2025-01-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00193",
+            "occurred_at": "2025-01-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "849.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00173",
+            "occurred_at": "2025-01-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "258.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00154",
+            "occurred_at": "2025-01-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "243.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00190",
+            "occurred_at": "2025-01-10T12:00:00Z",
+            "merchant": "江城电力",
+            "description": "模拟历史账单",
+            "category": "UTILITIES",
+            "amount": "208.80",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          }
+        ]
+      }
+    },
+    "2025-02": {
+      "summary": {
+        "period": "2025-02",
+        "total_income": "20620.00",
+        "total_spending": "10849.15",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 53,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-02",
+        "total_spending": "10849.15",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.5253867814529248835162201647"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.2138416373632957420627422425"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1339.15",
+            "transaction_count": 18,
+            "share": "0.1234336330495937469755695147"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "652.00",
+            "transaction_count": 1,
+            "share": "0.06009687394865035509694307849"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "351.00",
+            "transaction_count": 3,
+            "share": "0.03235276496315379545863039962"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "182.00",
+            "transaction_count": 20,
+            "share": "0.01677550775867233838595650350"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01096860122682422125235617537"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.007926888281570445610946479678"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.006267772129613840715632100211"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.002949539825700630925003341276"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-02",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00203",
+            "occurred_at": "2025-02-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00254",
+            "occurred_at": "2025-02-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00253",
+            "occurred_at": "2025-02-02T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "680.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00249",
+            "occurred_at": "2025-02-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "652.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00255",
+            "occurred_at": "2025-02-04T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "360.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          }
+        ]
+      }
+    },
+    "2025-03": {
+      "summary": {
+        "period": "2025-03",
+        "total_income": "20620.00",
+        "total_spending": "8719.05",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 53,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-03",
+        "total_spending": "8719.05",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6537409465480757651349630980"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1913.05",
+            "transaction_count": 20,
+            "share": "0.2194103715427712881563931850"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "336.00",
+            "transaction_count": 1,
+            "share": "0.03853630842809709773427150894"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03085198502130392645987808305"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "196.00",
+            "transaction_count": 21,
+            "share": "0.02247951324972330701165838021"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01364827590161772211422115942"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009863459895286757158176636216"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007799014800924412636697805380"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003670124612199723593740143708"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-03",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00262",
+            "occurred_at": "2025-03-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00311",
+            "occurred_at": "2025-03-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "336.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00284",
+            "occurred_at": "2025-03-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "260.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00274",
+            "occurred_at": "2025-03-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "202.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00303",
+            "occurred_at": "2025-03-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "176.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2025-04": {
+      "summary": {
+        "period": "2025-04",
+        "total_income": "20620.00",
+        "total_spending": "8485.05",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 54,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-04",
+        "total_spending": "8485.05",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6717697597539201301111955734"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1438.05",
+            "transaction_count": 19,
+            "share": "0.1694804391252850601941061043"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "488.00",
+            "transaction_count": 1,
+            "share": "0.05751291978244088131478305962"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03170281848663237105261607180"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "186.00",
+            "transaction_count": 22,
+            "share": "0.02192090794986476214047059239"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "185.00",
+            "transaction_count": 2,
+            "share": "0.02180305360604828492466161072"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01402466691416078868126881987"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.008014095379520450675010754209"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003771339002127270905887413745"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-04",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00321",
+            "occurred_at": "2025-04-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00370",
+            "occurred_at": "2025-04-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "488.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00343",
+            "occurred_at": "2025-04-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "255.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00333",
+            "occurred_at": "2025-04-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "227.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00362",
+            "occurred_at": "2025-04-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "172.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2025-05": {
+      "summary": {
+        "period": "2025-05",
+        "total_income": "20620.00",
+        "total_spending": "10701.05",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 58,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-05",
+        "total_spending": "10701.05",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.5326580101952612126847365445"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.2168011550268431602506296111"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1637.05",
+            "transaction_count": 20,
+            "share": "0.1529803150158162049518505193"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.02513772013026759056354282991"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "195.00",
+            "transaction_count": 2,
+            "share": "0.01822251087510104148658309231"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "194.00",
+            "transaction_count": 22,
+            "share": "0.01812906210138257460716471748"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "167.00",
+            "transaction_count": 1,
+            "share": "0.01560594521098396886286859701"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01112040407249755865078660505"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.006354516612855747800449488602"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.002990360758990940141387994636"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-05",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00380",
+            "occurred_at": "2025-05-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00435",
+            "occurred_at": "2025-05-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00434",
+            "occurred_at": "2025-05-02T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "680.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00436",
+            "occurred_at": "2025-05-04T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "360.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00411",
+            "occurred_at": "2025-05-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "224.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2025-06": {
+      "summary": {
+        "period": "2025-06",
+        "total_income": "28620.00",
+        "total_spending": "8640.05",
+        "income_transaction_count": 3,
+        "spending_transaction_count": 52,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-06",
+        "total_spending": "8640.05",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6597184044073819017251057575"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1390.05",
+            "transaction_count": 19,
+            "share": "0.1608844856221896864022777646"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "784.00",
+            "transaction_count": 1,
+            "share": "0.09074021562375217736008472173"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03113407908519047922176376294"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "192.00",
+            "transaction_count": 21,
+            "share": "0.02222209362214339037389829920"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01377306844289095549215571669"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009953646101585060271641946517"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007870324824509117424088980967"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003703682270357231728983049867"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-06",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00443",
+            "occurred_at": "2025-06-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00492",
+            "occurred_at": "2025-06-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "784.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00486",
+            "occurred_at": "2025-06-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "234.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00467",
+            "occurred_at": "2025-06-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "197.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00476",
+            "occurred_at": "2025-06-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "148.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2025-07": {
+      "summary": {
+        "period": "2025-07",
+        "total_income": "20620.00",
+        "total_spending": "8651.20",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 55,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-07",
+        "total_spending": "8651.20",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6588681339004993526909561679"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1601.20",
+            "transaction_count": 20,
+            "share": "0.1850841501756981690401331607"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "484.00",
+            "transaction_count": 1,
+            "share": "0.05594599593120029591270575180"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "351.00",
+            "transaction_count": 3,
+            "share": "0.04057240614018864434991677455"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "210.00",
+            "transaction_count": 23,
+            "share": "0.02427408914370260773071943777"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01375531718143147771407434807"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009940817458849639356389864990"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007860181246532272979471056038"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003698908821897540225633438136"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-07",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00502",
+            "occurred_at": "2025-07-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00553",
+            "occurred_at": "2025-07-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "484.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00524",
+            "occurred_at": "2025-07-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "251.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00543",
+            "occurred_at": "2025-07-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "239.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00550",
+            "occurred_at": "2025-07-10T12:00:00Z",
+            "merchant": "江城电力",
+            "description": "模拟历史账单",
+            "category": "UTILITIES",
+            "amount": "208.80",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          }
+        ]
+      }
+    },
+    "2025-08": {
+      "summary": {
+        "period": "2025-08",
+        "total_income": "20620.00",
+        "total_spending": "10721.20",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 56,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-08",
+        "total_spending": "10721.20",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.5316569040779017274185725478"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.2163936872738126329142260195"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1317.20",
+            "transaction_count": 20,
+            "share": "0.1228593814125284483080252211"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "546.00",
+            "transaction_count": 1,
+            "share": "0.05092713502219900757377905458"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "351.00",
+            "transaction_count": 3,
+            "share": "0.03273887251427079058314367795"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "182.00",
+            "transaction_count": 21,
+            "share": "0.01697571167406633585792635153"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01109950378688952729172107600"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.008021490131701675185613550722"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.006342573592508301309554900571"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.002984740514121553557437600269"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-08",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00563",
+            "occurred_at": "2025-08-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00617",
+            "occurred_at": "2025-08-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00616",
+            "occurred_at": "2025-08-02T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "680.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00612",
+            "occurred_at": "2025-08-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "546.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00618",
+            "occurred_at": "2025-08-04T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "360.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          }
+        ]
+      }
+    },
+    "2025-09": {
+      "summary": {
+        "period": "2025-09",
+        "total_income": "20620.00",
+        "total_spending": "8948.10",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 53,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-09",
+        "total_spending": "8948.10",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6370067388607637375532235894"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1848.10",
+            "transaction_count": 19,
+            "share": "0.2065354656295749935740548273"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "634.00",
+            "transaction_count": 1,
+            "share": "0.07085303025223231747521820275"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03006224785149920094768721852"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "192.00",
+            "transaction_count": 22,
+            "share": "0.02145706909846783115968753143"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01329891261832120785418133458"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009610978867022049373610040120"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007599378639040690202389334049"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003576178183077971859947921905"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-09",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00625",
+            "occurred_at": "2025-09-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00674",
+            "occurred_at": "2025-09-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "634.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00667",
+            "occurred_at": "2025-09-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "260.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00648",
+            "occurred_at": "2025-09-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "243.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00638",
+            "occurred_at": "2025-09-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "237.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2025-10": {
+      "summary": {
+        "period": "2025-10",
+        "total_income": "20620.00",
+        "total_spending": "10652.10",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 58,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-10",
+        "total_spending": "10652.10",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.5351057537950263328357788605"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.2177974296148177354700012204"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1553.10",
+            "transaction_count": 20,
+            "share": "0.1458022361787816486889909032"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "313.00",
+            "transaction_count": 1,
+            "share": "0.02938387735751635827677171638"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.02525323645102843570751307254"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "192.00",
+            "transaction_count": 23,
+            "share": "0.01802461486467457121131044583"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01117150608800142694867678674"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.008073525408135485021732803860"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.006383717764572243970672449564"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003004102477445761868551740971"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-10",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00684",
+            "occurred_at": "2025-10-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00740",
+            "occurred_at": "2025-10-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00739",
+            "occurred_at": "2025-10-02T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "680.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00741",
+            "occurred_at": "2025-10-04T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "360.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00735",
+            "occurred_at": "2025-10-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "313.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          }
+        ]
+      }
+    },
+    "2025-11": {
+      "summary": {
+        "period": "2025-11",
+        "total_income": "20620.00",
+        "total_spending": "8574.15",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 51,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-11",
+        "total_spending": "8574.15",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6647889295148790259092738056"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1581.15",
+            "transaction_count": 19,
+            "share": "0.1844089501583247318976225049"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "533.00",
+            "transaction_count": 1,
+            "share": "0.06216359639147903873853384884"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03137337228763201017010432521"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "186.00",
+            "transaction_count": 20,
+            "share": "0.02169311243680131558230261892"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01387892677408256211986027770"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.01003014876110168354880658724"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007930815299475749782777301540"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003732148376223882250718730137"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-11",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00748",
+            "occurred_at": "2025-11-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00795",
+            "occurred_at": "2025-11-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "533.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00789",
+            "occurred_at": "2025-11-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "241.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00770",
+            "occurred_at": "2025-11-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "220.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00760",
+            "occurred_at": "2025-11-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "199.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2025-12": {
+      "summary": {
+        "period": "2025-12",
+        "total_income": "28620.00",
+        "total_spending": "8412.25",
+        "income_transaction_count": 3,
+        "spending_transaction_count": 55,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025-12",
+        "total_spending": "8412.25",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "transaction_count": 1,
+            "share": "0.6775832862789384528514963298"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1679.25",
+            "transaction_count": 20,
+            "share": "0.1996196023655977889387500371"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "271.00",
+            "transaction_count": 1,
+            "share": "0.03221492466343724924960622901"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03197717614193586733632500223"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "188.00",
+            "transaction_count": 23,
+            "share": "0.02234836102112989984843531754"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01414603702933222384023299355"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.01022318642455942227109275164"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.008083449731046985051561710601"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003803976344022110612499628518"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025-12",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00805",
+            "occurred_at": "2025-12-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00857",
+            "occurred_at": "2025-12-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "271.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00838",
+            "occurred_at": "2025-12-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "257.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00848",
+            "occurred_at": "2025-12-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "201.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00819",
+            "occurred_at": "2025-12-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "188.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2026-01": {
+      "summary": {
+        "period": "2026-01",
+        "total_income": "31920.00",
+        "total_spending": "9552.15",
+        "income_transaction_count": 3,
+        "spending_transaction_count": 54,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-01",
+        "total_spending": "9552.15",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.6490685343090299042623911894"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1845.15",
+            "transaction_count": 20,
+            "share": "0.1931659364645655690080243715"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "649.00",
+            "transaction_count": 1,
+            "share": "0.06794281915589683997843417451"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "351.00",
+            "transaction_count": 3,
+            "share": "0.03674565411975314458001601734"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "202.00",
+            "transaction_count": 22,
+            "share": "0.02114707160168129688080693875"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01245792831980234816245557283"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009003208701705898672026716498"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007118816182744198949974613045"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003350031144820799505870406139"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-01",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00867",
+            "occurred_at": "2026-01-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00918",
+            "occurred_at": "2026-01-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "649.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00899",
+            "occurred_at": "2026-01-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "250.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00909",
+            "occurred_at": "2026-01-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "231.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00890",
+            "occurred_at": "2026-01-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "212.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2026-02": {
+      "summary": {
+        "period": "2026-02",
+        "total_income": "23920.00",
+        "total_spending": "11573.05",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 53,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-02",
+        "total_spending": "11573.05",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.5357274011604546770298235988"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.2004657372084282017272888305"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1452.05",
+            "transaction_count": 18,
+            "share": "0.1254682214282319699647024769"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "799.00",
+            "transaction_count": 1,
+            "share": "0.06903970863341988499142404120"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "351.00",
+            "transaction_count": 3,
+            "share": "0.03032908351730961155443033600"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "146.00",
+            "transaction_count": 20,
+            "share": "0.01261551622087522303973455571"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "119.00",
+            "transaction_count": 4,
+            "share": "0.01028250979646679138170145294"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.007431057499967597132994327338"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.005875719883695309360972258825"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.002765044651150733816928121800"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-02",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00928",
+            "occurred_at": "2026-02-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00979",
+            "occurred_at": "2026-02-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00974",
+            "occurred_at": "2026-02-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "799.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00978",
+            "occurred_at": "2026-02-02T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "680.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_00980",
+            "occurred_at": "2026-02-04T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "360.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          }
+        ]
+      }
+    },
+    "2026-03": {
+      "summary": {
+        "period": "2026-03",
+        "total_income": "23920.00",
+        "total_spending": "9012.05",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 54,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-03",
+        "total_spending": "9012.05",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.6879677764770501717145377578"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1633.05",
+            "transaction_count": 20,
+            "share": "0.1812073834477172230513590138"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "385.00",
+            "transaction_count": 1,
+            "share": "0.04272057966833295421130597367"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.02984892449553653164374365433"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "190.00",
+            "transaction_count": 22,
+            "share": "0.02108288347268379558480035064"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "149.00",
+            "transaction_count": 4,
+            "share": "0.01653341914436781864281711708"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009542778835004244317330685027"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007545453032328937367191704440"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003550801426978323466913743266"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-03",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00987",
+            "occurred_at": "2026-03-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01037",
+            "occurred_at": "2026-03-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "385.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01019",
+            "occurred_at": "2026-03-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "225.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_01010",
+            "occurred_at": "2026-03-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "211.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_01000",
+            "occurred_at": "2026-03-06T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "172.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2026-04": {
+      "summary": {
+        "period": "2026-04",
+        "total_income": "23920.00",
+        "total_spending": "9202.15",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 53,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-04",
+        "total_spending": "9202.15",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.6737555897263139592377868216"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1578.15",
+            "transaction_count": 19,
+            "share": "0.1714979651494487701243731085"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "634.00",
+            "transaction_count": 1,
+            "share": "0.06889694256233597583173497498"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.02923229897360942823144591210"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "186.00",
+            "transaction_count": 22,
+            "share": "0.02021266769178941877713360465"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "149.00",
+            "transaction_count": 4,
+            "share": "0.01619186820471302902039197361"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.009345642051042419434588655912"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007389577435707959552930565140"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.003477448205039039789614383595"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-04",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_01047",
+            "occurred_at": "2026-04-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01096",
+            "occurred_at": "2026-04-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "634.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01088",
+            "occurred_at": "2026-04-27T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "245.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_01078",
+            "occurred_at": "2026-04-20T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "235.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_01069",
+            "occurred_at": "2026-04-13T12:00:00Z",
+            "merchant": "禾田生鲜",
+            "description": "家庭生鲜采购",
+            "category": "FOOD",
+            "amount": "191.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2026-05": {
+      "summary": {
+        "period": "2026-05",
+        "total_income": "23920.00",
+        "total_spending": "11435.10",
+        "income_transaction_count": 2,
+        "spending_transaction_count": 56,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-05",
+        "total_spending": "11435.10",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.5421902738060882720745773977"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.2028841024564717405182289617"
+          },
+          {
+            "category": "FOOD",
+            "amount": "1588.10",
+            "transaction_count": 20,
+            "share": "0.1388794151341046427228445750"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "555.00",
+            "transaction_count": 1,
+            "share": "0.04853477451006112758086942834"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.02352406187965124922388085806"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "168.00",
+            "transaction_count": 21,
+            "share": "0.01469160741926174672718209723"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "149.00",
+            "transaction_count": 4,
+            "share": "0.01303005658017857299017936004"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.007520703797955417967486073580"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.005946603003034516532430848878"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.002798401413192713662320399472"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-05",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_01106",
+            "occurred_at": "2026-05-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01160",
+            "occurred_at": "2026-05-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_01159",
+            "occurred_at": "2026-05-02T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "680.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_01155",
+            "occurred_at": "2026-05-22T12:00:00Z",
+            "merchant": "山河商城",
+            "description": "模拟历史账单",
+            "category": "SHOPPING",
+            "amount": "555.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01161",
+            "occurred_at": "2026-05-04T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "360.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          }
+        ]
+      }
+    },
+    "2026-06": {
+      "summary": {
+        "period": "2026-06",
+        "total_income": "23800.00",
+        "total_spending": "7809.35",
+        "income_transaction_count": 1,
+        "spending_transaction_count": 29,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-06",
+        "total_spending": "7809.35",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.7939201085877825939418773650"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "517.00",
+            "transaction_count": 2,
+            "share": "0.06620269292578767759160493511"
+          },
+          {
+            "category": "FOOD",
+            "amount": "442.35",
+            "transaction_count": 10,
+            "share": "0.05664363871512994039196604071"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "269.00",
+            "transaction_count": 3,
+            "share": "0.03444588858227637383392984051"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "149.00",
+            "transaction_count": 4,
+            "share": "0.01907969293219025911247414958"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "86.00",
+            "transaction_count": 1,
+            "share": "0.01101244021589504888370991184"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "78.00",
+            "transaction_count": 7,
+            "share": "0.009988027172555974568946199107"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.008707510868382131675491558196"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-06",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_0002",
+            "occurred_at": "2026-06-03T12:02:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_0108",
+            "occurred_at": "2026-06-23T12:48:00Z",
+            "merchant": "山河商城",
+            "description": "日常购物",
+            "category": "SHOPPING",
+            "amount": "329.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_0107",
+            "occurred_at": "2026-06-11T12:47:00Z",
+            "merchant": "山河商城",
+            "description": "日常购物",
+            "category": "SHOPPING",
+            "amount": "188.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_0098",
+            "occurred_at": "2026-06-10T12:38:00Z",
+            "merchant": "江城电力",
+            "description": "水电通信费",
+            "category": "UTILITIES",
+            "amount": "126.80",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_0100",
+            "occurred_at": "2026-06-25T12:40:00Z",
+            "merchant": "星联通信",
+            "description": "水电通信费",
+            "category": "UTILITIES",
+            "amount": "99.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          }
+        ]
+      }
+    },
     "2026-07": {
       "summary": {
         "period": "2026-07",
@@ -269,9 +2585,1923 @@
           }
         ]
       }
+    },
+    "2026-09": {
+      "summary": {
+        "period": "2026-09",
+        "total_income": "23800.00",
+        "total_spending": "9228.75",
+        "income_transaction_count": 1,
+        "spending_transaction_count": 41,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-09",
+        "total_spending": "9228.75",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.6718136258973317079777868075"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "1580.00",
+            "transaction_count": 1,
+            "share": "0.1712041175673845320330488961"
+          },
+          {
+            "category": "FOOD",
+            "amount": "739.75",
+            "transaction_count": 17,
+            "share": "0.08015711770283082757686577272"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "236.00",
+            "transaction_count": 1,
+            "share": "0.02557226059867262630367059461"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "149.00",
+            "transaction_count": 4,
+            "share": "0.01614519842882297169172423134"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "136.00",
+            "transaction_count": 15,
+            "share": "0.01473655695516727617499661384"
+          },
+          {
+            "category": "OTHER",
+            "amount": "120.00",
+            "transaction_count": 1,
+            "share": "0.01300284437220642015440877692"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "68.00",
+            "transaction_count": 1,
+            "share": "0.007368278477583638087498306921"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-09",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_0020",
+            "occurred_at": "2026-09-03T12:20:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_0129",
+            "occurred_at": "2026-09-11T12:09:00Z",
+            "merchant": "康和健康",
+            "description": "医疗健康",
+            "category": "HEALTH",
+            "amount": "1580.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_0114",
+            "occurred_at": "2026-09-03T12:54:00Z",
+            "merchant": "山河商城",
+            "description": "日常购物",
+            "category": "SHOPPING",
+            "amount": "236.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_0138",
+            "occurred_at": "2026-09-03T12:18:00Z",
+            "merchant": "社区服务中心",
+            "description": "其他支出",
+            "category": "OTHER",
+            "amount": "120.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_0024",
+            "occurred_at": "2026-09-20T12:24:00Z",
+            "merchant": "像素设计",
+            "description": "固定订阅",
+            "category": "SUBSCRIPTION",
+            "amount": "88.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    },
+    "2026-10": {
+      "summary": {
+        "period": "2026-10",
+        "total_income": "23800.00",
+        "total_spending": "20594.00",
+        "income_transaction_count": 1,
+        "spending_transaction_count": 19,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026-10",
+        "total_spending": "20594.00",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "SHOPPING",
+            "amount": "11597.00",
+            "transaction_count": 4,
+            "share": "0.5631251820918714188598620958"
+          },
+          {
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "transaction_count": 1,
+            "share": "0.3010585607458483053316499951"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "2320.00",
+            "transaction_count": 3,
+            "share": "0.1126541711178013013499077401"
+          },
+          {
+            "category": "FOOD",
+            "amount": "397.00",
+            "transaction_count": 5,
+            "share": "0.01927745945420996406720404001"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "48.00",
+            "transaction_count": 5,
+            "share": "0.002330775954161406234825677382"
+          },
+          {
+            "category": "OTHER",
+            "amount": "32.00",
+            "transaction_count": 1,
+            "share": "0.001553850636107604156550451588"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026-10",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_01206",
+            "occurred_at": "2026-10-07T12:00:00Z",
+            "merchant": "远帆家居（虚构）",
+            "description": "新商户大额消费测试样例",
+            "category": "SHOPPING",
+            "amount": "8600.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_01168",
+            "occurred_at": "2026-10-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01181",
+            "occurred_at": "2026-10-03T12:00:00Z",
+            "merchant": "远山旅行",
+            "description": "节假日旅行",
+            "category": "TRAVEL",
+            "amount": "1280.00",
+            "currency": "CNY",
+            "account_id": "acc_travel"
+          },
+          {
+            "transaction_id": "txn_history_01203",
+            "occurred_at": "2026-10-06T12:00:00Z",
+            "merchant": "晨雾数码（虚构）",
+            "description": "短时重复扣费测试样例",
+            "category": "SHOPPING",
+            "amount": "999.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_01204",
+            "occurred_at": "2026-10-06T12:03:00Z",
+            "merchant": "晨雾数码（虚构）",
+            "description": "短时重复扣费测试样例",
+            "category": "SHOPPING",
+            "amount": "999.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          }
+        ]
+      }
+    }
+  },
+  "years": {
+    "2025": {
+      "summary": {
+        "period": "2025",
+        "total_income": "271440.00",
+        "total_spending": "112431.45",
+        "income_transaction_count": 27,
+        "spending_transaction_count": 653,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2025",
+        "total_spending": "112431.45",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "68400.00",
+            "transaction_count": 12,
+            "share": "0.6083707005468665573556153550"
+          },
+          {
+            "category": "FOOD",
+            "amount": "18966.45",
+            "transaction_count": 234,
+            "share": "0.1686934572132619476134124393"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "9280.00",
+            "transaction_count": 12,
+            "share": "0.08253918276425324053011857447"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "6057.00",
+            "transaction_count": 12,
+            "share": "0.05387282650895278856583278077"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "3556.00",
+            "transaction_count": 36,
+            "share": "0.03162816098164703915141181582"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "2304.00",
+            "transaction_count": 261,
+            "share": "0.02049248675526287351092599090"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "1428.00",
+            "transaction_count": 48,
+            "share": "0.01270107252018896847812600478"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "1240.00",
+            "transaction_count": 14,
+            "share": "0.01102894252453383817428308538"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "816.00",
+            "transaction_count": 12,
+            "share": "0.007257755725822267701786288445"
+          },
+          {
+            "category": "OTHER",
+            "amount": "384.00",
+            "transaction_count": 12,
+            "share": "0.003415414459210478918487665151"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2025",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_00141",
+            "occurred_at": "2025-01-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00203",
+            "occurred_at": "2025-02-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00262",
+            "occurred_at": "2025-03-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00321",
+            "occurred_at": "2025-04-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00380",
+            "occurred_at": "2025-05-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "5700.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          }
+        ]
+      }
+    },
+    "2026": {
+      "summary": {
+        "period": "2026",
+        "total_income": "246600.00",
+        "total_spending": "114287.10",
+        "income_transaction_count": 16,
+        "spending_transaction_count": 437,
+        "currency": "CNY"
+      },
+      "category_breakdown": {
+        "period": "2026",
+        "total_spending": "114287.10",
+        "currency": "CNY",
+        "categories": [
+          {
+            "category": "HOUSING",
+            "amount": "62000.00",
+            "transaction_count": 10,
+            "share": "0.5424934222672550095330094123"
+          },
+          {
+            "category": "SHOPPING",
+            "amount": "21400.00",
+            "transaction_count": 17,
+            "share": "0.1872477296212783420001032487"
+          },
+          {
+            "category": "TRAVEL",
+            "amount": "11220.00",
+            "transaction_count": 15,
+            "share": "0.09817380964255808398323170332"
+          },
+          {
+            "category": "FOOD",
+            "amount": "11097.10",
+            "transaction_count": 157,
+            "share": "0.09709844768132186397239933466"
+          },
+          {
+            "category": "HEALTH",
+            "amount": "2416.00",
+            "transaction_count": 8,
+            "share": "0.02113974368060787262954436677"
+          },
+          {
+            "category": "UTILITIES",
+            "amount": "2316.00",
+            "transaction_count": 24,
+            "share": "0.02026475428985423551739435159"
+          },
+          {
+            "category": "TRANSPORT",
+            "amount": "1410.00",
+            "transaction_count": 150,
+            "share": "0.01233735040962628328131521405"
+          },
+          {
+            "category": "SUBSCRIPTION",
+            "amount": "1281.00",
+            "transaction_count": 36,
+            "share": "0.01120861409555409140664169447"
+          },
+          {
+            "category": "ENTERTAINMENT",
+            "amount": "748.00",
+            "transaction_count": 11,
+            "share": "0.006544920642837205598882113554"
+          },
+          {
+            "category": "OTHER",
+            "amount": "399.00",
+            "transaction_count": 9,
+            "share": "0.003491207669107012077478560572"
+          }
+        ]
+      },
+      "top_transactions": {
+        "period": "2026",
+        "currency": "CNY",
+        "transactions": [
+          {
+            "transaction_id": "txn_history_01206",
+            "occurred_at": "2026-10-07T12:00:00Z",
+            "merchant": "远帆家居（虚构）",
+            "description": "新商户大额消费测试样例",
+            "category": "SHOPPING",
+            "amount": "8600.00",
+            "currency": "CNY",
+            "account_id": "acc_credit"
+          },
+          {
+            "transaction_id": "txn_history_00867",
+            "occurred_at": "2026-01-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00928",
+            "occurred_at": "2026-02-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_00987",
+            "occurred_at": "2026-03-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          },
+          {
+            "transaction_id": "txn_history_01047",
+            "occurred_at": "2026-04-03T12:00:00Z",
+            "merchant": "青禾公寓（虚构）",
+            "description": "月租",
+            "category": "HOUSING",
+            "amount": "6200.00",
+            "currency": "CNY",
+            "account_id": "acc_salary"
+          }
+        ]
+      }
     }
   },
   "comparisons": {
+    "2025-01_to_2025-02": {
+      "current_period": "2025-02",
+      "previous_period": "2025-01",
+      "current_spending": "10849.15",
+      "previous_spending": "9078.10",
+      "absolute_change": "1771.05",
+      "percentage_change": "19.50903823487293596677718906",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1339.15",
+          "previous_amount": "1669.10",
+          "absolute_change": "-329.95",
+          "percentage_change": "-19.76813851776406446587981547"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "652.00",
+          "previous_amount": "849.00",
+          "absolute_change": "-197.00",
+          "percentage_change": "-23.20376914016489988221436985"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "182.00",
+          "previous_amount": "204.00",
+          "absolute_change": "-22.00",
+          "percentage_change": "-10.78431372549019607843137255"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "351.00",
+          "previous_amount": "351.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-02_to_2025-03": {
+      "current_period": "2025-03",
+      "previous_period": "2025-02",
+      "current_spending": "8719.05",
+      "previous_spending": "10849.15",
+      "absolute_change": "-2130.10",
+      "percentage_change": "-19.63379619601535604171755391",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1913.05",
+          "previous_amount": "1339.15",
+          "absolute_change": "573.90",
+          "percentage_change": "42.85554269499309263338684987"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "336.00",
+          "previous_amount": "652.00",
+          "absolute_change": "-316.00",
+          "percentage_change": "-48.46625766871165644171779141"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "196.00",
+          "previous_amount": "182.00",
+          "absolute_change": "14.00",
+          "percentage_change": "7.692307692307692307692307692"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "2320.00",
+          "absolute_change": "-2320.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "351.00",
+          "absolute_change": "-82.00",
+          "percentage_change": "-23.36182336182336182336182336"
+        }
+      ]
+    },
+    "2025-03_to_2025-04": {
+      "current_period": "2025-04",
+      "previous_period": "2025-03",
+      "current_spending": "8485.05",
+      "previous_spending": "8719.05",
+      "absolute_change": "-234.00",
+      "percentage_change": "-2.683778622671047877922480087",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1438.05",
+          "previous_amount": "1913.05",
+          "absolute_change": "-475.00",
+          "percentage_change": "-24.82946080865633412613366091"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "185.00",
+          "previous_amount": "86.00",
+          "absolute_change": "99.00",
+          "percentage_change": "115.1162790697674418604651163"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "488.00",
+          "previous_amount": "336.00",
+          "absolute_change": "152.00",
+          "percentage_change": "45.23809523809523809523809524"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "186.00",
+          "previous_amount": "196.00",
+          "absolute_change": "-10.00",
+          "percentage_change": "-5.102040816326530612244897959"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-04_to_2025-05": {
+      "current_period": "2025-05",
+      "previous_period": "2025-04",
+      "current_spending": "10701.05",
+      "previous_spending": "8485.05",
+      "absolute_change": "2216.00",
+      "percentage_change": "26.11652258973135102327034019",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1637.05",
+          "previous_amount": "1438.05",
+          "absolute_change": "199.00",
+          "percentage_change": "13.83818365147248009457251139"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "195.00",
+          "previous_amount": "185.00",
+          "absolute_change": "10.00",
+          "percentage_change": "5.405405405405405405405405405"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "167.00",
+          "previous_amount": "488.00",
+          "absolute_change": "-321.00",
+          "percentage_change": "-65.77868852459016393442622951"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "194.00",
+          "previous_amount": "186.00",
+          "absolute_change": "8.00",
+          "percentage_change": "4.301075268817204301075268817"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-05_to_2025-06": {
+      "current_period": "2025-06",
+      "previous_period": "2025-05",
+      "current_spending": "8640.05",
+      "previous_spending": "10701.05",
+      "absolute_change": "-2061.00",
+      "percentage_change": "-19.25979226337602384812705295",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1390.05",
+          "previous_amount": "1637.05",
+          "absolute_change": "-247.00",
+          "percentage_change": "-15.08811581808741333496227971"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "195.00",
+          "absolute_change": "-109.00",
+          "percentage_change": "-55.89743589743589743589743590"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "784.00",
+          "previous_amount": "167.00",
+          "absolute_change": "617.00",
+          "percentage_change": "369.4610778443113772455089820"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "192.00",
+          "previous_amount": "194.00",
+          "absolute_change": "-2.00",
+          "percentage_change": "-1.030927835051546391752577320"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "2320.00",
+          "absolute_change": "-2320.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-06_to_2025-07": {
+      "current_period": "2025-07",
+      "previous_period": "2025-06",
+      "current_spending": "8651.20",
+      "previous_spending": "8640.05",
+      "absolute_change": "11.15",
+      "percentage_change": "0.1290501791077597930567531438",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1601.20",
+          "previous_amount": "1390.05",
+          "absolute_change": "211.15",
+          "percentage_change": "15.19010107550088126326391137"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "484.00",
+          "previous_amount": "784.00",
+          "absolute_change": "-300.00",
+          "percentage_change": "-38.26530612244897959183673469"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "210.00",
+          "previous_amount": "192.00",
+          "absolute_change": "18.00",
+          "percentage_change": "9.37500"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "351.00",
+          "previous_amount": "269.00",
+          "absolute_change": "82.00",
+          "percentage_change": "30.48327137546468401486988848"
+        }
+      ]
+    },
+    "2025-07_to_2025-08": {
+      "current_period": "2025-08",
+      "previous_period": "2025-07",
+      "current_spending": "10721.20",
+      "previous_spending": "8651.20",
+      "absolute_change": "2070.00",
+      "percentage_change": "23.92731644164971333456630294",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1317.20",
+          "previous_amount": "1601.20",
+          "absolute_change": "-284.00",
+          "percentage_change": "-17.73669747689233075193604796"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "546.00",
+          "previous_amount": "484.00",
+          "absolute_change": "62.00",
+          "percentage_change": "12.80991735537190082644628099"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "182.00",
+          "previous_amount": "210.00",
+          "absolute_change": "-28.00",
+          "percentage_change": "-13.33333333333333333333333333"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "351.00",
+          "previous_amount": "351.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-08_to_2025-09": {
+      "current_period": "2025-09",
+      "previous_period": "2025-08",
+      "current_spending": "8948.10",
+      "previous_spending": "10721.20",
+      "absolute_change": "-1773.10",
+      "percentage_change": "-16.53826064246539566466440324",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1848.10",
+          "previous_amount": "1317.20",
+          "absolute_change": "530.90",
+          "percentage_change": "40.30519283328272092317036137"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "634.00",
+          "previous_amount": "546.00",
+          "absolute_change": "88.00",
+          "percentage_change": "16.11721611721611721611721612"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "192.00",
+          "previous_amount": "182.00",
+          "absolute_change": "10.00",
+          "percentage_change": "5.494505494505494505494505495"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "2320.00",
+          "absolute_change": "-2320.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "351.00",
+          "absolute_change": "-82.00",
+          "percentage_change": "-23.36182336182336182336182336"
+        }
+      ]
+    },
+    "2025-09_to_2025-10": {
+      "current_period": "2025-10",
+      "previous_period": "2025-09",
+      "current_spending": "10652.10",
+      "previous_spending": "8948.10",
+      "absolute_change": "1704.00",
+      "percentage_change": "19.04314882489020015422268415",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1553.10",
+          "previous_amount": "1848.10",
+          "absolute_change": "-295.00",
+          "percentage_change": "-15.96233970023267139224067962"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "313.00",
+          "previous_amount": "634.00",
+          "absolute_change": "-321.00",
+          "percentage_change": "-50.63091482649842271293375394"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "192.00",
+          "previous_amount": "192.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-10_to_2025-11": {
+      "current_period": "2025-11",
+      "previous_period": "2025-10",
+      "current_spending": "8574.15",
+      "previous_spending": "10652.10",
+      "absolute_change": "-2077.95",
+      "percentage_change": "-19.50742107190131523361590672",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1581.15",
+          "previous_amount": "1553.10",
+          "absolute_change": "28.05",
+          "percentage_change": "1.806065288777284141394630095"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "533.00",
+          "previous_amount": "313.00",
+          "absolute_change": "220.00",
+          "percentage_change": "70.28753993610223642172523962"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "186.00",
+          "previous_amount": "192.00",
+          "absolute_change": "-6.00",
+          "percentage_change": "-3.12500"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "2320.00",
+          "absolute_change": "-2320.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-11_to_2025-12": {
+      "current_period": "2025-12",
+      "previous_period": "2025-11",
+      "current_spending": "8412.25",
+      "previous_spending": "8574.15",
+      "absolute_change": "-161.90",
+      "percentage_change": "-1.888233819095770426223007528",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1679.25",
+          "previous_amount": "1581.15",
+          "absolute_change": "98.10",
+          "percentage_change": "6.204344938810359548429940233"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "5700.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "271.00",
+          "previous_amount": "533.00",
+          "absolute_change": "-262.00",
+          "percentage_change": "-49.15572232645403377110694184"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "188.00",
+          "previous_amount": "186.00",
+          "absolute_change": "2.00",
+          "percentage_change": "1.075268817204301075268817204"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2025-12_to_2026-01": {
+      "current_period": "2026-01",
+      "previous_period": "2025-12",
+      "current_spending": "9552.15",
+      "previous_spending": "8412.25",
+      "absolute_change": "1139.90",
+      "percentage_change": "13.55047698297126214746352046",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1845.15",
+          "previous_amount": "1679.25",
+          "absolute_change": "165.90",
+          "percentage_change": "9.879410451094238499330058062"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "5700.00",
+          "absolute_change": "500.00",
+          "percentage_change": "8.771929824561403508771929825"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "649.00",
+          "previous_amount": "271.00",
+          "absolute_change": "378.00",
+          "percentage_change": "139.4833948339483394833948339"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "202.00",
+          "previous_amount": "188.00",
+          "absolute_change": "14.00",
+          "percentage_change": "7.446808510638297872340425532"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "351.00",
+          "previous_amount": "269.00",
+          "absolute_change": "82.00",
+          "percentage_change": "30.48327137546468401486988848"
+        }
+      ]
+    },
+    "2026-01_to_2026-02": {
+      "current_period": "2026-02",
+      "previous_period": "2026-01",
+      "current_spending": "11573.05",
+      "previous_spending": "9552.15",
+      "absolute_change": "2020.90",
+      "percentage_change": "21.15649356427610537941719927",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1452.05",
+          "previous_amount": "1845.15",
+          "absolute_change": "-393.10",
+          "percentage_change": "-21.30450098907947863317345473"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "799.00",
+          "previous_amount": "649.00",
+          "absolute_change": "150.00",
+          "percentage_change": "23.11248073959938366718027735"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "119.00",
+          "previous_amount": "119.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "146.00",
+          "previous_amount": "202.00",
+          "absolute_change": "-56.00",
+          "percentage_change": "-27.72277227722772277227722772"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "351.00",
+          "previous_amount": "351.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2026-02_to_2026-03": {
+      "current_period": "2026-03",
+      "previous_period": "2026-02",
+      "current_spending": "9012.05",
+      "previous_spending": "11573.05",
+      "absolute_change": "-2561.00",
+      "percentage_change": "-22.12899797374071657860287478",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1633.05",
+          "previous_amount": "1452.05",
+          "absolute_change": "181.00",
+          "percentage_change": "12.46513549808890878413277780"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "385.00",
+          "previous_amount": "799.00",
+          "absolute_change": "-414.00",
+          "percentage_change": "-51.81476846057571964956195244"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "149.00",
+          "previous_amount": "119.00",
+          "absolute_change": "30.00",
+          "percentage_change": "25.21008403361344537815126050"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "190.00",
+          "previous_amount": "146.00",
+          "absolute_change": "44.00",
+          "percentage_change": "30.13698630136986301369863014"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "2320.00",
+          "absolute_change": "-2320.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "351.00",
+          "absolute_change": "-82.00",
+          "percentage_change": "-23.36182336182336182336182336"
+        }
+      ]
+    },
+    "2026-03_to_2026-04": {
+      "current_period": "2026-04",
+      "previous_period": "2026-03",
+      "current_spending": "9202.15",
+      "previous_spending": "9012.05",
+      "absolute_change": "190.10",
+      "percentage_change": "2.109397972714310284563445609",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1578.15",
+          "previous_amount": "1633.05",
+          "absolute_change": "-54.90",
+          "percentage_change": "-3.361807660512537889225682006"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "634.00",
+          "previous_amount": "385.00",
+          "absolute_change": "249.00",
+          "percentage_change": "64.67532467532467532467532468"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "149.00",
+          "previous_amount": "149.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "186.00",
+          "previous_amount": "190.00",
+          "absolute_change": "-4.00",
+          "percentage_change": "-2.105263157894736842105263158"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2026-04_to_2026-05": {
+      "current_period": "2026-05",
+      "previous_period": "2026-04",
+      "current_spending": "11435.10",
+      "previous_spending": "9202.15",
+      "absolute_change": "2232.95",
+      "percentage_change": "24.26552490450601218193574328",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "1588.10",
+          "previous_amount": "1578.15",
+          "absolute_change": "9.95",
+          "percentage_change": "0.6304850616227861736843772772"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "32.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "555.00",
+          "previous_amount": "634.00",
+          "absolute_change": "-79.00",
+          "percentage_change": "-12.46056782334384858044164038"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "149.00",
+          "previous_amount": "149.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "168.00",
+          "previous_amount": "186.00",
+          "absolute_change": "-18.00",
+          "percentage_change": "-9.677419354838709677419354839"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2026-05_to_2026-06": {
+      "current_period": "2026-06",
+      "previous_period": "2026-05",
+      "current_spending": "7809.35",
+      "previous_spending": "11435.10",
+      "absolute_change": "-3625.75",
+      "percentage_change": "-31.70719976213587987861933870",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "68.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "442.35",
+          "previous_amount": "1588.10",
+          "absolute_change": "-1145.75",
+          "percentage_change": "-72.14596058182734084755368050"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "86.00",
+          "previous_amount": "86.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "0",
+          "previous_amount": "32.00",
+          "absolute_change": "-32.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "517.00",
+          "previous_amount": "555.00",
+          "absolute_change": "-38.00",
+          "percentage_change": "-6.846846846846846846846846847"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "149.00",
+          "previous_amount": "149.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "78.00",
+          "previous_amount": "168.00",
+          "absolute_change": "-90.00",
+          "percentage_change": "-53.57142857142857142857142857"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "2320.00",
+          "absolute_change": "-2320.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
+    "2026-06_to_2026-07": {
+      "current_period": "2026-07",
+      "previous_period": "2026-06",
+      "current_spending": "9333.20",
+      "previous_spending": "7809.35",
+      "absolute_change": "1523.85",
+      "percentage_change": "19.51314770115310493190854553",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "136.00",
+          "previous_amount": "68.00",
+          "absolute_change": "68.00",
+          "percentage_change": "100"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "416.20",
+          "previous_amount": "442.35",
+          "absolute_change": "-26.15",
+          "percentage_change": "-5.911608454843449756979767153"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "320.00",
+          "previous_amount": "86.00",
+          "absolute_change": "234.00",
+          "percentage_change": "272.0930232558139534883720930"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "0",
+          "absolute_change": "32.00",
+          "percentage_change": null
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "1683.00",
+          "previous_amount": "517.00",
+          "absolute_change": "1166.00",
+          "percentage_change": "225.5319148936170212765957447"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "149.00",
+          "previous_amount": "149.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "128.00",
+          "previous_amount": "78.00",
+          "absolute_change": "50.00",
+          "percentage_change": "64.10256410256410256410256410"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "269.00",
+          "previous_amount": "269.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        }
+      ]
+    },
     "2026-07_to_2026-08": {
       "current_period": "2026-08",
       "previous_period": "2026-07",
@@ -350,6 +4580,244 @@
           "previous_amount": "269.00",
           "absolute_change": "0.00",
           "percentage_change": "0"
+        }
+      ]
+    },
+    "2026-08_to_2026-09": {
+      "current_period": "2026-09",
+      "previous_period": "2026-08",
+      "current_spending": "9228.75",
+      "previous_spending": "16547.30",
+      "absolute_change": "-7318.55",
+      "percentage_change": "-44.22806137557184555788557650",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "68.00",
+          "previous_amount": "136.00",
+          "absolute_change": "-68.00",
+          "percentage_change": "-50.0"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "739.75",
+          "previous_amount": "1005.30",
+          "absolute_change": "-265.55",
+          "percentage_change": "-26.41500049736397095394409629"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "1580.00",
+          "previous_amount": "0",
+          "absolute_change": "1580.00",
+          "percentage_change": null
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "120.00",
+          "previous_amount": "55.00",
+          "absolute_change": "65.00",
+          "percentage_change": "118.1818181818181818181818182"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "236.00",
+          "previous_amount": "4345.00",
+          "absolute_change": "-4109.00",
+          "percentage_change": "-94.56846950517836593785960875"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "149.00",
+          "previous_amount": "149.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "136.00",
+          "previous_amount": "128.00",
+          "absolute_change": "8.00",
+          "percentage_change": "6.2500"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "0",
+          "previous_amount": "4260.00",
+          "absolute_change": "-4260.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "0",
+          "previous_amount": "269.00",
+          "absolute_change": "-269.00",
+          "percentage_change": "-100"
+        }
+      ]
+    },
+    "2026-09_to_2026-10": {
+      "current_period": "2026-10",
+      "previous_period": "2026-09",
+      "current_spending": "20594.00",
+      "previous_spending": "9228.75",
+      "absolute_change": "11365.25",
+      "percentage_change": "123.1504808343491805499119599",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "0",
+          "previous_amount": "68.00",
+          "absolute_change": "-68.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "397.00",
+          "previous_amount": "739.75",
+          "absolute_change": "-342.75",
+          "percentage_change": "-46.33322068266306184521797905"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "0",
+          "previous_amount": "1580.00",
+          "absolute_change": "-1580.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "6200.00",
+          "previous_amount": "6200.00",
+          "absolute_change": "0.00",
+          "percentage_change": "0"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "32.00",
+          "previous_amount": "120.00",
+          "absolute_change": "-88.00",
+          "percentage_change": "-73.33333333333333333333333333"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "11597.00",
+          "previous_amount": "236.00",
+          "absolute_change": "11361.00",
+          "percentage_change": "4813.983050847457627118644068"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "0",
+          "previous_amount": "149.00",
+          "absolute_change": "-149.00",
+          "percentage_change": "-100"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "48.00",
+          "previous_amount": "136.00",
+          "absolute_change": "-88.00",
+          "percentage_change": "-64.70588235294117647058823529"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "2320.00",
+          "previous_amount": "0",
+          "absolute_change": "2320.00",
+          "percentage_change": null
+        }
+      ]
+    }
+  },
+  "year_comparisons": {
+    "2025_to_2026": {
+      "current_period": "2026",
+      "previous_period": "2025",
+      "current_spending": "114287.10",
+      "previous_spending": "112431.45",
+      "absolute_change": "1855.65",
+      "percentage_change": "1.650472354488001355492613499",
+      "currency": "CNY",
+      "category_changes": [
+        {
+          "category": "ENTERTAINMENT",
+          "current_amount": "748.00",
+          "previous_amount": "816.00",
+          "absolute_change": "-68.00",
+          "percentage_change": "-8.333333333333333333333333333"
+        },
+        {
+          "category": "FOOD",
+          "current_amount": "11097.10",
+          "previous_amount": "18966.45",
+          "absolute_change": "-7869.35",
+          "percentage_change": "-41.49089576594460217911100918"
+        },
+        {
+          "category": "HEALTH",
+          "current_amount": "2416.00",
+          "previous_amount": "1240.00",
+          "absolute_change": "1176.00",
+          "percentage_change": "94.83870967741935483870967742"
+        },
+        {
+          "category": "HOUSING",
+          "current_amount": "62000.00",
+          "previous_amount": "68400.00",
+          "absolute_change": "-6400.00",
+          "percentage_change": "-9.356725146198830409356725146"
+        },
+        {
+          "category": "OTHER",
+          "current_amount": "399.00",
+          "previous_amount": "384.00",
+          "absolute_change": "15.00",
+          "percentage_change": "3.9062500"
+        },
+        {
+          "category": "SHOPPING",
+          "current_amount": "21400.00",
+          "previous_amount": "6057.00",
+          "absolute_change": "15343.00",
+          "percentage_change": "253.3102195806504870397886743"
+        },
+        {
+          "category": "SUBSCRIPTION",
+          "current_amount": "1281.00",
+          "previous_amount": "1428.00",
+          "absolute_change": "-147.00",
+          "percentage_change": "-10.29411764705882352941176471"
+        },
+        {
+          "category": "TRANSPORT",
+          "current_amount": "1410.00",
+          "previous_amount": "2304.00",
+          "absolute_change": "-894.00",
+          "percentage_change": "-38.80208333333333333333333333"
+        },
+        {
+          "category": "TRAVEL",
+          "current_amount": "11220.00",
+          "previous_amount": "9280.00",
+          "absolute_change": "1940.00",
+          "percentage_change": "20.90517241379310344827586207"
+        },
+        {
+          "category": "UTILITIES",
+          "current_amount": "2316.00",
+          "previous_amount": "3556.00",
+          "absolute_change": "-1240.00",
+          "percentage_change": "-34.87064116985376827896512936"
         }
       ]
     }

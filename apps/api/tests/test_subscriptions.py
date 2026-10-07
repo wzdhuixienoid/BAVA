@@ -117,12 +117,13 @@ async def build_runtime(  # type: ignore[no-untyped-def]
     app, *, fault_mode=SubscriptionProviderFaultMode.SUCCESS, bank=None
 ):
     bank = bank or MockBankService()
-    provider = MockSubscriptionProvider(
-        app.state.test_session_factory, bank, fault_mode=fault_mode
-    )
+    provider = MockSubscriptionProvider(app.state.test_session_factory, bank, fault_mode=fault_mode)
     registry = ToolRegistry()
     registry.register(build_subscription_analyze_tool(app.state.test_session_factory, bank))
     registry.register(build_subscription_cancel_tool(app.state.test_session_factory, provider))
+    registry.register(
+        build_subscription_cancel_tool(app.state.test_session_factory, provider, resume=True)
+    )
     registry.register(build_subscription_status_tool(app.state.test_session_factory, provider))
     executor = ToolExecutor(registry, PolicyService())
     subscription_engine = SubscriptionCancellationWorkflow(executor)
@@ -376,9 +377,7 @@ async def test_subscription_tool_uses_principal_and_agent_cannot_cancel(app) -> 
 async def test_subscription_api_is_principal_scoped(app, client) -> None:
     response = await client.get("/api/v1/subscriptions")
     assert response.status_code == 200
-    assert any(
-        item["subscription_id"] == "sub_video" for item in response.json()["subscriptions"]
-    )
+    assert any(item["subscription_id"] == "sub_video" for item in response.json()["subscriptions"])
     detail = await client.get("/api/v1/subscriptions/sub_video")
     assert detail.status_code == 200
     app.dependency_overrides[get_current_principal] = lambda: Principal(

@@ -6,12 +6,15 @@ import { api } from "@/lib/api/client";
 import { dateTime } from "@/features/subscriptions/presentation";
 import { StatusBadge } from "@/components/agent-ui/StatusBadge";
 import { RiskBadge } from "@/features/workflows/RiskDetails";
+import { ReauthenticationForm } from "@/features/workflows/ReauthenticationForm";
 import { WorkflowTimeline } from "@/features/workflows/WorkflowTimeline";
 
 type Workflow = components["schemas"]["Workflow"];
 type State = components["schemas"]["SubscriptionCancelWorkflowState"];
 
 export function SubscriptionCancellationCard({ workflow, onRefresh }: { workflow: Workflow; onRefresh: () => Promise<void> }) {
+  const resume = workflow.workflow_type === "SUBSCRIPTION_RESUME";
+  const action = resume ? "恢复" : "取消";
   const state = (workflow.presentation?.subscription_state ?? workflow.state) as State;
   const review = state.review_payload;
   const operation = workflow.operation_summary;
@@ -28,12 +31,12 @@ export function SubscriptionCancellationCard({ workflow, onRefresh }: { workflow
   return (
     <section className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
       <div className="flex items-start justify-between gap-3">
-        <div><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">订阅取消工作流</p><p className="mt-1 text-xs text-slate-500">版本 {workflow.version}</p></div>
+        <div><p className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">{resume ? "订阅恢复工作流" : "订阅取消工作流"}</p><p className="mt-1 text-xs text-slate-500">版本 {workflow.version}</p></div>
         <StatusBadge status={operation?.status === "UNKNOWN" ? "UNKNOWN" : workflow.status} />
       </div>
       <div className="mt-3 rounded border border-amber-200 bg-white p-3 text-xs">
         <p className="font-bold text-amber-800">风险等级：{workflow.risk_level && <RiskBadge level={workflow.risk_level} />}</p>
-        <p className="mt-2">{workflow.presentation?.approval_required ? "✓ 需要用户确认" : "确认要求待同步"}</p><p>{workflow.presentation?.reauthentication_required === false ? "○ 无需强验证" : "验证要求待同步"}</p>
+        <p className="mt-2">{workflow.presentation?.approval_required ? "✓ 需要用户确认" : "确认要求待同步"}</p><p>{workflow.presentation?.reauthentication_required ? "✓ 需要强验证（模拟）" : workflow.presentation?.reauthentication_required === false ? "○ 无需强验证" : "验证要求待同步"}</p>
       </div>
       <WorkflowTimeline workflow={workflow} />
       {workflow.status === "WAITING_FOR_INPUT" && state.required_input && (
@@ -43,7 +46,7 @@ export function SubscriptionCancellationCard({ workflow, onRefresh }: { workflow
             <div key={item.subscription_id ?? index} className="rounded border bg-white p-2">
               <p className="font-semibold">{item.merchant} · {item.plan_name ?? "套餐未提供"}</p>
               <p className="text-xs text-slate-500">{item.amount} {item.currency} · {item.management_type === "MANAGED" ? "可管理" : "仅检测"}</p>
-              {item.cancellable && item.subscription_id && <button disabled={busy} className="mt-2 rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white" onClick={() => void act(() => api.selectSubscription(workflow.workflow_id, item.subscription_id!, workflow.version))}>选择</button>}
+              {(resume ? item.resumable : item.cancellable) && item.subscription_id && <button disabled={busy} className="mt-2 rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white" onClick={() => void act(() => api.selectSubscription(workflow.workflow_id, item.subscription_id!, workflow.version))}>选择</button>}
             </div>
           ))}
         </div>
@@ -57,14 +60,17 @@ export function SubscriptionCancellationCard({ workflow, onRefresh }: { workflow
         </dl>
       )}
       {workflow.status === "READY_FOR_REVIEW" && review && (
-        <button disabled={busy} className="mt-3 rounded bg-amber-700 px-3 py-2 text-xs font-semibold text-white" onClick={() => void act(() => api.approveWorkflow(workflow.workflow_id, workflow.version))}>确认取消</button>
+        <button disabled={busy} className="mt-3 rounded bg-amber-700 px-3 py-2 text-xs font-semibold text-white" onClick={() => void act(() => api.approveWorkflow(workflow.workflow_id, workflow.version))}>{`确认${action}`}</button>
       )}
+      {resume && <p className="mt-3 text-xs text-red-800">恢复后将按期续费，本次不立即扣款，必须完成强验证。</p>}
+      {workflow.status === "REAUTH_REQUIRED" && <ReauthenticationForm workflow={workflow} busy={busy} act={act} />}
       {workflow.status === "READY_FOR_COMMIT" && review && (
-        <div className="mt-3"><p className="rounded bg-white p-2 text-xs font-semibold text-amber-800">可以提交不等于已取消。</p><button disabled={busy} className="mt-2 rounded bg-red-700 px-3 py-2 text-xs font-semibold text-white" onClick={() => void act(() => api.commitWorkflow(workflow.workflow_id, workflow.version))}>继续执行取消</button></div>
+        <div className="mt-3"><p className="rounded bg-white p-2 text-xs font-semibold text-amber-800">可以提交不等于业务已生效。</p><button disabled={busy} className="mt-2 rounded bg-red-700 px-3 py-2 text-xs font-semibold text-white" onClick={() => void act(() => api.commitWorkflow(workflow.workflow_id, workflow.version))}>{`继续执行${action}`}</button></div>
       )}
-      {workflow.status === "COMMITTING" && <p className="mt-3 rounded bg-blue-50 p-2 text-xs text-blue-900">{operation?.status === "UNKNOWN" ? "结果确认中，请勿重复取消。" : "正在确认银行最终状态，请勿重复取消。"}</p>}
-      {workflow.status === "SUCCEEDED" && operation?.status === "SUCCEEDED" && <p className="mt-3 rounded bg-emerald-100 p-3 text-sm font-semibold text-emerald-800">订阅已取消{operation.provider_reference ? `（${operation.provider_reference}）` : ""}</p>}
-      {workflow.status === "FAILED" && <p className="mt-3 rounded bg-red-50 p-2 text-xs text-red-800">{state.error_message ?? state.error_code ?? "取消工作流失败"}</p>}
+      {workflow.status === "COMMITTING" && <p className="mt-3 rounded bg-blue-50 p-2 text-xs text-blue-900">{operation?.status === "UNKNOWN" ? "结果确认中，请勿重复提交。" : "正在确认银行最终状态，请勿重复提交。"}</p>}
+      {workflow.status === "SUCCEEDED" && operation?.status === "SUCCEEDED" && <p className="mt-3 rounded bg-emerald-100 p-3 text-sm font-semibold text-emerald-800">{resume ? "订阅已恢复续费，本次未扣款" : "订阅已取消"}{operation.provider_reference ? `（${operation.provider_reference}）` : ""}</p>}
+      {workflow.status === "FAILED" && <p className="mt-3 rounded bg-red-50 p-2 text-xs text-red-800">{state.error_message ?? state.error_code ?? "订阅工作流失败"}</p>}
+      {["WAITING_FOR_INPUT", "READY_FOR_REVIEW", "REAUTH_REQUIRED", "READY_FOR_COMMIT"].includes(workflow.status) && <button disabled={busy} onClick={() => void act(() => api.cancelWorkflow(workflow.workflow_id, workflow.version))} className="mt-3 rounded border px-3 py-2 text-xs">取消本次操作</button>}
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
     </section>
   );

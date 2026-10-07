@@ -41,6 +41,7 @@ class PolicyService:
             in {
                 ("workflow:transfer", "transfer.commit"),
                 ("workflow:subscription-cancel", "subscription.cancel"),
+                ("workflow:subscription-cancel", "subscription.resume"),
             }
             and spec.risk_level is RiskLevel.R4_FINANCIAL_COMMIT
             and spec.side_effect
@@ -58,7 +59,6 @@ class PolicyService:
         return PolicyResult(
             decision=PolicyDecision.DENY,
             reason=(
-                "default deny: caller, authentication, registration, risk, "
-                "or allowlist mismatch"
+                "default deny: caller, authentication, registration, risk, or allowlist mismatch"
             ),
         )

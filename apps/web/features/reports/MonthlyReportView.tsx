@@ -16,7 +16,7 @@ export function MonthlyReportView({ report }: { report: ReportResponse }) {
     <article className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-cyan-700">月度消费报告</p>
+          <p className="text-sm font-semibold text-cyan-700">{report?.period.length === 4 ? "年度消费报告" : "月度消费报告"}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">
             {periodLabel(report.period)}消费报告
           </h1>
@@ -39,7 +39,7 @@ export function MonthlyReportView({ report }: { report: ReportResponse }) {
       <ReportOverview overview={content.overview} />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <PeriodComparison comparison={content.period_comparison} />
-        <CategoryBreakdown categories={content.category_breakdown} />
+        <CategoryBreakdown categories={content.category_breakdown} yearly={report.period.length === 4} />
       </div>
       <ReportInsights headline={content.headline} insights={content.insights} />
       <TopTransactions transactions={content.top_transactions} />

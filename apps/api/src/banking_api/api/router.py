@@ -6,6 +6,7 @@ from banking_api.api.routes import (
     demo,
     events,
     operations,
+    payees,
     plans,
     reports,
     security,
@@ -26,3 +27,5 @@ api_router.include_router(operations.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(security.router)
 api_router.include_router(plans.router)
+
+api_router.include_router(payees.router)

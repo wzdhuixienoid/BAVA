@@ -123,6 +123,7 @@ async def select_payee(
             user_id=principal.user_id,
             payee_id=body.payee_id,
             expected_version=body.expected_version,
+            recipient_query=body.recipient_query,
         )
     except (
         WorkflowNotFoundError,

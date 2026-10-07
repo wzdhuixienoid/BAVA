@@ -33,14 +33,19 @@ class SubscriptionItem(BaseModel):
     billing_interval: BillingInterval
     last_charge_amount: Decimal
     currency: str
-    last_charge_date: date
+    last_charge_date: date | None
     next_billing_at: datetime | None = None
     next_billing_is_estimated: bool
-    evidence_count: int = Field(ge=2)
+    evidence_count: int = Field(ge=0)
     evidence_transaction_ids: list[str] = Field(max_length=6)
     price_change_amount: Decimal | None = None
     price_change_percent: Decimal | None = None
     cancellable: bool
+    resumable: bool = False
+    contract_version: int = 0
+    contract_amount: Decimal | None = None
+    billing_anchor_at: datetime | None = None
+    contract_amount_display: str | None = None
     last_charge_display: str = ""
     price_change_display: str | None = None
     price_change_percent_display: str | None = None
@@ -52,6 +57,11 @@ class SubscriptionItem(BaseModel):
     @model_validator(mode="after")
     def format_display(self):
         formatter = ReportFormatter()
+        self.contract_amount_display = (
+            formatter.money(self.contract_amount, self.currency)
+            if self.contract_amount is not None
+            else None
+        )
         self.last_charge_display = formatter.money(self.last_charge_amount, self.currency)
         self.price_change_display = (
             formatter.money_change(self.price_change_amount, self.currency)

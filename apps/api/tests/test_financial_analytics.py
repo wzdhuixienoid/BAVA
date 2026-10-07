@@ -14,6 +14,28 @@ from banking_api.mock_bank.service import MockBankService
 USER_ID = "dev-user-001"
 
 
+def test_yearly_summary_and_comparison_use_year_boundaries(tmp_path: Path) -> None:
+    service = write_bank_data(
+        tmp_path,
+        [
+            transaction("previous", "5.00", occurred_at="2025-12-31T23:59:59Z"),
+            transaction("start", "10.00", occurred_at="2026-01-01T00:00:00Z"),
+            transaction("end", "20.00", occurred_at="2026-12-31T23:59:59Z"),
+            transaction("future", "99.00", occurred_at="2027-01-01T00:00:00Z"),
+        ],
+    )
+    summary = service.spending_summary("2026", user_id=USER_ID)
+    assert summary.total_spending == Decimal("30.00")
+    assert summary.spending_transaction_count == 2
+    comparison = service.compare_periods("2026", user_id=USER_ID)
+    assert comparison.previous_period == "2025"
+    assert comparison.absolute_change == Decimal("25.00")
+    assert (
+        service.category_breakdown("2026", user_id=USER_ID).total_spending == summary.total_spending
+    )
+    assert len(service.top_transactions("2026", user_id=USER_ID).transactions) == 2
+
+
 @pytest.fixture
 def analytics() -> FinancialAnalyticsService:
     return FinancialAnalyticsService(MockBankService())
@@ -146,9 +168,9 @@ def test_compare_periods_calculates_total_and_category_changes(
 def test_compare_periods_handles_empty_previous_period_without_division_by_zero(
     analytics: FinancialAnalyticsService,
 ) -> None:
-    result = analytics.compare_periods("2026-06", user_id=USER_ID)
+    result = analytics.compare_periods("2025-01", user_id=USER_ID)
 
-    assert result.previous_period == "2026-05"
+    assert result.previous_period == "2024-12"
     assert result.previous_spending == Decimal(0)
     assert result.percentage_change is None
     assert all(item.percentage_change is None for item in result.category_changes)
@@ -216,7 +238,7 @@ def test_unknown_account(analytics: FinancialAnalyticsService) -> None:
 
 def test_no_transactions_in_period(analytics: FinancialAnalyticsService) -> None:
     with pytest.raises(FinancialDomainError) as raised:
-        analytics.spending_summary("2025-01", user_id=USER_ID)
+        analytics.spending_summary("2024-01", user_id=USER_ID)
     assert raised.value.code is FinancialErrorCode.NO_TRANSACTIONS_IN_PERIOD
 
 

@@ -11,6 +11,7 @@ class RequestRoute(StrEnum):
     TRANSFER_WORKFLOW = "TRANSFER_WORKFLOW"
     SUBSCRIPTION_ANALYSIS = "SUBSCRIPTION_ANALYSIS"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
+    SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
     COMPLEX_PLAN = "COMPLEX_PLAN"
     UNSUPPORTED = "UNSUPPORTED"
 
@@ -24,7 +25,11 @@ class RouteDecision(BaseModel):
 
     @model_validator(mode="after")
     def validate_output_for_route(self) -> "RouteDecision":
-        if self.route in {RequestRoute.TRANSFER_WORKFLOW, RequestRoute.SUBSCRIPTION_CANCEL}:
+        if self.route in {
+            RequestRoute.TRANSFER_WORKFLOW,
+            RequestRoute.SUBSCRIPTION_CANCEL,
+            RequestRoute.SUBSCRIPTION_RESUME,
+        }:
             if self.requested_output is not RequestedOutput.WORKFLOW:
                 raise ValueError("Workflow routes must request workflow output")
             return self

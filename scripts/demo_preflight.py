@@ -7,9 +7,9 @@ from urllib.parse import urlsplit
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from httpx import AsyncClient
-
+from banking_api import __version__
 from banking_api.config.settings import Settings
+from httpx import AsyncClient
 
 
 def local_url(value: str) -> str:
@@ -41,8 +41,8 @@ def evaluate(readiness: dict, openapi: dict, head: str) -> dict[str, bool]:
     }
     checks.update(
         {
-            "app_version": readiness.get("version") == "0.9.2",
-            "openapi_version": openapi.get("info", {}).get("version") == "0.9.2",
+            "app_version": readiness.get("version") == __version__,
+            "openapi_version": openapi.get("info", {}).get("version") == __version__,
             "alembic_head": readiness.get("database_revision") == head,
             "no_unresolved_operation": readiness.get("unresolved_operations") == 0,
             "mock_provider": readiness.get("provider_mode") == "Mock",

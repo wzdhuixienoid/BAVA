@@ -5,10 +5,6 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import uuid5
 
-from sqlalchemy import bindparam, delete, func, or_, select, text, update
-from sqlalchemy.engine import make_url
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from banking_api.config.settings import Settings
 from banking_api.persistence.models import (
     ApprovalModel,
@@ -16,9 +12,12 @@ from banking_api.persistence.models import (
     EventModel,
     MessageModel,
     MockBankTransferModel,
+    MockSubscriptionActionModel,
     MockSubscriptionCancellationModel,
+    MockSubscriptionStateModel,
     OperationModel,
     OutboxEventModel,
+    PayeeModel,
     PlanModel,
     PlanStepModel,
     ReauthenticationModel,
@@ -27,6 +26,9 @@ from banking_api.persistence.models import (
     TaskModel,
     WorkflowModel,
 )
+from sqlalchemy import bindparam, delete, func, or_, select, text, update
+from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 def validate_reset(environment: str, workers_stopped: bool, user_id: str) -> None:
@@ -155,6 +157,12 @@ async def reset_demo_state(
                 MockSubscriptionCancellationModel,
                 MockSubscriptionCancellationModel.user_id == user_id,
             ),
+            (
+                MockSubscriptionActionModel,
+                MockSubscriptionActionModel.user_id == user_id,
+            ),
+            (MockSubscriptionStateModel, MockSubscriptionStateModel.user_id == user_id),
+            (PayeeModel, PayeeModel.user_id == user_id),
             (SecurityGuardStateModel, SecurityGuardStateModel.user_id == user_id),
         ]
         for model, scope in scopes:

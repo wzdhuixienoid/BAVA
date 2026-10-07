@@ -22,14 +22,15 @@ export function ResultsPanel({ reports, workflows, onLocateResult }: {
       search: `${report.period} ${report.headline} ${report.total_spending_display}`,
     })),
     ...workflows.filter(isConfirmedWorkflow).map((workflow) => {
+      const resume = workflow.workflow_type === "SUBSCRIPTION_RESUME";
       const transfer = workflow.workflow_type === "TRANSFER";
       const name = reviewField(workflow, transfer ? "payee_display_name" : "merchant");
       const amount = workflow.presentation?.amount_display ?? `${reviewField(workflow, "amount")} ${reviewField(workflow, "currency")}`;
       return {
         id: `workflow-${workflow.workflow_id}`,
         time: workflow.operation_summary?.completed_at ?? workflow.updated_at,
-        type: transfer ? "转账" : "订阅取消",
-        title: transfer ? `转账给${name || "收款人"}` : `${name || "订阅"}已取消`,
+        type: transfer ? "转账" : (resume ? "订阅恢复" : "订阅取消"),
+        title: transfer ? `转账给${name || "收款人"}` : `${name || "订阅"}${resume ? "已恢复续费" : "已取消"}`,
         summary: transfer ? amount : reviewField(workflow, "plan_name"),
         search: `${name} ${amount} ${workflow.operation_summary?.provider_reference ?? ""}`,
       };
@@ -47,7 +48,7 @@ export function ResultsPanel({ reports, workflows, onLocateResult }: {
           className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500" />
       </div>
       <div aria-label="完成事件索引" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-2">
-        {events.length === 0 && <p className="px-2 py-6 text-center text-xs leading-relaxed text-slate-400">已完成的报告、转账和订阅取消会收录在这里。</p>}
+        {events.length === 0 && <p className="px-2 py-6 text-center text-xs leading-relaxed text-slate-400">已完成的报告、转账和订阅管理会收录在这里。</p>}
         {events.length > 0 && visible.length === 0 && <p className="px-2 py-6 text-center text-xs text-slate-400">没有匹配的已完成事件。</p>}
         {visible.map((event) => <button key={event.id} onClick={() => onLocateResult(event.id)} aria-label={`在对话中查看：${event.title}`}
           className="group block w-full border-b border-slate-200 px-2 py-4 text-left hover:rounded-lg hover:bg-white focus-visible:rounded-lg focus-visible:outline-cyan-500">

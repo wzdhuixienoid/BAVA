@@ -1,7 +1,9 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from banking_api.domain.enums import WorkflowStatus
 from banking_api.domain.principal import ExecutionPrincipal
+from banking_api.subscriptions.contracts import next_billing
 from banking_api.subscriptions.detector import normalize_merchant
 from banking_api.subscriptions.models import SubscriptionAnalysisSnapshot
 from banking_api.tools.executor import ToolExecutor
@@ -16,7 +18,12 @@ from banking_api.workflows.subscription_cancel.models import (
 
 SUBSCRIPTION_WORKFLOW_CALLER = "workflow:subscription-cancel"
 SUBSCRIPTION_CAPABILITIES = frozenset(
-    {"subscription.analyze", "subscription.cancel", "subscription.get_status"}
+    {
+        "subscription.analyze",
+        "subscription.cancel",
+        "subscription.resume",
+        "subscription.get_status",
+    }
 )
 
 
@@ -67,6 +74,7 @@ class SubscriptionCancellationWorkflow:
                 amount=item.last_charge_amount,
                 currency=item.currency,
                 cancellable=item.cancellable,
+                resumable=item.resumable,
             )
             for item in matches
         ]
@@ -97,22 +105,49 @@ class SubscriptionCancellationWorkflow:
                 "SUBSCRIPTION_NOT_MANAGED",
                 "已检测到周期扣费，但当前银行沙箱没有该商户的可管理订阅合同。",
             )
-        if selected.status.value == "CANCELLED":
-            return self._failed(state, "ALREADY_CANCELLED", "该订阅已取消。")
-        if not selected.cancellable:
-            return self._failed(state, "SUBSCRIPTION_NOT_CANCELLABLE", "该订阅当前不可取消。")
+        resume = state.draft.action == "SUBSCRIPTION_RESUME"
+        if resume:
+            if selected.status.value == "ACTIVE":
+                return self._failed(state, "ALREADY_ACTIVE", "该订阅已经生效，无需重复订阅。")
+            if not selected.resumable:
+                return self._failed(
+                    state, "SUBSCRIPTION_NOT_RESUMABLE", "该订阅当前不支持恢复，请到商户办理。"
+                )
+        else:
+            if selected.status.value == "CANCELLED":
+                return self._failed(state, "ALREADY_CANCELLED", "该订阅已取消。")
+            if not selected.cancellable:
+                return self._failed(state, "SUBSCRIPTION_NOT_CANCELLABLE", "该订阅当前不可取消。")
+        billing_at = selected.next_billing_at
+        if resume:
+            previous = state.review_payload
+            billing_at = (
+                previous.next_billing_at
+                if previous and previous.contract_version == selected.contract_version
+                else next_billing(
+                    {
+                        "next_billing_at": selected.billing_anchor_at,
+                        "billing_interval": selected.billing_interval.value,
+                    },
+                    datetime.now(UTC),
+                )
+            )
         state.draft.subscription_id = selected.subscription_id
         state.required_input = None
         state.error_code = None
         state.error_message = None
         state.review_payload = SubscriptionCancelReviewPayload(
+            action=state.draft.action,
+            contract_version=selected.contract_version,
             subscription_id=selected.subscription_id,
             user_id=principal.user_id,
             merchant=selected.merchant,
             plan_name=selected.plan_name,
-            amount=selected.last_charge_amount,
+            amount=selected.contract_amount
+            if selected.contract_amount is not None
+            else selected.last_charge_amount,
             currency=selected.currency,
-            next_billing_at=selected.next_billing_at,
+            next_billing_at=billing_at,
         )
         return WorkflowStatus.READY_FOR_REVIEW, state
 
@@ -121,6 +156,20 @@ class SubscriptionCancellationWorkflow:
     ) -> dict[str, object]:
         result = await self.executor.execute(
             tool_name="cancel_subscription",
+            arguments={"operation_id": str(operation_id)},
+            caller=SUBSCRIPTION_WORKFLOW_CALLER,
+            principal=principal,
+            agent_allowlist=SUBSCRIPTION_CAPABILITIES,
+        )
+        if not result.ok or result.output is None:
+            raise SubscriptionCancellationWorkflowError("SUBSCRIPTION_PROVIDER_UNAVAILABLE")
+        return result.output
+
+    async def submit_resume_operation(
+        self, operation_id: UUID, *, principal: ExecutionPrincipal
+    ) -> dict[str, object]:
+        result = await self.executor.execute(
+            tool_name="resume_subscription",
             arguments={"operation_id": str(operation_id)},
             caller=SUBSCRIPTION_WORKFLOW_CALLER,
             principal=principal,

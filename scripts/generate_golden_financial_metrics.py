@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal, localcontext
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +31,9 @@ def valid(item: dict[str, Any]) -> bool:
 
 
 def spending(item: dict[str, Any]) -> bool:
-    return valid(item) and item["direction"] == "DEBIT" and item["category"] != "TRANSFER"
+    return (
+        valid(item) and item["direction"] == "DEBIT" and item["category"] != "TRANSFER"
+    )
 
 
 def ratio(numerator: Decimal, denominator: Decimal) -> Decimal:
@@ -90,7 +93,9 @@ def monthly_metrics(rows: list[dict[str, Any]], month: str) -> dict[str, Any]:
     return {
         "summary": {
             "period": month,
-            "total_income": decimal_string(sum((amount(item) for item in income), ZERO)),
+            "total_income": decimal_string(
+                sum((amount(item) for item in income), ZERO)
+            ),
             "total_spending": decimal_string(total),
             "income_transaction_count": len(income),
             "spending_transaction_count": len(spent),
@@ -139,8 +144,8 @@ def comparison(july: dict[str, Any], august: dict[str, Any]) -> dict[str, Any]:
     current = Decimal(august["summary"]["total_spending"])
     previous = Decimal(july["summary"]["total_spending"])
     return {
-        "current_period": "2026-08",
-        "previous_period": "2026-07",
+        "current_period": august["summary"]["period"],
+        "previous_period": july["summary"]["period"],
         "current_spending": decimal_string(current),
         "previous_spending": decimal_string(previous),
         "absolute_change": decimal_string(current - previous),
@@ -173,10 +178,11 @@ def comparison(july: dict[str, Any], august: dict[str, Any]) -> dict[str, Any]:
 
 def build_fixture() -> dict[str, Any]:
     rows = load_transactions()
-    july = monthly_metrics(rows, "2026-07")
-    august = monthly_metrics(rows, "2026-08")
+    periods = sorted({str(row["occurred_at"])[:7] for row in rows})
+    months = {period: monthly_metrics(rows, period) for period in periods}
+    years = {year: monthly_metrics(rows, year) for year in ("2025", "2026")}
     return {
-        "fixture_version": "0.3.2",
+        "fixture_version": "0.9.3",
         "calculation_rules": {
             "valid_transaction_statuses": sorted(VALID_STATUSES),
             "spending_direction": "DEBIT",
@@ -186,8 +192,13 @@ def build_fixture() -> dict[str, Any]:
             "money_type": "Decimal",
             "period_interval": "left-closed, right-open calendar month",
         },
-        "months": {"2026-07": july, "2026-08": august},
-        "comparisons": {"2026-07_to_2026-08": comparison(july, august)},
+        "months": months,
+        "years": years,
+        "comparisons": {
+            f"{previous}_to_{current}": comparison(months[previous], months[current])
+            for previous, current in pairwise(periods)
+        },
+        "year_comparisons": {"2025_to_2026": comparison(years["2025"], years["2026"])},
     }
 
 

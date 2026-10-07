@@ -79,3 +79,37 @@ test("security action failures use Chinese explanations without changing the ser
   assert.match(errorDisplay("TRANSFER_RISK_CURRENCY_UNSUPPORTED"), /仅支持 CNY/);
   assert.equal(errorDisplay("new_domain_error"), "new_domain_error");
 });
+
+
+test("resume uses strong verification and never labels the result cancelled", () => {
+  const resume = { ...workflow, workflow_type: "SUBSCRIPTION_RESUME", risk_level: "RED", status: "REAUTH_REQUIRED", state: { draft: { action: "SUBSCRIPTION_RESUME" }, review_payload: { merchant: "星幕视频", amount: "28.00", currency: "CNY" } }, presentation: null, operation_summary: null };
+  const html = render(SubscriptionCancellationCard, { workflow: resume, onRefresh: async () => {} });
+  assert.match(html, /订阅恢复工作流/); assert.match(html, /开始身份验证/); assert.doesNotMatch(html, /订阅已取消/);
+});
+
+test("historical subscription snapshots do not render an analysis card or fold the answer", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u1" }, tasks: [{ task_id: "snapshot-task", status: "COMPLETED", input: {}, output: { subscription_analysis_snapshot: { subscriptions: [], monthly_cost_by_currency: [], price_changes: [] } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a1", role: "ASSISTANT", content: "详细信息可在左侧「订阅与代扣总览」查看。" }], }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  assert.doesNotMatch(html, /订阅分析|助理说明/); assert.match(html, /订阅与代扣总览/);
+});
+
+test("legacy confirmed draft never claims strong verification complete without evidence", () => {
+  const html = render(TransferWorkflowCard, { workflow: { ...workflow, status: "READY_FOR_COMMIT", risk_decision: risk, reauth_summary: null, operation_summary: null, presentation: null, state: { draft: {}, risk_decision: risk, review_payload: { amount: "1.00", currency: "CNY" } } }, onRefresh: async () => {} });
+  assert.match(html, /还需要完成强身份验证/); assert.match(html, /去强验证/); assert.doesNotMatch(html, /强身份验证已完成/);
+});
+
+test("payee query keeps only the text answer, including historical structured results", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u" }, tasks: [{ task_id: "payee-task", status: "COMPLETED", input: {}, output: { payee_results: [{ payees: [{ payee_id: "p", display_name: "张三", bank_name: "模拟银行", masked_account: "****1234", phone_alias: "" }] }] } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "可转账收款人：张三 · ****1234" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  assert.equal((html.match(/张三/g) ?? []).length, 1);
+  assert.equal((html.match(/1234/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /助理说明/);
+});
+
+test("recipient step provides existing and new payee shortcuts with distinct same-name options", () => {
+  const draft = { ...workflow, conversation_id: "chat-1", status: "WAITING_FOR_INPUT", operation_summary: null, state: { draft: {}, required_input: { type: "PAYEE_SELECTION", message: "请选择收款人" } }, presentation: { stages: [], payee_options: [{ payee_id: "p1", display_name: "张三", bank_name: "甲银行", masked_account: "****1001", phone_alias: "" }, { payee_id: "p2", display_name: "张三", bank_name: "乙银行", masked_account: "****1002", phone_alias: "" }] } };
+  const html = render(TransferWorkflowCard, { workflow: draft, onRefresh: async () => {} });
+  assert.match(html, /选择已有收款人/); assert.match(html, /新增收款人/);
+  assert.match(html, /payees\?conversation=chat-1&amp;workflow=w/);
+  assert.match(html, /选择张三，甲银行，\*\*\*\*1001/); assert.match(html, /选择张三，乙银行，\*\*\*\*1002/);
+});

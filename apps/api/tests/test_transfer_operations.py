@@ -71,7 +71,7 @@ def operation_runtime(app, *, fault_mode=TransferProviderFaultMode.SUCCESS, poli
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank, provider.effective_balance))
-    registry.register(build_search_payees_tool(bank))
+    registry.register(build_search_payees_tool(bank, app.state.test_session_factory))
     registry.register(build_commit_transfer_tool(app.state.test_session_factory, provider))
     registry.register(build_get_transfer_status_tool(app.state.test_session_factory, provider))
     engine = TransferWorkflowEngine(ToolExecutor(registry, policy or PolicyService()))

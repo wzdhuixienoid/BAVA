@@ -1,0 +1,1151 @@
+[
+  {
+    "file": "docs/architecture-baseline-v0.1.md",
+    "lines": 2151,
+    "headings": [
+      "AI Banking Agent — Architecture Baseline v0.1",
+      "1. 项目定位",
+      "2. 总体设计原则",
+      "3. 整体系统架构",
+      "4. 不按“菜单”拆 Multi-Agent",
+      "5. 四个核心执行概念",
+      "Agent",
+      "Skill",
+      "Workflow",
+      "Tool",
+      "6. 请求按照四种模式路由",
+      "7. 核心 Domain Model",
+      "8. Conversation 与 Task 分离",
+      "9. Plan 是结构化 Task Graph",
+      "10. Task 和 Executor 解耦",
+      "11. State 模型",
+      "12. Workflow 采用显式状态机",
+      "13. Event 驱动状态变化",
+      "14. Agent / Skill / Workflow / Tool 权限边界",
+      "15. Tool Design Pattern",
+      "16. Registry 设计",
+      "17. Skill Architecture",
+      "18. Context Architecture",
+      "19. Context Trust Hierarchy",
+      "20. Memory Design",
+      "21. 敏感信息原则",
+      "22. RAG Boundary",
+      "23. Multi-Agent Context Isolation",
+      "24. Security Architecture",
+      "25. Default Deny + Least Privilege",
+      "26. Tool Risk Levels",
+      "27. Policy Engine",
+      "28. Approval 是正式 Domain Object",
+      "29. Operation / Idempotency",
+      "30. Prompt Injection 的安全目标",
+      "31. MCP Boundary",
+      "32. Frontend Product Model",
+      "33. Server State 与 Client State 分离",
+      "34. API Boundary",
+      "35. Natural Language 和 Structured Action 分离",
+      "36. 前后端通信",
+      "37. Event Protocol",
+      "38. 不暴露 Chain-of-Thought",
+      "39. UI Component Registry",
+      "40. Artifact ≠ Message",
+      "41. 前后端 Schema",
+      "42. 技术栈 Baseline",
+      "43. Repository Baseline",
+      "44. V1 不是什么",
+      "45. 第一阶段真正实现什么",
+      "Vertical Slice A：开放式认知任务",
+      "Vertical Slice B：高风险事务任务",
+      "46. Codex 第一轮不应该做什么",
+      "47. Architecture Baseline v0.1 的冻结范围",
+      "最终可以把整个 v0.1 压缩成这一张图"
+    ]
+  },
+  {
+    "file": "docs/codex-bootstrap-v0.1.md",
+    "lines": 157,
+    "headings": [
+      "AI Banking Agent — Codex Bootstrap 规格 v0.1",
+      "目标与必需链路",
+      "产品语言",
+      "冻结的架构约束",
+      "技术基线",
+      "持久化 Domain Model",
+      "只定义 Schema 的边界",
+      "确定性 Bootstrap Runtime",
+      "Registry、安全与上下文边界",
+      "Persistence 与 Repository 规则",
+      "HTTP API",
+      "Event Protocol 与 SSE",
+      "Frontend 契约",
+      "Compose 与环境变量",
+      "必需验证",
+      "当前限制",
+      "架构问题"
+    ]
+  },
+  {
+    "file": "docs/core-algorithms-v0.8.2.md",
+    "lines": 228,
+    "headings": [
+      "AI Banking Agent：核心算法说明",
+      "1. 路由与受限 Agent Loop",
+      "2. 确定性消费统计",
+      "3. 报告生成与事实约束",
+      "4. 安全转账：状态机、幂等、并发资金",
+      "5. 动态风险分级",
+      "6. 订阅识别与成本",
+      "7. 四种异常规则",
+      "8. 安全写熔断",
+      "9. Plan DAG与条件原文校验",
+      "阈值grounding",
+      "决策与执行",
+      "10. 持久执行与事件发布"
+    ]
+  },
+  {
+    "file": "docs/golden-financial-data-v0.3.1.md",
+    "lines": 63,
+    "headings": [
+      "Golden Financial Data v0.3.1",
+      "固定计算规则",
+      "月度摘要",
+      "Category breakdown",
+      "Jul → Aug total comparison",
+      "2026-08 Top 5"
+    ]
+  },
+  {
+    "file": "docs/golden-financial-data-v0.3.2.md",
+    "lines": 57,
+    "headings": [
+      "Golden Financial Data v0.3.2",
+      "固定规则",
+      "月度摘要",
+      "Jul → Aug 消费变化",
+      "2026-08 Top 5"
+    ]
+  },
+  {
+    "file": "docs/golden-monthly-report-v0.3.3.md",
+    "lines": 51,
+    "headings": [
+      "Golden Monthly Spending Report Core v0.3.3",
+      "Source",
+      "Overview",
+      "Period comparison",
+      "Grounding categories",
+      "Top transactions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.1.md",
+    "lines": 128,
+    "headings": [
+      "AI Banking Agent — Implementation Report v0.1",
+      "1. Created files",
+      "2. Architecture decisions implemented",
+      "3. Database tables created",
+      "4. API endpoints implemented",
+      "5. SSE event types implemented",
+      "6. Tests added",
+      "7. Test/build results",
+      "8. Known limitations",
+      "9. Deviations from specification",
+      "10. Architecture questions discovered"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.2.2.md",
+    "lines": 267,
+    "headings": [
+      "AI Banking Agent — 02.2 v0.2.2 Implementation Report",
+      "1. Files created / modified",
+      "2. Dependency changes",
+      "3. Runtime abstraction",
+      "4. Manual runtime changes",
+      "5. LangGraph graph topology",
+      "6. Graph State schema",
+      "7. Node responsibilities",
+      "8. Conditional routing",
+      "9. Tool error classification",
+      "10. LLM_BASE_URL final semantics",
+      "11. INTERRUPTED task behavior",
+      "12. Startup reconciliation behavior",
+      "13. Checkpointer configuration",
+      "14. Checkpointer-created infrastructure",
+      "15. Checkpoint recovery experiment trace",
+      "16. Runtime parity test results",
+      "17. Fake Provider test results",
+      "18. PostgreSQL integration results",
+      "19. Real DeepSeek Manual trace",
+      "20. Real DeepSeek LangGraph trace",
+      "21. Security regression results",
+      "22. Hallucination regression",
+      "23. Browser E2E",
+      "24. Frontend/build results",
+      "25. Known limitations",
+      "26. Deviations",
+      "27. Architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.2.md",
+    "lines": 164,
+    "headings": [
+      "AI Banking Agent — 02.1 v0.2 Implementation Report",
+      "1. Files created / modified",
+      "2. Synthetic Dataset summary",
+      "3. LLMProvider design",
+      "4. OpenAICompatibleProvider implementation",
+      "5. Actual provider configuration used for smoke test",
+      "6. Manual Agent Loop algorithm",
+      "7. ToolRegistry contents",
+      "8. Authorization path",
+      "9. ContextBuilder contents",
+      "10. Runtime events",
+      "11. Error handling",
+      "12. Loop limits",
+      "13. FakeLLM automated test results",
+      "14. PostgreSQL integration test results",
+      "15. Real LLM smoke traces",
+      "16. Prompt-injection smoke result",
+      "17. Hallucination smoke result",
+      "18. Browser E2E result",
+      "19. Dependency changes",
+      "20. Known limitations",
+      "21. Deviations from specification",
+      "22. Architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.3.1.md",
+    "lines": 115,
+    "headings": [
+      "AI Banking Agent — Financial Data & Deterministic Analytics v0.3.1",
+      "1. Files changed",
+      "2. Financial calculation rules",
+      "3. Spending definition",
+      "4. Transaction status rules",
+      "5. Four Tool schemas",
+      "6. Permission configuration",
+      "7. Golden Dataset exact values",
+      "8. Jul vs Aug exact comparison",
+      "9. FOOD/TRAVEL exact comparison",
+      "10. Tests and results",
+      "11. Known limitations",
+      "12. Deviations",
+      "13. Architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.3.2.md",
+    "lines": 208,
+    "headings": [
+      "AI Banking Agent — FinancialAnalysisAgent & Routing v0.3.2",
+      "1. Routing design",
+      "2. AgentRegistry entries",
+      "3. FinancialAnalysisAgent capability list",
+      "4. Income semantic correction",
+      "5. Task executor representation",
+      "6. LangGraph agent-selection design",
+      "7. FinancialAnalysisSnapshot schema",
+      "8. Golden grounding results",
+      "9. Real DeepSeek routing traces",
+      "Minimal route",
+      "Financial analysis trace",
+      "Account-specific analysis trace",
+      "10. Security regression",
+      "11. Tests and results",
+      "12. Known limitations",
+      "13. Deviations",
+      "14. Architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.3.3.md",
+    "lines": 143,
+    "headings": [
+      "AI Banking Agent — MonthlySpendingReportSkill v0.3.3",
+      "1. Skill schema",
+      "2. SkillRegistry",
+      "3. Skill execution path",
+      "4. Report schema",
+      "5. Formatter rules",
+      "6. Narrative schema",
+      "7. Evidence validation",
+      "8. Golden report core",
+      "9. Fake test result",
+      "10. Real DeepSeek smoke",
+      "11. Files changed",
+      "12. Known limitations",
+      "13. Deviations",
+      "14. Architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.3.4.md",
+    "lines": 228,
+    "headings": [
+      "AI Banking Agent — Report Artifact + Structured UI v0.3.4",
+      "1. Report data model",
+      "2. Persistence、immutability 与 idempotency",
+      "3. requested_output routing",
+      "4. Agent → Skill → Artifact pipeline",
+      "5. Task lifecycle",
+      "6. Events and progress",
+      "7. Report API",
+      "8. Decimal JSON contract",
+      "9. Structured frontend",
+      "10. Conversation ReportCard 与 refresh recovery",
+      "11. Golden integration result",
+      "12. Real DeepSeek trace",
+      "13. Browser E2E",
+      "14. Security regression",
+      "15. Files changed",
+      "16. Known limitations",
+      "17. Deviations",
+      "18. Architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.4.1.md",
+    "lines": 108,
+    "headings": [
+      "Implementation Report v0.4.1",
+      "Outcome",
+      "State machine",
+      "Persistence model",
+      "Router and extraction",
+      "Payee resolution and ambiguity trace",
+      "Source account and validation",
+      "Tool and policy boundary",
+      "APIs and UI",
+      "Verification summary",
+      "Known limitations",
+      "Deviations and architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.4.2.md",
+    "lines": 135,
+    "headings": [
+      "Implementation Report v0.4.2",
+      "Outcome",
+      "State machine",
+      "Approval domain",
+      "Reauthentication domain",
+      "Persistence and safe resource recovery",
+      "Actions and invalidation",
+      "Tool and policy boundary",
+      "Events",
+      "UI",
+      "Verification traces",
+      "Zero-money-movement proof",
+      "Known limitations",
+      "Deviations and architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.4.3.md",
+    "lines": 158,
+    "headings": [
+      "Implementation Report v0.4.3",
+      "Outcome",
+      "Operation state machine",
+      "Atomic approval consumption",
+      "Final authorization, Policy, and business checks",
+      "Tool and Policy boundary",
+      "Provider boundary and persistent ledger",
+      "Crash and idempotency traces",
+      "APIs, ownership, and optimistic concurrency",
+      "Events and safe logging surface",
+      "UI and recovery",
+      "Verification evidence",
+      "Security regression",
+      "Known limitations",
+      "Deviations and architecture questions"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.5.1.md",
+    "lines": 249,
+    "headings": [
+      "Implementation Report v0.5.1",
+      "Outcome",
+      "1. Operation schema",
+      "2. Eligibility and discovery",
+      "3. PostgreSQL claim and multi-process safety",
+      "4. Short transactions and provider I/O",
+      "5. Lease crash recovery",
+      "6. CREATED recovery",
+      "7. SUBMITTED recovery",
+      "8. UNKNOWN query-only safety",
+      "9. Stable idempotency and exact-once mock debit",
+      "10. Shared manual and background semantics",
+      "11. Worker lifecycle and configuration",
+      "12. Retry scheduling",
+      "13. State propagation and events",
+      "14. Verification of multi-process safety",
+      "15. Events and the deferred Outbox",
+      "16. Scope boundary and remaining limitations"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.5.2.md",
+    "lines": 270,
+    "headings": [
+      "Implementation Report v0.5.2",
+      "Outcome",
+      "1. Race remaining after v0.5.1",
+      "2. Idempotency versus concurrency control",
+      "3. Why the Application check is not authoritative",
+      "4. Provider authoritative balance",
+      "5. Account serialization primitive and key mapping",
+      "6. Serialization and transaction scope",
+      "7. Idempotency ordering and replay behavior",
+      "8. Different-key concurrent safety",
+      "9. Different accounts",
+      "10. Definitive rejection propagation",
+      "11. Recovery compatibility",
+      "12. v0.5.1 preflight audits",
+      "Foreground commit versus immediately-due recovery",
+      "Batch claim lease ageing",
+      "13. Migration",
+      "14. PostgreSQL verification",
+      "15. Observability",
+      "16. Scope exclusions and remaining limitations"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.5.3.md",
+    "lines": 254,
+    "headings": [
+      "Implementation Report v0.5.3",
+      "Outcome",
+      "1. Pre-fix crash window and Event audit",
+      "2. Event and Outbox responsibilities",
+      "3. Schema and migration",
+      "4. Atomic transaction boundary",
+      "5. Removal of the old double path",
+      "6. Publisher claim, lease, and fencing",
+      "7. Retry and poison-event behavior",
+      "8. At-least-once semantics",
+      "9. Operation recovery integration",
+      "10. Ordering and public contracts",
+      "11. Lifecycle and observability",
+      "12. PostgreSQL verification",
+      "13. Scope and remaining limitations"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.5.4.md",
+    "lines": 261,
+    "headings": [
+      "Implementation Report v0.5.4",
+      "1. Scope and pre-v0.5.4 crash gap",
+      "2. Audited Task state machine",
+      "3. Previous runner and durable input audit",
+      "4. Task schema and migration",
+      "5. Claim, lease, attempt, and fencing semantics",
+      "6. Heartbeat and lease loss",
+      "7. HTTP decoupling and lifecycle",
+      "8. Execution dispatcher and batch behavior",
+      "9. Retry and error classification",
+      "10. LangGraph responsibility",
+      "11. Read-oriented Agent recovery",
+      "12. Report and assistant-output idempotency",
+      "13. Transfer Task safety",
+      "14. Dedicated reliability boundaries",
+      "15. Startup reconciliation change",
+      "16. PostgreSQL and recovery proof",
+      "17. Why no broker or generic worker framework",
+      "18. Remaining production limitations"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.6.1.md",
+    "lines": 98,
+    "headings": [
+      "Implementation Report v0.6.1",
+      "1. Previous security gap",
+      "2. OIDC credential verification",
+      "3. Principal construction",
+      "4. External identity mapping",
+      "5. Resource ownership",
+      "6. Account, payee and financial tool scope",
+      "7. Durable Task identity",
+      "8. SSE authentication",
+      "9. Frontend authentication",
+      "10. Authentication, Approval and Reauthentication",
+      "11. Development isolation",
+      "12. Isolation and regression coverage",
+      "13. Current limit and v0.6.2"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.7.1.md",
+    "lines": 88,
+    "headings": [
+      "Implementation Report v0.7.1",
+      "1. 为什么修改原有流程",
+      "2. GREEN / YELLOW / RED",
+      "3. 日累计口径",
+      "4. successful 与 in-flight exposure",
+      "5. RiskPolicy 输入与输出",
+      "6. 持久化与审计",
+      "7. Workflow 状态变化",
+      "8. commit-time 重评估与升级",
+      "9. 并发门槛保护",
+      "10. Prompt Injection",
+      "11. UI",
+      "12. 执行验证",
+      "13. 本版限制与 v0.7.2"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.7.2.md",
+    "lines": 81,
+    "headings": [
+      "Implementation Report v0.7.2",
+      "1. 确定性识别周期扣费",
+      "2. 为什么不用 LLM 判断订阅事实",
+      "3. Merchant normalization",
+      "4. MANAGED / DETECTED_ONLY",
+      "5. DETECTED_ONLY 不能取消",
+      "6. Subscription Agent Tool 权限",
+      "7. Cancellation 必须走 Workflow",
+      "8. 为什么是 YELLOW",
+      "9. Approval payload binding",
+      "10. Operation 复用",
+      "11. MockSubscriptionProvider ledger",
+      "12. 幂等",
+      "13. crash recovery",
+      "14. read model 取消状态",
+      "15. 多币种",
+      "16. 幻觉防护",
+      "17. v0.7.1 两个边界",
+      "18. 测试",
+      "19. 当前限制",
+      "20. 下一步 v0.7.3"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.7.3.md",
+    "lines": 96,
+    "headings": [
+      "Implementation Report v0.7.3",
+      "1. 四种 anomaly rule",
+      "2. Baseline 构造",
+      "3. 为什么用 median",
+      "4. 冷启动 fail conservative",
+      "5. 多币种隔离",
+      "6. Anomaly 不等于 fraud",
+      "7. Anomaly 不直接触发 lock",
+      "8. SecurityGuard 状态模型",
+      "9. 连续 Reauthentication failure",
+      "10. Repeated control bypass",
+      "11. 不计入的普通失败",
+      "12. WRITE_LOCKED 阻止什么",
+      "13. 为什么仍允许 GREEN read",
+      "14. 持久化",
+      "15. 并发 signal 不丢更新",
+      "Security Guard 与 Operation 创建的并发线性化",
+      "16. 自动 expiry",
+      "17. Operation 创建前 fail closed",
+      "18. Lock 时不消费 Approval",
+      "19. Event / Outbox",
+      "20. 测试结果",
+      "21. 当前限制",
+      "22. 下一步 v0.8.1"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.8.1.md",
+    "lines": 28,
+    "headings": [
+      "v0.8.1 受约束任务规划与持久化 DAG"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.8.2.md",
+    "lines": 37,
+    "headings": [
+      "v0.8.2 Implementation Report",
+      "v0.8.2 correctness 收尾（2026-10-02）"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.9.1.md",
+    "lines": 219,
+    "headings": [
+      "Implementation Report v0.9.1",
+      "1. 版本目标",
+      "2. Phase A 安全基线",
+      "3. 可视化实现",
+      "4. Financial Dashboard",
+      "5. Account authoritative facts",
+      "6. Subscription Dashboard",
+      "7. Anomaly Cards",
+      "8. Risk visualization",
+      "9. Transfer Workflow visualization",
+      "10. Subscription Workflow visualization",
+      "11. Planner / DAG visualization",
+      "12. Condition visualization",
+      "13. 中文状态系统",
+      "14. Demo reset",
+      "15. Backend changes",
+      "16. Frontend changes",
+      "17. API / OpenAPI changes",
+      "18. Migration changes",
+      "19. Security invariants",
+      "20. 已知限制",
+      "21. Release conclusion",
+      "修改文件清单",
+      "Backend（33）",
+      "Frontend / generated client（30）",
+      "Tests（10）",
+      "Scripts（1）",
+      "Docs（4）",
+      "Version metadata（5）"
+    ]
+  },
+  {
+    "file": "docs/implementation-report-v0.9.2.md",
+    "lines": 151,
+    "headings": [
+      "AI Banking Agent v0.9.2 Implementation Report",
+      "1. 版本目标",
+      "2. Scope Freeze",
+      "3. Audit Evidence Chain",
+      "4. Audit Data Model / Projection",
+      "5. Transfer Audit",
+      "6. Approval Audit",
+      "7. Reauthentication Audit",
+      "8. Risk Audit",
+      "9. Condition / Plan Audit",
+      "10. Security Guard Audit",
+      "11. Subscription Audit",
+      "12. Prompt Injection Defense",
+      "13. Hallucination Defense",
+      "14. Least Privilege / Default Deny",
+      "15. Idempotency / Concurrency",
+      "16. Authentication / Ownership",
+      "17. Code Execution / Sandbox Boundary",
+      "18. Threat Model",
+      "19. Security Self-Assessment",
+      "20. Demo Hardening",
+      "21. Currency Canonicalization",
+      "22. Report Stability",
+      "23. Demo Preflight",
+      "24. Backend Changes",
+      "25. Frontend Changes",
+      "26. API/OpenAPI Changes",
+      "27. Migration",
+      "28. Security Invariants",
+      "29. Known Risks",
+      "30. Release Conclusion"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.1.md",
+    "lines": 155,
+    "headings": [
+      "AI Banking Agent — Repository Tree v0.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.2.2.md",
+    "lines": 88,
+    "headings": [
+      "AI Banking Agent — Repository Tree v0.2.2",
+      "02.2 新增边界"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.2.md",
+    "lines": 203,
+    "headings": [
+      "AI Banking Agent — Repository Tree v0.2",
+      "关键边界"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.3.1.md",
+    "lines": 54,
+    "headings": [
+      "Repository Tree v0.3.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.3.2.md",
+    "lines": 59,
+    "headings": [
+      "Repository Tree v0.3.2"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.3.3.md",
+    "lines": 40,
+    "headings": [
+      "Repository Tree v0.3.3"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.3.4.md",
+    "lines": 90,
+    "headings": [
+      "Repository Tree v0.3.4"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.4.1.md",
+    "lines": 53,
+    "headings": [
+      "Repository Tree v0.4.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.4.2.md",
+    "lines": 51,
+    "headings": [
+      "Repository Tree v0.4.2"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.4.3.md",
+    "lines": 51,
+    "headings": [
+      "Repository Tree v0.4.3"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.5.1.md",
+    "lines": 36,
+    "headings": [
+      "Repository Tree v0.5.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.5.2.md",
+    "lines": 25,
+    "headings": [
+      "Repository Tree v0.5.2"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.5.3.md",
+    "lines": 36,
+    "headings": [
+      "Repository Tree v0.5.3"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.5.4.md",
+    "lines": 49,
+    "headings": [
+      "Repository Tree v0.5.4"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.6.1.md",
+    "lines": 73,
+    "headings": [
+      "Repository Tree v0.6.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.7.1.md",
+    "lines": 38,
+    "headings": [
+      "Repository Tree v0.7.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.7.2.md",
+    "lines": 43,
+    "headings": [
+      "Repository Tree v0.7.2"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.7.3.md",
+    "lines": 40,
+    "headings": [
+      "Repository Tree v0.7.3"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.8.1.md",
+    "lines": 45,
+    "headings": [
+      "v0.8.1 直接新增或修改文件"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.8.2.md",
+    "lines": 38,
+    "headings": [
+      "v0.8.2 直接修改文件"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.9.1.md",
+    "lines": 129,
+    "headings": [
+      "Repository Tree v0.9.1"
+    ]
+  },
+  {
+    "file": "docs/repository-tree-v0.9.2.md",
+    "lines": 536,
+    "headings": [
+      "AI Banking Agent v0.9.2 Repository Tree",
+      "Actual repository",
+      "本版本重要文件职责",
+      "本轮修改文件清单",
+      "Migration",
+      "Version documents"
+    ]
+  },
+  {
+    "file": "docs/runtime-comparison-v0.2.2.md",
+    "lines": 64,
+    "headings": [
+      "ManualAgentRuntime vs LangGraphAgentRuntime v0.2.2",
+      "ManualAgentRuntime",
+      "LangGraphAgentRuntime",
+      "LangGraph 替代了什么？",
+      "LangGraph 没有替代什么？",
+      "实际取舍"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.1.md",
+    "lines": 185,
+    "headings": [
+      "AI Banking Agent — Test Results v0.1",
+      "Backend static analysis",
+      "Backend tests",
+      "Frontend lint",
+      "Frontend typecheck",
+      "Frontend production build",
+      "OpenAPI TypeScript generation",
+      "Docker Compose build and startup",
+      "PostgreSQL persistence validation",
+      "End-to-end HTTP/SSE validation",
+      "Browser validation",
+      "Dependency and safety validation",
+      "Final assessment"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.2.2.md",
+    "lines": 136,
+    "headings": [
+      "AI Banking Agent — 02.2 v0.2.2 Test Results",
+      "Automated summary",
+      "Runtime parity matrix",
+      "Hardening tests",
+      "PostgreSQL checkpoint experiment",
+      "Real Provider smoke",
+      "Manual",
+      "LangGraph",
+      "Security and hallucination",
+      "Browser E2E",
+      "Commands",
+      "Result"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.2.md",
+    "lines": 320,
+    "headings": [
+      "AI Banking Agent — 02.1 v0.2 Test Results",
+      "1. Acceptance summary",
+      "2. Dataset validation",
+      "3. Backend static analysis and lockfile",
+      "4. SQLite and Fake Provider automated tests",
+      "5. PostgreSQL integration",
+      "6. Real DeepSeek smoke tests",
+      "6.1 Account list",
+      "6.2 Salary-card balance",
+      "6.3 Prompt-injection safety",
+      "6.4 Missing-account hallucination",
+      "7. Browser E2E and developer trace",
+      "8. Frontend validation",
+      "9. OpenAPI TypeScript schema",
+      "10. Docker Compose and HTTP health",
+      "11. Dependency and safety validation",
+      "12. Final assessment"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.3.1.md",
+    "lines": 95,
+    "headings": [
+      "AI Banking Agent — v0.3.1 Test Results",
+      "Automated summary",
+      "Financial coverage",
+      "Golden exact assertions",
+      "Commands",
+      "Real-provider trace"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.3.2.md",
+    "lines": 117,
+    "headings": [
+      "AI Banking Agent — v0.3.2 Test Results",
+      "Automated summary",
+      "Routing matrix",
+      "Financial Agent scenarios",
+      "Golden grounding exact values",
+      "Task and event assertions",
+      "Security regression",
+      "Real DeepSeek smoke",
+      "Commands"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.3.3.md",
+    "lines": 67,
+    "headings": [
+      "AI Banking Agent — v0.3.3 Test Results",
+      "Automated summary",
+      "Deterministic core assertions",
+      "Skill behavior assertions",
+      "Real DeepSeek smoke"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.3.4.md",
+    "lines": 125,
+    "headings": [
+      "AI Banking Agent — v0.3.4 Test Results",
+      "Automated summary",
+      "Backend coverage",
+      "Golden GET Report assertions",
+      "Fake product E2E",
+      "Real DeepSeek product smoke",
+      "Browser E2E",
+      "Frontend production build routes"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.4.1.md",
+    "lines": 100,
+    "headings": [
+      "Test Results v0.4.1",
+      "Automated backend",
+      "PostgreSQL integration",
+      "OpenAPI and frontend",
+      "Real DeepSeek smoke",
+      "Browser E2E",
+      "Docker",
+      "No-money-movement evidence"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.4.2.md",
+    "lines": 84,
+    "headings": [
+      "Test Results v0.4.2",
+      "Automated backend",
+      "Static and contract checks",
+      "Real DeepSeek smoke",
+      "Browser E2E",
+      "Container verification",
+      "Security and zero-write evidence"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.4.3.md",
+    "lines": 108,
+    "headings": [
+      "Test Results v0.4.3",
+      "Backend and PostgreSQL",
+      "Static, contract, frontend, and containers",
+      "Real DeepSeek smoke",
+      "Browser E2E",
+      "Security and exact-once evidence"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.5.1.md",
+    "lines": 101,
+    "headings": [
+      "Test Results v0.5.1",
+      "Backend static and unit/regression tests",
+      "PostgreSQL migration and integration",
+      "Recovery behavior coverage",
+      "OpenAPI and frontend",
+      "Not executed"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.5.2.md",
+    "lines": 136,
+    "headings": [
+      "Test Results v0.5.2",
+      "Pre-fix PostgreSQL race reproduction",
+      "Backend verification",
+      "PostgreSQL migration and integration",
+      "OpenAPI and frontend",
+      "Docker/product smoke"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.5.3.md",
+    "lines": 127,
+    "headings": [
+      "Test Results v0.5.3",
+      "Pre-fix audit/reproduction",
+      "Unit and default backend validation",
+      "PostgreSQL migration and integration",
+      "OpenAPI/frontend",
+      "Docker/product smoke"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.5.4.md",
+    "lines": 201,
+    "headings": [
+      "Test Results v0.5.4",
+      "Backend static and regression validation",
+      "PostgreSQL migration validation",
+      "PostgreSQL concurrency and crash recovery",
+      "OpenAPI and frontend",
+      "Docker/product smoke: normal execution",
+      "Docker/product smoke: hard process crash and reclaim",
+      "wait beyond the 3-second lease",
+      "Docker/product smoke: Transfer authorization boundary",
+      "Real LLM scope and unexecuted smoke"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.6.1.md",
+    "lines": 114,
+    "headings": [
+      "Test Results v0.6.1",
+      "1. Authentication and isolation coverage",
+      "2. Backend full regression",
+      "3. PostgreSQL migration and suite",
+      "4. Frontend",
+      "5. Isolated Docker smoke",
+      "6. External OIDC smoke"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.7.1.md",
+    "lines": 88,
+    "headings": [
+      "Test Results v0.7.1",
+      "1. 定向开发测试",
+      "2. 最终 backend regression",
+      "3. PostgreSQL suite",
+      "4. OpenAPI 与 Web",
+      "5. 产品链路结果"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.7.2.md",
+    "lines": 52,
+    "headings": [
+      "Test Results v0.7.2",
+      "定向开发测试",
+      "最终验证",
+      "产品 Smoke",
+      "Smoke A：订阅分析",
+      "Smoke B：取消订阅"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.7.3.md",
+    "lines": 74,
+    "headings": [
+      "Test Results v0.7.3",
+      "定向开发测试",
+      "最终验证",
+      "产品 Smoke A：异常交易",
+      "产品 Smoke B：Security Lock",
+      "Security Guard / Operation 并发 correctness 增量（2026-09-29）"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.8.1.md",
+    "lines": 77,
+    "headings": [
+      "v0.8.1 测试结果",
+      "最终 Backend regression（一次）",
+      "PostgreSQL suite（一次全量调度，失败/未完成部分定向补测）",
+      "新增测试",
+      "真实 HTTP + 当前 LLM 产品 Smoke",
+      "Frontend（各一次）"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.8.2.md",
+    "lines": 96,
+    "headings": [
+      "v0.8.2 Test Results",
+      "最终完整 Backend regression",
+      "最终完整 PostgreSQL suite",
+      "新增条件测试",
+      "Threshold grounding 收尾验证",
+      "Frontend checks（初始 v0.8.2 记录）",
+      "真实 HTTP / 当前 LLM 产品 Smoke（2026-09-30 记录）"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.9.1.md",
+    "lines": 162,
+    "headings": [
+      "Test Results v0.9.1",
+      "环境",
+      "Backend",
+      "Frontend",
+      "Runtime / Docker",
+      "Product smoke",
+      "独立 terminal，Plan smoke 完成后停止该服务",
+      "Browser acceptance",
+      "Security Regression",
+      "发布核对"
+    ]
+  },
+  {
+    "file": "docs/test-results-v0.9.2.md",
+    "lines": 153,
+    "headings": [
+      "AI Banking Agent v0.9.2 Test Results",
+      "Environment",
+      "Backend",
+      "Frontend",
+      "Docker / Runtime",
+      "Product Smoke",
+      "Report Stability",
+      "Browser Security Acceptance",
+      "Security Evidence Matrix",
+      "Demo Preflight / Reset",
+      "Release Blockers"
+    ]
+  },
+  {
+    "file": "docs/testing-guide-v0.2.md",
+    "lines": 172,
+    "headings": [
+      "Minimal Agent Runtime v0.2 测试指南",
+      "1. 启动并体验 UI",
+      "账户列表",
+      "多步余额查询",
+      "写权限注入",
+      "不存在账户",
+      "2. 查看真实 Agent Trace",
+      "3. 单独运行真实 LLM Smoke",
+      "4. 验证 Synthetic Dataset",
+      "5. 确定性 Runtime 测试",
+      "6. PostgreSQL Integration Test",
+      "7. 前端与容器回归",
+      "8. 推荐代码阅读顺序"
+    ]
+  }
+]

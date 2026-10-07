@@ -57,7 +57,10 @@ def build_subscription_analyze_tool(
 
 
 def build_subscription_cancel_tool(
-    session_factory: async_sessionmaker[AsyncSession], provider: MockSubscriptionProvider
+    session_factory: async_sessionmaker[AsyncSession],
+    provider: MockSubscriptionProvider,
+    *,
+    resume: bool = False,
 ) -> ToolSpec:
     async def handler(
         context: ToolExecutionContext, arguments: SubscriptionOperationInput
@@ -68,18 +71,25 @@ def build_subscription_cancel_tool(
                     select(OperationModel).where(
                         OperationModel.operation_id == arguments.operation_id,
                         OperationModel.user_id == context.principal.user_id,
-                        OperationModel.operation_type == OperationType.SUBSCRIPTION_CANCEL,
+                        OperationModel.operation_type
+                        == (
+                            OperationType.SUBSCRIPTION_RESUME
+                            if resume
+                            else OperationType.SUBSCRIPTION_CANCEL
+                        ),
                     )
                 )
             ).scalar_one_or_none()
         if operation is None:
             return SubscriptionProviderOutput(outcome="FAILED", error_code="OPERATION_NOT_FOUND")
         try:
-            result = await provider.cancel(
+            result = await (provider.resume if resume else provider.cancel)(
                 SubscriptionCancellationRequest(
                     user_id=operation.user_id,
                     subscription_id=str(operation.payload_json["subscription_id"]),
                     idempotency_key=operation.idempotency_key,
+                    expected_version=operation.payload_json.get("contract_version"),
+                    next_billing_at=operation.payload_json.get("next_billing_at"),
                 )
             )
         except SubscriptionProviderAmbiguousError:
@@ -87,9 +97,9 @@ def build_subscription_cancel_tool(
         return SubscriptionProviderOutput(**result.model_dump())
 
     return ToolSpec(
-        capability_id="subscription.cancel",
-        name="cancel_subscription",
-        description="取消已持久化且已批准的 Subscription Operation。",
+        capability_id="subscription.resume" if resume else "subscription.cancel",
+        name="resume_subscription" if resume else "cancel_subscription",
+        description="执行已持久化且已授权的订阅恢复或取消 Operation。",
         input_model=SubscriptionOperationInput,
         output_model=SubscriptionProviderOutput,
         risk_level=RiskLevel.R4_FINANCIAL_COMMIT,
@@ -111,7 +121,9 @@ def build_subscription_status_tool(
                     select(OperationModel).where(
                         OperationModel.operation_id == arguments.operation_id,
                         OperationModel.user_id == context.principal.user_id,
-                        OperationModel.operation_type == OperationType.SUBSCRIPTION_CANCEL,
+                        OperationModel.operation_type.in_(
+                            [OperationType.SUBSCRIPTION_CANCEL, OperationType.SUBSCRIPTION_RESUME]
+                        ),
                     )
                 )
             ).scalar_one_or_none()
@@ -127,7 +139,7 @@ def build_subscription_status_tool(
     return ToolSpec(
         capability_id="subscription.get_status",
         name="get_subscription_cancellation_status",
-        description="查询已持久化订阅取消 Operation 的 Provider 状态。",
+        description="查询已持久化订阅管理 Operation 的 Provider 状态。",
         input_model=SubscriptionOperationInput,
         output_model=SubscriptionProviderOutput,
         risk_level=RiskLevel.R1_PRIVATE_READ,

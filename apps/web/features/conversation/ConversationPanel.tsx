@@ -24,7 +24,7 @@ async function loadReports(conversationId: string): Promise<ReportListItem[]> {
   }
 }
 
-export function ConversationPanel({ conversationId }: { conversationId: string }) {
+export function ConversationPanel({ conversationId, onDeleted, onUpdated }: { conversationId: string; onDeleted?: () => Promise<void>; onUpdated?: () => Promise<void> }) {
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<ReportListItem[]>([]);
@@ -60,9 +60,10 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
       setError(null);
     } catch (reason) {
       if (!active.current || version !== requestVersion.current) return;
+      if (reason instanceof Error && reason.message.includes("404")) { await onDeleted?.(); return; }
       setError(reason instanceof Error ? reason.message : "无法加载服务器状态");
     }
-  }, [conversationId]);
+  }, [conversationId, onDeleted]);
 
   useEffect(() => {
     active.current = true;
@@ -78,7 +79,13 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
     };
     const unsubscribe = subscribeToConversation(
       conversationId,
-      scheduleRefresh,
+      (event) => {
+        if (event.type === "conversation.deleted") void onDeleted?.();
+        else {
+          scheduleRefresh();
+          if (event.type === "conversation.updated") void onUpdated?.();
+        }
+      },
       (nextConnected) => {
         setConnected(nextConnected);
         if (nextConnected) scheduleRefresh();
@@ -90,7 +97,7 @@ export function ConversationPanel({ conversationId }: { conversationId: string }
       clearTimeout(refreshTimer);
       unsubscribe();
     };
-  }, [conversationId, refresh]);
+  }, [conversationId, refresh, onDeleted, onUpdated]);
 
   async function send(content: string) {
     await api.postMessage(conversationId, content);

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.domain.enums import MessageRole
 from banking_api.persistence.models import MessageModel
+from banking_api.persistence.repositories.conversations import ConversationRepository
 
 
 class MessageRepository:
@@ -14,6 +15,8 @@ class MessageRepository:
     async def create(
         self, *, conversation_id: UUID, role: MessageRole, content: str
     ) -> MessageModel:
+        if role is MessageRole.ASSISTANT:
+            await ConversationRepository(self.session).name_first_reply(conversation_id)
         message = MessageModel(conversation_id=conversation_id, role=role, content=content)
         self.session.add(message)
         await self.session.flush()

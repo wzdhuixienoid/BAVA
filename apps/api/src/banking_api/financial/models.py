@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class FinancialPeriodInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    month: str
+    month: str = Field(
+        description="分析期间：自然月 YYYY-MM，或自然年 YYYY；年份根据业务参考日期确定。"
+    )
     account_ids: list[str] | None = None
 
 

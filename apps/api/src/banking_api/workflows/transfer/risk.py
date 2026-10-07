@@ -43,12 +43,8 @@ class TransferRiskPolicy:
         projected = (
             successful_transfer_total_today + in_flight_transfer_exposure_today + requested_amount
         )
-        if projected <= self.threshold:
-            level = BusinessRiskLevel.YELLOW
-            reason_codes = [RiskReasonCode.DAILY_TRANSFER_WITHIN_LIMIT]
-        else:
-            level = BusinessRiskLevel.RED
-            reason_codes = [RiskReasonCode.DAILY_TRANSFER_LIMIT_EXCEEDED]
+        level = BusinessRiskLevel.RED
+        reason_codes = [RiskReasonCode.FUNDS_OUTFLOW_REQUIRES_REAUTH]
         return TransferRiskDecision(
             level=level,
             required_approval=True,

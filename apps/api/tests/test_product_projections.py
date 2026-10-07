@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from banking_test_helpers import authenticate_workflow
 from test_transfer_authorization import create_ready_workflow
 from test_transfer_operations import operation_runtime
 
@@ -37,6 +38,7 @@ async def test_dashboard_reuses_existing_analysis_and_scoped_live_balance(app, c
         ready = await WorkflowService(session, app.state.event_bus, engine).approve(
             workflow.workflow_id, user_id=workflow.user_id, expected_version=workflow.version
         )
+    ready = await authenticate_workflow(app, engine, ready)
     async with app.state.test_session_factory() as session:
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
             ready.workflow_id, user_id=ready.user_id, expected_version=ready.version
@@ -66,7 +68,7 @@ async def test_workflow_projection_requires_workflow_and_operation_success(app):
     assert ready.presentation.business_success is False
     assert ready.presentation.amount_display == "¥600.00"
     assert ready.presentation.approval_required is True
-    assert ready.presentation.reauthentication_required is False
+    assert ready.presentation.reauthentication_required is True
     assert (
         next(stage for stage in ready.presentation.stages if stage.key == "approval").status
         == "WAITING_USER"

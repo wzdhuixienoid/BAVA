@@ -13,6 +13,29 @@ def load_golden() -> dict[str, object]:
     return json.loads((DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8"))
 
 
+def test_expanded_months_and_years_match_independent_decimal_reference() -> None:
+    service = FinancialAnalyticsService(MockBankService())
+    golden = load_golden()
+    for metrics in [golden["months"], golden["years"]]:
+        for period, expected in metrics.items():
+            assert (
+                service.spending_summary(period, user_id=USER_ID).model_dump(mode="json")
+                == expected["summary"]
+            )
+            assert (
+                service.category_breakdown(period, user_id=USER_ID).model_dump(mode="json")
+                == expected["category_breakdown"]
+            )
+            assert (
+                service.top_transactions(period, user_id=USER_ID).model_dump(mode="json")
+                == expected["top_transactions"]
+            )
+    assert (
+        service.compare_periods("2026", user_id=USER_ID).model_dump(mode="json")
+        == golden["year_comparisons"]["2025_to_2026"]
+    )
+
+
 def test_july_and_august_summaries_match_committed_golden_exactly() -> None:
     service = FinancialAnalyticsService(MockBankService())
     golden = load_golden()["months"]
@@ -77,7 +100,7 @@ def test_golden_rules_pin_posted_status_and_transfer_exclusion() -> None:
     golden = load_golden()
     rules = golden["calculation_rules"]
 
-    assert golden["fixture_version"] == "0.3.2"
+    assert golden["fixture_version"] == "0.9.3"
     assert rules["valid_transaction_statuses"] == ["POSTED"]
     assert rules["excluded_spending_categories"] == ["TRANSFER"]
     assert rules["excluded_income_categories"] == ["TRANSFER"]

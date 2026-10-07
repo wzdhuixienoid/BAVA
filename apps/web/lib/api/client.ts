@@ -44,6 +44,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         : rawDetail?.code ?? rawDetail?.message ?? "请求失败";
     throw new Error(`请求失败（${response.status}）：${errorDisplay(detail)}`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -69,6 +70,13 @@ export const api = {
     },
   ),
   getSecurityStatus: () => request<SecurityStatus>("/api/v1/security/status"),
+  listPayees: (query?: string, offset = 0) => request<components["schemas"]["PayeeSummary"][]>(
+    `/api/v1/payees?offset=${offset}${query ? `&query=${encodeURIComponent(query)}` : ""}`),
+  createPayee: (body: components["schemas"]["PayeeCreate"]) => request<components["schemas"]["PayeeSummary"]>("/api/v1/payees", { method: "POST", body: JSON.stringify(body) }),
+  deleteConversation: (id: string) => request<void>(`/api/v1/conversations/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  renameConversation: (id: string, title: string) => request<Conversation>(
+    `/api/v1/conversations/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) },
+  ),
   listConversations: () => request<Conversation[]>("/api/v1/conversations"),
   createConversation: (body: ConversationCreate) =>
     request<Conversation>("/api/v1/conversations", {
@@ -93,10 +101,10 @@ export const api = {
     ),
   getWorkflow: (workflowId: string) =>
     request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}`),
-  selectPayee: (workflowId: string, payeeId: string, expectedVersion: number) =>
+  selectPayee: (workflowId: string, payeeId: string, expectedVersion: number, recipientQuery?: string) =>
     request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}/actions/select-payee`, {
       method: "POST",
-      body: JSON.stringify({ payee_id: payeeId, expected_version: expectedVersion }),
+      body: JSON.stringify({ payee_id: payeeId, expected_version: expectedVersion, recipient_query: recipientQuery }),
     }),
   selectSourceAccount: (workflowId: string, accountId: string, expectedVersion: number) =>
     request<Workflow>(

@@ -11,6 +11,7 @@ from banking_api.domain.enums import ApprovalStatus
 class ApprovalType(StrEnum):
     TRANSFER = "TRANSFER"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
+    SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
 
 
 class Approval(BaseModel):

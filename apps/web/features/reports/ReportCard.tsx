@@ -17,7 +17,7 @@ export function ReportCard({ task, report }: { task?: Task; report?: ReportListI
   return (
     <section aria-label="消费报告" className="rounded-xl border border-cyan-200 bg-cyan-50/60 p-4">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-700">
-        月度消费报告
+        {report?.period.length === 4 ? "年度消费报告" : "月度消费报告"}
       </p>
       <p className="mt-1 text-sm font-semibold text-slate-900">
         {report ? `${periodLabel(report.period)}消费报告` : "报告已生成"}

@@ -21,6 +21,7 @@ from banking_api.persistence.models import (
     ConversationModel,
     EventModel,
     MockBankTransferModel,
+    MockSubscriptionActionModel,
     MockSubscriptionCancellationModel,
     OperationModel,
     PlanModel,
@@ -346,11 +347,16 @@ class AuditProjection:
                 if step.status == "SKIPPED" and step.capability in {
                     "TRANSFER_WORKFLOW",
                     "SUBSCRIPTION_CANCEL_WORKFLOW",
+                    "SUBSCRIPTION_RESUME_WORKFLOW",
                 }:
                     skipped.append(step.step_id)
         keys = [item.idempotency_key for item in operations]
         ledger_count = 0
-        for model in (MockBankTransferModel, MockSubscriptionCancellationModel):
+        for model in (
+            MockBankTransferModel,
+            MockSubscriptionCancellationModel,
+            MockSubscriptionActionModel,
+        ):
             ledger_count += (
                 await self.session.scalar(
                     select(func.count())

@@ -24,7 +24,13 @@ def workflow_presentation(*, status, transfer, subscription, approval, reauth, o
     review = transfer.review_payload if transfer else subscription.review_payload
     risk = transfer.risk_decision if transfer else None
     approval_required = risk.required_approval if risk else True if subscription else None
-    reauth_required = risk.required_reauthentication if risk else False if subscription else None
+    reauth_required = (
+        risk.required_reauthentication
+        if risk
+        else subscription.draft.action == "SUBSCRIPTION_RESUME"
+        if subscription
+        else None
+    )
     approval_status = (
         done
         if approval and approval.status.value in {"APPROVED", "CONSUMED"}

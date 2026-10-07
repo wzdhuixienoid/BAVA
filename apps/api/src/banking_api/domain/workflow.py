@@ -16,6 +16,7 @@ from banking_api.domain.workflow_presentation import WorkflowPresentation
 class WorkflowType(StrEnum):
     TRANSFER = "TRANSFER"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
+    SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
 
 
 class Workflow(BaseModel):

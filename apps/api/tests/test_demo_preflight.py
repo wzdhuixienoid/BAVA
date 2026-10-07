@@ -18,8 +18,8 @@ spec.loader.exec_module(preflight)
 
 def good():
     return dict(
-        version="0.9.2",
-        database_revision="0017",
+        version="0.9.3",
+        database_revision="0018",
         owner_is_demo_user=True,
         expected_accounts_exist=True,
         salary_balance_initial=True,
@@ -37,12 +37,12 @@ def good():
 
 def test_preflight_is_default_deny_per_check_and_never_exports_secret():
     data = good()
-    assert all(preflight.evaluate(data, {"info": {"version": "0.9.2"}}, "0017").values())
+    assert all(preflight.evaluate(data, {"info": {"version": "0.9.3"}}, "0018").values())
     for key in data:
         if key == "reference_time":
             continue
         bad = {**data, key: None}
-        assert not all(preflight.evaluate(bad, {"info": {"version": "0.9.2"}}, "0017").values())
+        assert not all(preflight.evaluate(bad, {"info": {"version": "0.9.3"}}, "0018").values())
     assert (
         not {"llm_api_key", "mock_reauth_code", "jwt", "authorization"}
         & DemoReadiness.model_fields.keys()
@@ -70,7 +70,7 @@ async def test_readiness_is_read_only_and_production_rejects(app, client, monkey
     app.state.subscription_provider = MockSubscriptionProvider(app.state.test_session_factory, bank)
     async with app.state.test_session_factory() as session:
         await session.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32))"))
-        await session.execute(text("INSERT INTO alembic_version VALUES ('0017')"))
+        await session.execute(text("INSERT INTO alembic_version VALUES ('0018')"))
         await session.commit()
     response = await client.get("/api/v1/demo/readiness")
     assert response.status_code == 200

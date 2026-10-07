@@ -56,24 +56,26 @@ def test_financial_tools_are_r1_read_only_and_financial_agent_only(
     assert registry.get_by_name("transaction.search") is None
 
 
-def test_application_registry_adds_financial_tools_without_expanding_minimal_agent() -> None:
+def test_application_registry_adds_financial_tools_with_read_only_payee_access() -> None:
     registry = create_app().state.tool_registry
 
     assert {spec.capability_id for spec in registry.all()} == {
         "account.list",
         "account.get_balance",
         "payee.search",
+        "payee.list",
         "transfer.commit",
         "transfer.get_status",
         "subscription.analyze",
         "subscription.cancel",
+        "subscription.resume",
         "subscription.get_status",
         "transaction.detect_anomalies",
         *FINANCIAL_CAPABILITIES,
     }
     assert [
         spec.capability_id for spec in registry.resolve(MINIMAL_BANKING_AGENT.allowed_capabilities)
-    ] == ["account.list", "account.get_balance"]
+    ] == ["account.list", "account.get_balance", "payee.search", "payee.list"]
     assert "transfer.commit" not in MINIMAL_BANKING_AGENT.allowed_capabilities
     assert "transfer.get_status" not in MINIMAL_BANKING_AGENT.allowed_capabilities
     assert "transfer.commit" not in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
@@ -172,7 +174,7 @@ async def test_minimal_agent_cannot_execute_financial_tool(
             {"month": "2026-08", "account_ids": ["missing"]},
             FinancialErrorCode.ACCOUNT_NOT_FOUND,
         ),
-        ({"month": "2025-01"}, FinancialErrorCode.NO_TRANSACTIONS_IN_PERIOD),
+        ({"month": "2024-01"}, FinancialErrorCode.NO_TRANSACTIONS_IN_PERIOD),
     ],
 )
 async def test_financial_domain_errors_remain_structured(

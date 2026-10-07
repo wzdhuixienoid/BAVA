@@ -1,13 +1,14 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { consumeSubscriptionPrefill } from "./subscription-prefill";
 
 export function MessageComposer({ onSend }: { onSend: (content: string) => Promise<void> }) {
-  const [content, setContent] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const merchant = new URLSearchParams(window.location.search).get("cancel");
-    return merchant ? `取消${merchant}` : "";
-  });
+  const [content, setContent] = useState("");
+  useEffect(() => {
+    const prefill = consumeSubscriptionPrefill(window.location.href, window.history);
+    if (prefill !== null) setContent(prefill);
+  }, []);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

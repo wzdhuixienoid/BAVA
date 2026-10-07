@@ -65,6 +65,7 @@ from banking_api.skills.monthly_spending_report import (
     MONTHLY_SPENDING_REPORT_SKILL_ID,
     MonthlySpendingReportSkill,
 )
+from banking_api.subscriptions.answers import subscription_answer
 from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
 from banking_api.workflows.subscription_cancel.intent_extractor import (
     SubscriptionCancelIntentExtractionError,
@@ -85,11 +86,14 @@ ROUTE_AGENT_IDS = {
 }
 TRANSFER_WORKFLOW_ID = "workflow:transfer"
 SUBSCRIPTION_WORKFLOW_ID = "workflow:subscription-cancel"
+SUBSCRIPTION_RESUME_WORKFLOW_ID = "workflow:subscription-resume"
 
 REPORT_SOURCE_INSTRUCTIONS = """
 本次请求的产品输出是月度消费报告数据源。
 必须成功获取 spending_summary 和 category_breakdown。
 优先同时获取 period_comparison 和 top_transactions。
+如果先查询了账户，剩余三个工具名额必须优先汇总、分类，再选一项可选数据。
+任何必需查询返回没有账单时立即结束，不补查可选数据或猜测其他期间。
 top_transactions 使用 limit=5，以保持报告 Artifact 的有界展示范围。
 不得固定 Tool 调用顺序，也不得自行计算数值。
 中间自然语言回答不会展示给用户；只需在数据收集完成后简短结束。
@@ -235,6 +239,8 @@ class InProcessTaskRunner:
                 if decision.route is RequestRoute.COMPLEX_PLAN
                 else TRANSFER_WORKFLOW_ID
                 if decision.route is RequestRoute.TRANSFER_WORKFLOW
+                else SUBSCRIPTION_RESUME_WORKFLOW_ID
+                if decision.route is RequestRoute.SUBSCRIPTION_RESUME
                 else SUBSCRIPTION_WORKFLOW_ID
                 if decision.route is RequestRoute.SUBSCRIPTION_CANCEL
                 else ROUTE_AGENT_IDS.get(decision.route)
@@ -266,12 +272,16 @@ class InProcessTaskRunner:
                     user_request=current_task,
                 )
                 return
-            if decision.route is RequestRoute.SUBSCRIPTION_CANCEL:
+            if decision.route in {
+                RequestRoute.SUBSCRIPTION_CANCEL,
+                RequestRoute.SUBSCRIPTION_RESUME,
+            }:
                 await self._run_subscription_workflow(
                     claim=claim,
                     conversation_id=conversation_id,
                     user_id=user_id,
                     user_request=current_task,
+                    resume=decision.route is RequestRoute.SUBSCRIPTION_RESUME,
                 )
                 return
             if executor_id is None:
@@ -315,6 +325,14 @@ class InProcessTaskRunner:
             )
             if decision.requested_output is RequestedOutput.MONTHLY_REPORT:
                 snapshot = build_financial_analysis_snapshot(result.state.successful_tool_results)
+                if snapshot.spending_summary is None or snapshot.category_breakdown is None:
+                    await self._complete_without_agent(
+                        claim=claim,
+                        conversation_id=conversation_id,
+                        answer="未取得所选期间完整的账单汇总与分类数据，暂时无法生成报告。请核对年份、月份和账户范围后重试。",
+                        route=decision.route,
+                    )
+                    return
                 await self._run_report_pipeline(
                     claim=claim,
                     conversation_id=conversation_id,
@@ -333,7 +351,9 @@ class InProcessTaskRunner:
                 assistant = await messages.create(
                     conversation_id=conversation_id,
                     role=MessageRole.ASSISTANT,
-                    content=result.answer,
+                    content=subscription_answer(result.answer)
+                    if agent.agent_id == SUBSCRIPTION_ANALYSIS_AGENT_ID
+                    else result.answer,
                 )
                 await tasks.transition(
                     task,
@@ -477,10 +497,13 @@ class InProcessTaskRunner:
         elif executor_type is ExecutorType.WORKFLOW and executor_id in {
             TRANSFER_WORKFLOW_ID,
             SUBSCRIPTION_WORKFLOW_ID,
+            SUBSCRIPTION_RESUME_WORKFLOW_ID,
         }:
             route = (
                 RequestRoute.TRANSFER_WORKFLOW
                 if executor_id == TRANSFER_WORKFLOW_ID
+                else RequestRoute.SUBSCRIPTION_RESUME
+                if executor_id == SUBSCRIPTION_RESUME_WORKFLOW_ID
                 else RequestRoute.SUBSCRIPTION_CANCEL
             )
         else:
@@ -524,7 +547,11 @@ class InProcessTaskRunner:
             publisher = EventPublisher(session)
             task = await self._get_owned(tasks, claim, for_update=True)
             executor_type = None
-            if route in {RequestRoute.TRANSFER_WORKFLOW, RequestRoute.SUBSCRIPTION_CANCEL}:
+            if route in {
+                RequestRoute.TRANSFER_WORKFLOW,
+                RequestRoute.SUBSCRIPTION_CANCEL,
+                RequestRoute.SUBSCRIPTION_RESUME,
+            }:
                 executor_type = ExecutorType.WORKFLOW
             elif executor_id is not None and route is not RequestRoute.COMPLEX_PLAN:
                 executor_type = ExecutorType.AGENT
@@ -588,11 +615,7 @@ class InProcessTaskRunner:
             assistant = await messages.create(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
-                content=(
-                    "转账草稿已准备，请在转账卡片中完成所需选择。"
-                    if workflow.status is WorkflowStatus.WAITING_FOR_INPUT
-                    else "转账信息已准备完成，尚未提交。"
-                ),
+                content="转账流程已建立，请在转账卡片中选择或核对资料，并查看最终执行状态。",
             )
             await tasks.transition(
                 task,
@@ -672,6 +695,7 @@ class InProcessTaskRunner:
         conversation_id: UUID,
         user_id: str,
         user_request: str,
+        resume: bool = False,
     ) -> None:
         if (
             self.subscription_intent_extractor is None
@@ -708,14 +732,17 @@ class InProcessTaskRunner:
                         conversation_id=conversation_id,
                         source_task_id=claim.task_id,
                         intent=intent,
+                        resume=resume,
                     )
         state = workflow.state
         message = (
             str(state.get("error_message"))
             if workflow.status is WorkflowStatus.FAILED and state.get("error_message")
-            else "找到多个订阅，请在取消卡片中明确选择。"
+            else "找到多个订阅，请在业务卡片中明确选择。"
             if workflow.status is WorkflowStatus.WAITING_FOR_INPUT
-            else "订阅取消信息已准备，需要用户确认，尚未取消。"
+            else "恢复订阅流程已建立，请在业务卡片中核对套餐、下次扣费时间及最终执行状态。"
+            if resume
+            else "取消订阅流程已建立，请在业务卡片中核对订阅及最终执行状态。"
         )
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
@@ -725,13 +752,17 @@ class InProcessTaskRunner:
             assistant = await messages.create(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
-                content=message,
+                content=subscription_answer(message),
             )
             await tasks.transition(
                 task,
                 TaskStatus.COMPLETED,
                 output={
-                    "route": RequestRoute.SUBSCRIPTION_CANCEL.value,
+                    "route": (
+                        RequestRoute.SUBSCRIPTION_RESUME
+                        if resume
+                        else RequestRoute.SUBSCRIPTION_CANCEL
+                    ).value,
                     "requested_output": RequestedOutput.WORKFLOW.value,
                     "workflow_id": str(workflow.workflow_id),
                     "assistant_message_id": str(assistant.message_id),
@@ -790,6 +821,14 @@ class InProcessTaskRunner:
             )
             if anomaly_result is not None and "snapshot" in anomaly_result.output:
                 output["transaction_anomaly_snapshot"] = anomaly_result.output["snapshot"]
+        if agent_id == MINIMAL_BANKING_AGENT.agent_id:
+            payees = [
+                item.output
+                for item in successful_tool_results
+                if item.capability_id in {"payee.list", "payee.search"}
+            ]
+            if payees:
+                output["payee_results"] = payees
         if agent_id == SUBSCRIPTION_ANALYSIS_AGENT_ID:
             result = next(
                 (
@@ -918,11 +957,14 @@ class InProcessTaskRunner:
                         "source_task_id": str(claim.task_id),
                     },
                 )
-                year, month = artifact.period.split("-")
+                parts = artifact.period.split("-")
+                period_label = (
+                    f"{parts[0]}年{int(parts[1])}月" if len(parts) == 2 else f"{parts[0]}年年度"
+                )
                 assistant = await messages.create(
                     conversation_id=conversation_id,
                     role=MessageRole.ASSISTANT,
-                    content=f"{year}年{int(month)}月消费报告已生成。",
+                    content=f"{period_label}消费报告已生成。",
                 )
                 await tasks.transition(
                     task,

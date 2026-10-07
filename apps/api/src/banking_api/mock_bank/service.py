@@ -107,6 +107,9 @@ class MockBankService:
     def _normalize(value: str) -> str:
         return "".join(value.casefold().split())
 
+    def list_payees(self, *, user_id: str) -> list[dict[str, Any]]:
+        return [dict(item) for item in self._payees if item["user_id"] == user_id]
+
     def search_payees(self, query: str, *, user_id: str) -> list[dict[str, Any]]:
         """Bounded exact matching only; no fuzzy or model-selected resolution."""
         normalized = self._normalize(query)

@@ -21,6 +21,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Conversation */
+        get: operations["get_conversation_api_v1_conversations__conversation_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Conversation */
+        delete: operations["delete_conversation_api_v1_conversations__conversation_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename Conversation */
+        patch: operations["rename_conversation_api_v1_conversations__conversation_id__patch"];
+        trace?: never;
+    };
     "/api/v1/conversations": {
         parameters: {
             query?: never;
@@ -33,23 +52,6 @@ export interface paths {
         put?: never;
         /** Create Conversation */
         post: operations["create_conversation_api_v1_conversations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/conversations/{conversation_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Conversation */
-        get: operations["get_conversation_api_v1_conversations__conversation_id__get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -603,6 +605,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Payees */
+        get: operations["list_payees_api_v1_payees_get"];
+        put?: never;
+        /** Create Payee */
+        post: operations["create_payee_api_v1_payees_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -936,6 +956,11 @@ export interface components {
             /** Messages */
             messages: components["schemas"]["Message"][];
         };
+        /** ConversationRename */
+        ConversationRename: {
+            /** Title */
+            title: string;
+        };
         /** CurrencyCost */
         CurrencyCost: {
             /** Currency */
@@ -1208,7 +1233,23 @@ export interface components {
          * OperationType
          * @enum {string}
          */
-        OperationType: "TRANSFER" | "SUBSCRIPTION_CANCEL";
+        OperationType: "TRANSFER" | "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
+        /** PayeeCreate */
+        PayeeCreate: {
+            /** Display Name */
+            display_name: string;
+            /** Bank Name */
+            bank_name: string;
+            /** Account Suffix */
+            account_suffix: string;
+            /**
+             * Phone Alias
+             * @default
+             */
+            phone_alias: string;
+            /** Confirmed */
+            confirmed: boolean;
+        };
         /** PayeeSummary */
         PayeeSummary: {
             /** Payee Id */
@@ -1265,7 +1306,7 @@ export interface components {
          * PlanCapability
          * @enum {string}
          */
-        PlanCapability: "ACCOUNT_QUERY" | "FINANCIAL_ANALYSIS" | "SUBSCRIPTION_ANALYSIS" | "TRANSFER_WORKFLOW" | "SUBSCRIPTION_CANCEL_WORKFLOW";
+        PlanCapability: "ACCOUNT_QUERY" | "FINANCIAL_ANALYSIS" | "SUBSCRIPTION_ANALYSIS" | "TRANSFER_WORKFLOW" | "SUBSCRIPTION_CANCEL_WORKFLOW" | "SUBSCRIPTION_RESUME_WORKFLOW";
         /**
          * PlanStatus
          * @enum {string}
@@ -1529,7 +1570,7 @@ export interface components {
          * RiskReasonCode
          * @enum {string}
          */
-        RiskReasonCode: "READ_ONLY_AUTOMATIC" | "DAILY_TRANSFER_WITHIN_LIMIT" | "DAILY_TRANSFER_LIMIT_EXCEEDED" | "RISK_ESCALATED_AT_COMMIT" | "RISK_NOT_DOWNGRADED";
+        RiskReasonCode: "FUNDS_OUTFLOW_REQUIRES_REAUTH" | "READ_ONLY_AUTOMATIC" | "DAILY_TRANSFER_WITHIN_LIMIT" | "DAILY_TRANSFER_LIMIT_EXCEEDED" | "RISK_ESCALATED_AT_COMMIT" | "RISK_NOT_DOWNGRADED";
         /** RollbackPlanAction */
         RollbackPlanAction: {
             /**
@@ -1566,6 +1607,8 @@ export interface components {
             payee_id: string;
             /** Expected Version */
             expected_version: number;
+            /** Recipient Query */
+            recipient_query?: string | null;
         };
         /** SelectSourceAccountAction */
         SelectSourceAccountAction: {
@@ -1634,9 +1677,21 @@ export interface components {
              * Format: date-time
              */
             approval_expires_at: string;
+            /** Reauth Id */
+            reauth_id?: string | null;
+            /** Reauth Verified At */
+            reauth_verified_at?: string | null;
+            /** Reauth Expires At */
+            reauth_expires_at?: string | null;
         };
         /** SubscriptionCancelDraft */
         SubscriptionCancelDraft: {
+            /**
+             * Action
+             * @default SUBSCRIPTION_CANCEL
+             * @enum {string}
+             */
+            action: "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
             /** Subscription Query */
             subscription_query: string;
             /** Subscription Id */
@@ -1660,8 +1715,14 @@ export interface components {
             /**
              * Action
              * @default SUBSCRIPTION_CANCEL
+             * @enum {string}
              */
-            action: string;
+            action: "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
+            /**
+             * Contract Version
+             * @default 0
+             */
+            contract_version: number;
             /** Subscription Id */
             subscription_id: string;
             /** User Id */
@@ -1714,6 +1775,11 @@ export interface components {
              * @default false
              */
             cancellable: boolean;
+            /**
+             * Resumable
+             * @default false
+             */
+            resumable: boolean;
         };
         /** SubscriptionItem */
         SubscriptionItem: {
@@ -1730,11 +1796,8 @@ export interface components {
             last_charge_amount: string;
             /** Currency */
             currency: string;
-            /**
-             * Last Charge Date
-             * Format: date
-             */
-            last_charge_date: string;
+            /** Last Charge Date */
+            last_charge_date: string | null;
             /** Next Billing At */
             next_billing_at?: string | null;
             /** Next Billing Is Estimated */
@@ -1749,6 +1812,22 @@ export interface components {
             price_change_percent?: string | null;
             /** Cancellable */
             cancellable: boolean;
+            /**
+             * Resumable
+             * @default false
+             */
+            resumable: boolean;
+            /**
+             * Contract Version
+             * @default 0
+             */
+            contract_version: number;
+            /** Contract Amount */
+            contract_amount?: string | null;
+            /** Billing Anchor At */
+            billing_anchor_at?: string | null;
+            /** Contract Amount Display */
+            contract_amount_display?: string | null;
             /**
              * Last Charge Display
              * @default
@@ -2240,7 +2319,7 @@ export interface components {
          * WorkflowType
          * @enum {string}
          */
-        WorkflowType: "TRANSFER" | "SUBSCRIPTION_CANCEL";
+        WorkflowType: "TRANSFER" | "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
     };
     responses: never;
     parameters: never;
@@ -2268,6 +2347,101 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    get_conversation_api_v1_conversations__conversation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_conversation_api_v1_conversations__conversation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_conversation_api_v1_conversations__conversation_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationRename"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2312,37 +2486,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Conversation"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_conversation_api_v1_conversations__conversation_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                conversation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConversationDetail"];
                 };
             };
             /** @description Validation Error */
@@ -3367,6 +3510,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Plan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_payees_api_v1_payees_get: {
+        parameters: {
+            query?: {
+                query?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayeeSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_payee_api_v1_payees_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayeeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayeeSummary"];
                 };
             };
             /** @description Validation Error */

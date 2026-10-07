@@ -28,6 +28,7 @@ from banking_api.application.workflow_service import (
     WorkflowService,
     WorkflowVersionConflictError,
 )
+from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import (
     ApprovalStatus,
@@ -115,6 +116,52 @@ pytestmark = pytest.mark.postgres
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 
 
+async def test_manual_rename_serializes_against_first_reply(postgres_factory) -> None:
+    from banking_api.persistence.repositories.messages import MessageRepository
+
+    factory = postgres_factory
+    async with factory() as session:
+        conversation = await ConversationService(session, EventBus()).create(
+            user_id="dev-user-001", title="新对话"
+        )
+        await MessageRepository(session).create(
+            conversation_id=conversation.conversation_id,
+            role=MessageRole.USER,
+            content="近期消费分析",
+        )
+        await session.commit()
+    started = asyncio.Event()
+
+    async def first_reply() -> None:
+        async with factory() as session:
+            started.set()
+            await MessageRepository(session).create(
+                conversation_id=conversation.conversation_id,
+                role=MessageRole.ASSISTANT,
+                content="分析完成",
+            )
+            await session.commit()
+
+    async with factory() as session:
+        model = await session.scalar(
+            select(ConversationModel)
+            .where(
+                ConversationModel.conversation_id == conversation.conversation_id,
+            )
+            .with_for_update()
+        )
+        model.title = "我的账单"
+        model.title_is_custom = True
+        await session.flush()
+        reply_task = asyncio.create_task(first_reply())
+        await started.wait()
+        await session.commit()
+    await asyncio.wait_for(reply_task, timeout=10)
+    async with factory() as session:
+        model = await session.get(ConversationModel, conversation.conversation_id)
+        assert model.title == "我的账单" and model.title_is_custom
+
+
 @pytest.fixture
 async def postgres_factory():
     if not TEST_DATABASE_URL:
@@ -126,7 +173,8 @@ async def postgres_factory():
         await connection.execute(
             text(
                 "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
-                "mock_subscription_cancellations, "
+                "mock_subscription_cancellations, mock_subscription_actions, "
+                "mock_subscription_states, payees, "
                 "events, tasks, messages, "
                 "conversations "
                 "RESTART IDENTITY CASCADE"
@@ -137,7 +185,8 @@ async def postgres_factory():
         await connection.execute(
             text(
                 "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
-                "mock_subscription_cancellations, "
+                "mock_subscription_cancellations, mock_subscription_actions, "
+                "mock_subscription_states, payees, "
                 "events, tasks, messages, "
                 "conversations "
                 "RESTART IDENTITY CASCADE"
@@ -280,7 +329,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0017"
+        assert revision == "0019"
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"
@@ -582,7 +631,7 @@ async def test_postgres_transfer_workflow_persistence_version_and_ownership(
             ready.workflow_id,
             user_id="postgres-transfer-user",
             reauth_id=challenged.reauth_summary.reauth_id,
-            verification_code="246810",
+            verification_code=get_settings().mock_reauth_code,
             expected_version=challenged.version,
         )
     assert authorized.status.value == "READY_FOR_COMMIT"
@@ -727,7 +776,7 @@ async def test_postgres_operation_atomic_consumption_and_restart_recovery(
             workflow.workflow_id,
             user_id=user_id,
             reauth_id=workflow.reauth_summary.reauth_id,  # type: ignore[union-attr]
-            verification_code="246810",
+            verification_code=get_settings().mock_reauth_code,
             expected_version=workflow.version,
         )
 
@@ -839,7 +888,7 @@ async def _create_postgres_created_operation(
             workflow.workflow_id,
             user_id=user_id,
             reauth_id=workflow.reauth_summary.reauth_id,  # type: ignore[union-attr]
-            verification_code="246810",
+            verification_code=get_settings().mock_reauth_code,
             expected_version=workflow.version,
         )
     async with factory() as session:
@@ -1762,7 +1811,7 @@ async def test_postgres_task_worker_crash_lease_expiry_and_recovery(
     assert event_count == outbox_count == 1
 
 
-async def test_postgres_user_risk_lock_blocks_two_concurrent_yellow_commits(
+async def test_legacy_yellow_commits_require_reauth_even_when_concurrent(
     postgres_factory,
 ) -> None:
     factory = postgres_factory
@@ -1811,11 +1860,21 @@ async def test_postgres_user_risk_lock_blocks_two_concurrent_yellow_commits(
                 expected_version=workflow.version,
             )
         async with factory() as session:
-            return await WorkflowService(session, bus, engine).approve(
+            approved = await WorkflowService(session, bus, engine).approve(
                 workflow.workflow_id,
                 user_id=user_id,
                 expected_version=workflow.version,
             )
+        async with factory() as session:
+            row = await session.get(WorkflowModel, approved.workflow_id)
+            state = dict(row.state_json)
+            risk = dict(state["risk_decision"])
+            risk.update(level="YELLOW", required_reauthentication=False)
+            state["risk_decision"] = risk
+            row.state_json = state
+            row.status = WorkflowStatus.READY_FOR_COMMIT
+            await session.commit()
+            return await WorkflowService(session, bus, engine).get(row.workflow_id, user_id=user_id)
 
     workflow_a = await create_yellow_workflow()
     workflow_b = await create_yellow_workflow()
@@ -1830,10 +1889,8 @@ async def test_postgres_user_risk_lock_blocks_two_concurrent_yellow_commits(
                 expected_version=workflow.version,
             )
 
-    results = await asyncio.gather(
-        prepare(workflow_a), prepare(workflow_b), return_exceptions=True
-    )
-    assert sum(not isinstance(result, Exception) for result in results) == 1
+    results = await asyncio.gather(prepare(workflow_a), prepare(workflow_b), return_exceptions=True)
+    assert all(isinstance(result, OperationActionError) for result in results)
     rejected = next(result for result in results if isinstance(result, Exception))
     assert isinstance(rejected, OperationActionError)
     assert str(rejected) == "TRANSFER_RISK_REAUTH_REQUIRED"
@@ -1846,14 +1903,11 @@ async def test_postgres_user_risk_lock_blocks_two_concurrent_yellow_commits(
         )
         workflows = list(
             (
-                await session.execute(
-                    select(WorkflowModel).where(WorkflowModel.user_id == user_id)
-                )
+                await session.execute(select(WorkflowModel).where(WorkflowModel.user_id == user_id))
             ).scalars()
         )
-    assert operation_count == 1
+    assert operation_count == 0
     assert {workflow.status for workflow in workflows} == {
-        WorkflowStatus.COMMITTING,
         WorkflowStatus.REAUTH_REQUIRED,
     }
 
@@ -2064,9 +2118,7 @@ async def test_security_lock_activation_wins_transfer_operation_race(
 
     async with factory() as signal_session:
         await acquire_security_user_lock(signal_session, user_id)
-        locked = await SecurityGuardService(
-            signal_session
-        ).record_reauthentication_result(
+        locked = await SecurityGuardService(signal_session).record_reauthentication_result(
             user_id=user_id,
             workflow_id=workflow.workflow_id,
             conversation_id=workflow.conversation_id,
@@ -2179,9 +2231,12 @@ async def test_bypass_lock_activation_wins_subscription_operation_race(
     factory = postgres_factory
     bus = EventBus()
     user_id = "security-subscription-signal-wins"
-    transfer_engine, subscription_engine, provider, workflow = (
-        await _create_postgres_subscription_cancel(factory, bus, user_id)
-    )
+    (
+        transfer_engine,
+        subscription_engine,
+        provider,
+        workflow,
+    ) = await _create_postgres_subscription_cancel(factory, bus, user_id)
     await _seed_security_counter(factory, user_id, bypass_attempts=4)
     operation_attempted = asyncio.Event()
 
@@ -2202,9 +2257,7 @@ async def test_bypass_lock_activation_wins_subscription_operation_race(
 
     async with factory() as signal_session:
         await acquire_security_user_lock(signal_session, user_id)
-        locked = await SecurityGuardService(
-            signal_session
-        ).record_control_bypass_attempt(
+        locked = await SecurityGuardService(signal_session).record_control_bypass_attempt(
             user_id=user_id,
             workflow_id=workflow.workflow_id,
             conversation_id=workflow.conversation_id,

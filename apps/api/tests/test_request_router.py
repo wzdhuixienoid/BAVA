@@ -10,6 +10,17 @@ from banking_api.routing.request_router import RequestRouter, RoutingError
 
 
 @pytest.mark.parametrize(
+    "request_text", ["我可以给哪些人转账", "我可以向谁转账？", "请问我能给哪些收款人汇款？"]
+)
+async def test_payee_question_never_starts_transfer_even_without_llm(request_text):
+    provider = FakeLLMProvider([])
+    decision = await RequestRouter(provider).route(request_text)
+    assert decision.route is RequestRoute.MINIMAL_BANKING
+    assert decision.requested_output is RequestedOutput.ANSWER
+    assert provider.requests == []
+
+
+@pytest.mark.parametrize(
     ("request_text", "route", "requested_output"),
     [
         ("我有哪些账户？", RequestRoute.MINIMAL_BANKING, RequestedOutput.ANSWER),
@@ -82,9 +93,7 @@ async def test_router_validates_structured_classification(
     assert provider.requests[0].tools == []
     assert provider.requests[0].messages[-1].content == request_text
     assert "不要输出解释" in (provider.requests[0].messages[0].content or "")
-    assert "只处理可支持的分析部分" in (
-        provider.requests[0].messages[0].content or ""
-    )
+    assert "只处理可支持的分析部分" in (provider.requests[0].messages[0].content or "")
 
 
 async def test_router_retries_once_after_invalid_format() -> None:
@@ -93,8 +102,7 @@ async def test_router_retries_once_after_invalid_format() -> None:
             LLMResponse(content="not-json"),
             LLMResponse(
                 content=(
-                    '{"route":"FINANCIAL_ANALYSIS",'
-                    '"requested_output":"ANSWER","confidence":0.8}'
+                    '{"route":"FINANCIAL_ANALYSIS","requested_output":"ANSWER","confidence":0.8}'
                 )
             ),
         ]
@@ -148,8 +156,7 @@ async def test_mixed_transfer_intent_enters_plan_even_if_model_misroutes() -> No
         [
             LLMResponse(
                 content=(
-                    '{"route":"FINANCIAL_ANALYSIS","requested_output":"ANSWER",'
-                    '"confidence":0.91}'
+                    '{"route":"FINANCIAL_ANALYSIS","requested_output":"ANSWER","confidence":0.91}'
                 )
             )
         ]

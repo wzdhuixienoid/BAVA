@@ -1,12 +1,13 @@
 """Real HTTP transfer authorization, Operation and bounded audit evidence smoke.
 
-Only localhost synthetic development/test products; explicitly approves one YELLOW
+Only localhost synthetic development/test products; confirms and mock-verifies one RED
 transfer. No credential or model response is printed.
 """
 
 import asyncio
 import os
 
+from banking_api.config.settings import get_settings
 from demo_preflight import local_url
 from httpx import AsyncClient
 from smoke_plan_product import create_request, wait_task
@@ -29,15 +30,34 @@ async def main():
         readiness = await client.get("/api/v1/demo/readiness")
         readiness.raise_for_status()
         assert readiness.json()["provider_mode"] == "Mock"
+        assert readiness.json()["reauthentication_mode"] == "Mock"
         _, task_id = await create_request(client, "从工资卡给李小雨转500元")
         workflow = await reviewed(client, task_id)
-        assert workflow["risk_decision"]["level"] == "YELLOW"
+        assert workflow["risk_decision"]["level"] == "RED"
+        assert workflow["risk_decision"]["required_reauthentication"] is True
         path = f"/api/v1/workflows/{workflow['workflow_id']}/actions"
         response = await client.post(
             f"{path}/approve", json={"expected_version": workflow["version"]}
         )
         response.raise_for_status()
         workflow = response.json()
+        assert workflow["status"] == "REAUTH_REQUIRED"
+        response = await client.post(
+            f"{path}/start-reauth", json={"expected_version": workflow["version"]}
+        )
+        response.raise_for_status()
+        workflow = response.json()
+        response = await client.post(
+            f"{path}/verify-reauth",
+            json={
+                "expected_version": workflow["version"],
+                "reauth_id": workflow["reauth_summary"]["reauth_id"],
+                "verification_code": get_settings().mock_reauth_code,
+            },
+        )
+        response.raise_for_status()
+        workflow = response.json()
+        assert workflow["status"] == "READY_FOR_COMMIT"
         response = await client.post(
             f"{path}/commit", json={"expected_version": workflow["version"]}
         )
@@ -52,6 +72,7 @@ async def main():
             "conversation.message.created",
             "workflow.risk_evaluated",
             "approval.approved",
+            "reauth.verified",
             "approval.consumed",
             "operation.created",
             "provider.submit_started",
@@ -70,7 +91,7 @@ async def main():
         ):
             assert forbidden not in response.text
         print(
-            "PASS HTTP audit: Approval → Operation → Provider SUCCEEDED; no secret fields"
+            "PASS HTTP audit: Approval → Mock reauthentication → Operation → Provider SUCCEEDED; no secret fields"
         )
 
 

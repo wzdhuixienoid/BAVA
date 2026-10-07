@@ -1,6 +1,12 @@
 const errorLabels: Record<string, string> = {
+  CONVERSATION_HAS_ACTIVE_TASKS: "该对话还有未结束的任务，请先完成或取消相关流程。",
+  SUBSCRIPTION_REVIEW_CHANGED: "订阅资料已更新，请重新核对后确认。",
+  SUBSCRIPTION_VERSION_CONFLICT: "订阅状态已变化，请刷新后重新发起操作。",
+  SUBSCRIPTION_NOT_RESUMABLE: "该订阅暂不支持恢复，请到商户办理。",
+  PAYEE_CONFIRMATION_REQUIRED: "请核对收款人资料并确认保存。",
   REAUTH_FAILED: "身份验证未通过，请检查模拟验证码；连续失败会暂时锁定写操作。",
   REAUTH_EXPIRED: "身份验证已过期，请重新验证。",
+  TRANSFER_RISK_REAUTH_REQUIRED: "这笔转账需要强验证，请完成验证后再提交。",
   REAUTH_REQUIRED: "当前风险要求完成身份验证后再提交。",
   APPROVAL_EXPIRED: "本次确认已过期，请重新核对并确认。",
   APPROVAL_REQUIRED: "请先核对业务内容并确认。",

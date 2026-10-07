@@ -16,7 +16,7 @@ from banking_api.workflows.transfer.intent_extractor import TransferIntentExtrac
 
 
 @pytest.mark.parametrize("alias", ["元", "人民币", "RMB", "CNY", "¥", "￥"])
-async def test_currency_alias_is_grounded_and_workflow_yellow(app, client, alias):
+async def test_currency_alias_is_grounded_and_workflow_red(app, client, alias):
     raw = f"从工资卡给李小雨转500{alias}"
     assert canonicalize_currency(alias, raw) == "CNY"
     responses = [
@@ -49,7 +49,7 @@ async def test_currency_alias_is_grounded_and_workflow_yellow(app, client, alias
     workflow = (await client.get(f"/api/v1/workflows/{task.output['workflow_id']}")).json()
     assert workflow["status"] == "READY_FOR_REVIEW"
     assert workflow["risk_decision"]["currency"] == "CNY"
-    assert workflow["risk_decision"]["level"] == "YELLOW"
+    assert workflow["risk_decision"]["level"] == "RED"
 
 
 @pytest.mark.parametrize(
@@ -114,7 +114,7 @@ async def test_alias_canonicalization_in_plan_path(app, client, alias):
             select(WorkflowModel).where(WorkflowModel.source_task_id == task_id)
         )
     assert workflow.state_json["review_payload"]["currency"] == "CNY"
-    assert workflow.state_json["risk_decision"]["level"] == "YELLOW"
+    assert workflow.state_json["risk_decision"]["level"] == "RED"
 
 
 def test_reference_clock_production_forbidden_and_requires_timezone():

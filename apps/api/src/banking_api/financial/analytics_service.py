@@ -18,7 +18,7 @@ from banking_api.mock_bank.service import MockBankService
 
 VALID_TRANSACTION_STATUSES = frozenset({"POSTED"})
 TRANSFER_CATEGORY = "TRANSFER"
-_PERIOD_PATTERN = re.compile(r"^(\d{4})-(\d{2})$")
+_PERIOD_PATTERN = re.compile(r"^(\d{4})(?:-(\d{2}))?$")
 _ZERO = Decimal("0")
 
 
@@ -81,7 +81,11 @@ class FinancialAnalyticsService:
         self, month: str, account_ids: list[str] | None = None, *, user_id: str
     ) -> SpendingPeriodComparison:
         current_start, _ = self._period_bounds(month)
-        previous_month = self._previous_month(current_start)
+        previous_month = (
+            f"{current_start.year - 1:04d}"
+            if len(month) == 4
+            else self._previous_month(current_start)
+        )
         current = self._period_transactions(month, account_ids, user_id=user_id)
         previous = self._period_transactions(
             previous_month,
@@ -199,10 +203,13 @@ class FinancialAnalyticsService:
                 FinancialErrorCode.INVALID_PERIOD,
                 f"Invalid period: {month}",
             )
-        year, month_number = (int(part) for part in match.groups())
+        year = int(match.group(1))
+        month_number = int(match.group(2)) if match.group(2) else 1
         try:
             start = datetime(year, month_number, 1, tzinfo=UTC)
-            if month_number == 12:
+            if match.group(2) is None:
+                end = datetime(year + 1, 1, 1, tzinfo=UTC)
+            elif month_number == 12:
                 end = datetime(year + 1, 1, 1, tzinfo=UTC)
             else:
                 end = datetime(year, month_number + 1, 1, tzinfo=UTC)

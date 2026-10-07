@@ -53,6 +53,7 @@ from banking_api.tools.banking import (
     build_list_accounts_tool,
     build_search_payees_tool,
 )
+from banking_api.tools.banking.search_payees import build_list_payees_tool
 from banking_api.tools.executor import ToolExecutor
 from banking_api.tools.subscriptions import (
     build_subscription_analyze_tool,
@@ -181,11 +182,15 @@ def create_app() -> FastAPI:
     registry.register(build_compare_spending_periods_tool(analytics))
     registry.register(build_get_top_transactions_tool(analytics))
     registry.register(build_detect_anomalies_tool(anomaly_detector))
-    registry.register(build_search_payees_tool(bank))
+    registry.register(build_search_payees_tool(bank, session_factory))
+    registry.register(build_list_payees_tool(bank, session_factory))
     registry.register(build_commit_transfer_tool(session_factory, transfer_provider))
     registry.register(build_get_transfer_status_tool(session_factory, transfer_provider))
     registry.register(build_subscription_analyze_tool(session_factory, bank))
     registry.register(build_subscription_cancel_tool(session_factory, subscription_provider))
+    registry.register(
+        build_subscription_cancel_tool(session_factory, subscription_provider, resume=True)
+    )
     registry.register(build_subscription_status_tool(session_factory, subscription_provider))
     executor = ToolExecutor(registry, PolicyService())
     transfer_engine = TransferWorkflowEngine(executor)

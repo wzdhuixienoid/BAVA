@@ -8,6 +8,7 @@ from test_transfer_workflow import build_transfer_runtime, create_transfer_task
 
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.workflow_service import WorkflowActionError, WorkflowService
+from banking_api.config.settings import get_settings
 from banking_api.domain.enums import ApprovalStatus, ReauthenticationStatus
 from banking_api.llm.models import LLMResponse
 from banking_api.mock_bank.service import MockBankService
@@ -166,7 +167,7 @@ async def test_fake_e2e_authorization_mutation_and_zero_money_movement(app, clie
             f"/api/v1/workflows/{workflow_id}/actions/verify-reauth",
             json={
                 "reauth_id": challenged["reauth_summary"]["reauth_id"],
-                "verification_code": "246810",
+                "verification_code": get_settings().mock_reauth_code,
                 "expected_version": challenged["version"],
             },
         )

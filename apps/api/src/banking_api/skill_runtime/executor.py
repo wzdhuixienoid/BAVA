@@ -58,9 +58,7 @@ class SkillExecutor:
         self.skill = skill or MonthlySpendingReportSkill()
         self.max_retries = max_retries
 
-    async def execute(
-        self, snapshot: FinancialAnalysisSnapshot
-    ) -> MonthlySpendingReport:
+    async def execute(self, snapshot: FinancialAnalysisSnapshot) -> MonthlySpendingReport:
         if not isinstance(snapshot, FinancialAnalysisSnapshot):
             raise SkillExecutionError(
                 SkillErrorCode.REPORT_INPUT_INCOMPLETE,
@@ -91,9 +89,7 @@ class SkillExecutor:
             try:
                 if not response.content:
                     raise ValueError("Narrative response is empty")
-                draft = ReportNarrativeDraft.model_validate(
-                    self._parse_json(response.content)
-                )
+                draft = ReportNarrativeDraft.model_validate(self._parse_json(response.content))
                 self._validate_narrative(draft, core)
                 return MonthlySpendingReport(
                     **core.model_dump(),
@@ -156,7 +152,12 @@ class SkillExecutor:
             messages=[
                 LLMMessage(
                     role="system",
-                    content=MONTHLY_SPENDING_REPORT_INSTRUCTIONS,
+                    content=MONTHLY_SPENDING_REPORT_INSTRUCTIONS
+                    + (
+                        "\n当前报告期间是自然年，使用年度措辞，比较数据为同比。"
+                        if len(core.period) == 4
+                        else ""
+                    ),
                 ),
                 LLMMessage(
                     role="user",
