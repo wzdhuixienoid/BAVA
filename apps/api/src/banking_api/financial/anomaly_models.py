@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import StrEnum
 
@@ -26,6 +26,7 @@ class TransactionAnomalyEvidence(BaseModel):
     amount: Decimal | None = None
     ratio: Decimal | None = None
     sample_count: int | None = None
+    baseline_scope: str | None = None
     merchant_seen_in_lookback: bool | None = None
     duplicate_count: int | None = None
     window_minutes: int | None = None
@@ -57,6 +58,7 @@ class TransactionAnomalyItem(BaseModel):
             "amount": "本笔金额",
             "ratio": "金额倍数",
             "sample_count": "历史样本数",
+            "baseline_scope": "比较范围",
             "merchant_seen_in_lookback": "历史出现过商户",
             "duplicate_count": "重复扣费笔数",
             "window_minutes": "时间窗口（分钟）",
@@ -81,6 +83,8 @@ class TransactionAnomalyItem(BaseModel):
                         if value is True
                         else "否"
                         if value is False
+                        else f"{value:.2f}"
+                        if field == "ratio"
                         else str(value)
                     )
                 )
@@ -97,12 +101,62 @@ class TransactionAnomalySnapshot(BaseModel):
     insufficient_baseline: bool
     anomalies: list[TransactionAnomalyItem] = Field(max_length=50)
     generated_at: datetime
+    available_data_started_at: datetime | None = None
+    available_data_ended_at: datetime | None = None
+    analyzed_transaction_count: int | None = None
+    baseline_skipped_count: int = 0
+    total_anomaly_count: int = 0
+    truncated: bool = False
 
 
 class TransactionAnomalyInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    analysis_days: int = Field(default=30, ge=1, le=90)
+    analysis_days: int | None = Field(
+        default=None, ge=1, le=366, description="最近天数，最多一个日历年（365或366天）；默认30天。"
+    )
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    account_ids: list[str] | None = None
+
+    @model_validator(mode="after")
+    def validate_window(self):
+        if self.start_at is not None or self.end_at is not None:
+            if self.start_at is None or self.end_at is None:
+                raise ValueError("请同时提供起止时间")
+            if self.analysis_days is not None:
+                raise ValueError("天数与起止时间互斥")
+            if self.start_at.tzinfo is None or self.end_at.tzinfo is None:
+                raise ValueError("起止时间必须包含时区")
+            if self.start_at >= self.end_at:
+                raise ValueError("起点必须早于终点")
+        return self
+
+    def bounds(self, now: datetime) -> tuple[datetime, datetime]:
+        from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
+
+        def checked(start: datetime, end: datetime) -> tuple[datetime, datetime]:
+            try:
+                earliest = end.replace(year=end.year - 1)
+            except ValueError:
+                earliest = end.replace(year=end.year - 1, day=28)
+            if start < earliest:
+                raise FinancialDomainError(
+                    FinancialErrorCode.INVALID_PERIOD,
+                    "异常分析最多支持一年，请指定一年以内的时间范围",
+                )
+            return start, end
+
+        if self.start_at is not None and self.end_at is not None:
+            return checked(self.start_at, self.end_at)
+        try:
+            return checked(now - timedelta(days=self.analysis_days or 30), now)
+        except (OverflowError, ValueError) as exc:
+            from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
+
+            raise FinancialDomainError(
+                FinancialErrorCode.INVALID_PERIOD, "天数超出有效日期范围"
+            ) from exc
 
 
 class TransactionAnomalyOutput(BaseModel):

@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +9,7 @@ from banking_api.domain.enums import ReportType
 from banking_api.domain.report import Report, ReportListItem
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot
 from banking_api.financial.report_models import MonthlySpendingReport
-from banking_api.persistence.models import ReportModel
+from banking_api.persistence.models import ReportModel, TaskModel
 from banking_api.persistence.repositories.reports import ReportRepository
 from banking_api.skills.models import SkillDefinition
 
@@ -75,14 +76,32 @@ class ReportService:
         conversation_id: UUID | None = None,
         limit: int = 20,
         offset: int = 0,
+        deleted: bool = False,
     ) -> list[ReportListItem]:
         models = await self.reports.list_for_user(
             user_id=user_id,
             conversation_id=conversation_id,
             limit=limit,
             offset=offset,
+            deleted=deleted,
         )
         return [self._to_list_item(model) for model in models]
+
+    async def set_deleted(self, report_id: UUID, *, user_id: str, deleted: bool) -> None:
+        model = await self.reports.get_for_user(
+            report_id, user_id, include_deleted=True, for_update=True
+        )
+        if model is None:
+            raise ReportNotFoundError
+        if deleted and model.deleted_at is None:
+            model.deleted_at = datetime.now(UTC)
+        elif not deleted:
+            model.deleted_at = None
+        source_task = await self.reports.session.get(TaskModel, model.source_task_id)
+        if source_task and source_task.user_id == user_id and source_task.output_json:
+            if source_task.output_json.get("report_id") == str(report_id):
+                source_task.output_json = {**source_task.output_json, "report_deleted": deleted}
+        await self.reports.session.flush()
 
     @staticmethod
     def _to_report(model: ReportModel) -> Report:
@@ -105,6 +124,7 @@ class ReportService:
     def _to_list_item(model: ReportModel) -> ReportListItem:
         content = MonthlySpendingReport.model_validate(model.content_json)
         return ReportListItem(
+            deleted_at=model.deleted_at,
             report_id=model.report_id,
             report_type=model.report_type,
             period=model.period,

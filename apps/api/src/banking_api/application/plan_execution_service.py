@@ -29,7 +29,6 @@ from banking_api.planning.registry import PlanCapabilityRegistry
 from banking_api.planning.validator import PlanValidationError, PlanValidator
 from banking_api.runtime.base import AgentRunRequest, AgentRuntimeError
 from banking_api.runtime.event_publisher import EventPublisher
-from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.subscriptions.answers import subscription_answer
 
 if TYPE_CHECKING:
@@ -334,11 +333,6 @@ class PlanExecutionService:
                     mode="json"
                 )
             }
-            snapshot = build_financial_analysis_snapshot(facts)
-            if snapshot.spending_summary is not None and snapshot.category_breakdown is not None:
-                output["financial_display"] = (
-                    MonthlySpendingReportSkill().build_core(snapshot).model_dump(mode="json")
-                )
             anomaly = next(
                 (
                     f.output["snapshot"]
@@ -349,6 +343,8 @@ class PlanExecutionService:
             )
             if anomaly is not None:
                 output["transaction_anomaly_snapshot"] = anomaly
+                output["transaction_anomaly_answer"] = result.answer
+                output["anomaly_skill_id"] = "skill:transaction-anomaly-analysis"
         elif capability == PlanCapability.SUBSCRIPTION_ANALYSIS:
             from banking_api.subscriptions.models import SubscriptionAnalysisSnapshot
 

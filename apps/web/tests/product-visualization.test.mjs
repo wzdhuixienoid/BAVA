@@ -113,3 +113,96 @@ test("recipient step provides existing and new payee shortcuts with distinct sam
   assert.match(html, /payees\?conversation=chat-1&amp;workflow=w/);
   assert.match(html, /选择张三，甲银行，\*\*\*\*1001/); assert.match(html, /选择张三，乙银行，\*\*\*\*1002/);
 });
+
+test("ordinary spending answers stay visible without an automatic dashboard, including saved outputs", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u" }, tasks: [{ task_id: "spending-task", status: "COMPLETED", input: {}, output: { analysis_snapshot: {}, financial_display: { period: "2026-09" } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "主要支出为 HOUSING 与 HEALTH。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  assert.match(html, /主要支出为 住房 与 健康/);
+  assert.doesNotMatch(html, /消费 Dashboard|助理说明|HOUSING|HEALTH/);
+});
+
+test("saved spending tables localize categories, accounts, timestamps and decimal ratios", async () => {
+  const { localizeFinancialAnswer } = await import("../features/conversation/financialAnswer.ts");
+  const content = "| 分类 | 金额 | 笔数 | 占比 |\n| --- | --- | --- | --- |\n| HOUSING | 6200.00 | 1 | 0.6718136258973317079777868075 |\n| OTHER | 0 | 1 | 0 |\n| FOOD | 1 | 1 | 1 |\n\n（share 为 0–1 的比例原值，未做换算。）\n2026-09-03T12:20:00Z HOUSING acc_salary CNY";
+  const output = localizeFinancialAnswer(content, [{ analysis_snapshot: { top_transactions: { transactions: [{ account_id: "acc_salary", account_display: "工资卡" }] } } }]);
+  assert.match(output, /占比 \(%\)/);
+  assert.match(output, /67\.18%/);
+  assert.match(output, /0\.00%/);
+  assert.match(output, /100\.00%/);
+  assert.match(output, /2026年09月03日 20:20 住房 工资卡 人民币/);
+  assert.equal(localizeFinancialAnswer("2026年08月03日 12:14:00（协调世界时）", []), "2026年08月03日 20:14");
+  assert.equal(localizeFinancialAnswer("2026-08-03T20:14:00+08:00", []), "2026年08月03日 20:14");
+  assert.doesNotMatch(output, /share|HOUSING|acc_salary|T12|CNY/);
+  assert.match(localizeFinancialAnswer("| 分类 | 占比 |\n| --- | --- |\n| FOOD | 0.99995 |", []), /100\.00%/);
+});
+
+test("legacy unsolicited anomaly analysis is identified instead of presented as the requested spending answer", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const props = { turn: { user: { message_id: "u", content: "分析我最近15天的消费" }, tasks: [{ task_id: "legacy", status: "COMPLETED", output: { transaction_anomaly_snapshot: {}, analysis_snapshot: { spending_summary: { period: "2026-09" } } } }], plans: [], reports: [], workflows: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "不支持天数，所以做异常分析。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} };
+  const html = render(AssistantTurn, props);
+  assert.match(html, /这条历史回复误用了异常交易分析/);
+  assert.doesNotMatch(html, /不支持天数|助理说明/);
+});
+
+test("anomaly presentation requires intent in the current request", async () => {
+  const { requestsAnomalyAnalysis } = await import("../features/conversation/financialAnswer.ts");
+  assert.equal(requestsAnomalyAnalysis("最近15天消费"), false);
+  assert.equal(requestsAnomalyAnalysis("分析最近15天消费，不要查异常"), false);
+  assert.equal(requestsAnomalyAnalysis("最近15天有没有异常交易"), true);
+});
+
+test("report check section is brief, grounded and omits currency and severity tables", async () => {
+  const { SpendingReview } = await import("../features/reports/SpendingReview.tsx");
+  const review = { status: "PARTIAL", message: "发现 4 笔值得核对的交易。", total_count: 4,
+    notes: ["部分消费缺少足够历史。"], answer: "", items: [{ transaction_id: "t", occurred_at: "2026-10-06T12:06:00Z",
+      merchant: "数码商户", amount_display: "999.00", reason: "短时重复扣款" }] };
+  const html = render(SpendingReview, { review });
+  assert.match(html, /值得核对的交易|短时重复扣款|999\.00 元|2026年10月06日 20:06/);
+  assert.match(html, /部分消费缺少足够历史|不代表已确认欺诈/);
+  assert.doesNotMatch(html, /<table|HIGH|币种|人民币|¥/);
+  assert.equal(render(SpendingReview, {}), "");
+});
+
+test("ordinary assistant keeps spending answer and brief automatic check together", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "近期消费情况" },
+    tasks: [{ task_id: "t", status: "COMPLETED", output: { analysis_snapshot: { spending_summary: { spending_review: {} } } } }],
+    plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT",
+      content: "消费总额为 1000.00 元。\n\n### 值得核对的交易\n短时重复扣款。" }] },
+    activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  assert.match(html, /消费总额为 1000\.00 元|短时重复扣款/);
+  assert.equal((html.match(/值得核对的交易/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /历史回复误用|异常交易分析|助理说明/);
+});
+
+test("report transactions and scoped footer use Chinese account names without changing amounts", async () => {
+  const { TopTransactions } = await import("../features/reports/TopTransactions.tsx");
+  const html = render(TopTransactions, { transactions: [{ transaction_id: "t", occurred_at: "2026-09-03T12:20:00Z", merchant: "公寓", description: "月租", category: "HOUSING", amount_display: "¥6,200.00", account_id: "acc_salary" }], accountNames: { acc_salary: "工资卡" } });
+  assert.match(html, /工资卡/); assert.match(html, /¥6,200\.00/);
+  assert.doesNotMatch(html, /acc_salary/);
+});
+
+test("report list separates deletion controls from navigation and shows restore in trash", async () => {
+  const { ReportList } = await import("../features/reports/ReportList.tsx");
+  const reports = [{ report_id: "r", period: "2026-09", headline: "消费结构", total_spending_display: "¥9,228.75", created_at: "2026-10-07T14:00:00Z", deleted_at: "2026-10-07T15:00:00Z" }];
+  const html = render(ReportList, { reports, onDelete: () => {} });
+  assert.match(html, /aria-label="删除2026年9月消费报告"/);
+  assert.doesNotMatch(html, /<a[^>]*>(?:(?!<\/a>)[\s\S])*<button/);
+  const trash = render(ReportList, { reports, deleted: true, onRestore: () => {} });
+  assert.match(trash, /恢复报告/); assert.doesNotMatch(trash, /href=/);
+});
+
+test("deleted report task outputs do not recreate a report card in the conversation", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "生成消费报告" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { report_id: "deleted-r", report_deleted: true } }], plans: [], reports: [], workflows: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "报告已生成。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  assert.doesNotMatch(html, /href="\/reports\/deleted-r"/);
+});
+
+test("anomaly analysis is a single visible assistant answer without a separate card or folded copy", async () => {
+  const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
+  const content = "## 异常交易分析\n\n| 日期 | 金额 | 严重度 | 金额倍数 |\n| --- | --- | --- | --- |\n| 2026年10月07日 20:00 | 8600.00 | 高 | 190.90 |";
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "近一年有什么异常交易吗" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { transaction_anomaly_snapshot: { analysis_period_started_at: "2025-10-07T15:05:00Z", analysis_period_ended_at: "2026-10-07T15:05:00Z" }, transaction_anomaly_answer: content } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "旧的重复回答。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  assert.equal((html.match(/异常交易分析/g) ?? []).length, 1);
+  assert.match(html, /8600\.00/); assert.match(html, /190\.90/);
+  assert.doesNotMatch(html, /助理说明|旧的重复回答|violet|¥|HIGH/);
+});

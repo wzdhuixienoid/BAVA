@@ -201,7 +201,10 @@ async def test_financial_route_persists_executor_snapshot_and_routing_event(app)
         "executor_id": "agent:financial-analysis",
     }
     assert set(routed.data_json) == {"route", "requested_output", "executor_id"}
-    assert provider.requests[1].messages[0].content == FINANCIAL_ANALYSIS_AGENT.instructions
+    assert (
+        provider.requests[1].messages[0].content.startswith(FINANCIAL_ANALYSIS_AGENT.instructions)
+    )
+    assert "detect_transaction_anomalies" not in {tool.name for tool in provider.requests[1].tools}
     async with app.state.test_session_factory() as session:
         detail = await ConversationService(session, app.state.event_bus).get(
             conversation_id=conversation.conversation_id,
@@ -377,7 +380,12 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
     }
     assert "content" not in generated.data_json
     for event_type in ("skill.run.started", "skill.run.completed"):
-        skill_event = next(event for event in events if event.event_type == event_type)
+        skill_event = next(
+            event
+            for event in events
+            if event.event_type == event_type
+            and event.data_json.get("skill_id") == "skill:monthly-spending-report"
+        )
         assert skill_event.data_json == {
             "skill_id": "skill:monthly-spending-report",
             "skill_version": 1,
@@ -441,7 +449,11 @@ async def test_incomplete_report_snapshot_explains_missing_data_without_artifact
 
     assert task.status is TaskStatus.COMPLETED
     assert task.error is None
-    assert "skill.run.started" not in [event.event_type for event in events]
+    assert not any(
+        event.event_type == "skill.run.started"
+        and event.data_json.get("skill_id") == "skill:monthly-spending-report"
+        for event in events
+    )
     assert "report.generated" not in [event.event_type for event in events]
     async with app.state.test_session_factory() as session:
         assert list((await session.execute(select(ReportModel))).scalars()) == []

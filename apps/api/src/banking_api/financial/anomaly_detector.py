@@ -13,7 +13,11 @@ from banking_api.financial.anomaly_models import (
     TransactionAnomalyType,
 )
 from banking_api.mock_bank.service import MockBankService
-from banking_api.subscriptions.detector import SubscriptionDetector, normalize_merchant
+from banking_api.subscriptions.detector import (
+    MERCHANT_ALIASES,
+    SubscriptionDetector,
+    normalize_merchant,
+)
 
 BASELINE_LOOKBACK_DAYS = 90
 MIN_BASELINE_SAMPLES = 8
@@ -27,9 +31,7 @@ class _Finding:
     anomaly_types: set[TransactionAnomalyType] = field(default_factory=set)
     severities: list[TransactionAnomalySeverity] = field(default_factory=list)
     reason_codes: set[str] = field(default_factory=set)
-    evidence: dict[TransactionAnomalyType, TransactionAnomalyEvidence] = field(
-        default_factory=dict
-    )
+    evidence: dict[TransactionAnomalyType, TransactionAnomalyEvidence] = field(default_factory=dict)
     related_ids: set[str] = field(default_factory=set)
 
 
@@ -46,19 +48,40 @@ class TransactionAnomalyDetector:
         user_id: str,
         generated_at: datetime | None = None,
         analysis_days: int = 30,
+        analysis_started_at: datetime | None = None,
+        analysis_ended_at: datetime | None = None,
+        account_ids: list[str] | None = None,
     ) -> TransactionAnomalySnapshot:
         now = self._as_utc(generated_at or datetime.now(UTC))
-        analysis_start = now - timedelta(days=analysis_days)
-        rows = [
+        analysis_end = self._as_utc(analysis_ended_at) if analysis_ended_at else now
+        analysis_start = (
+            self._as_utc(analysis_started_at)
+            if analysis_started_at
+            else analysis_end - timedelta(days=analysis_days)
+        )
+        from banking_api.financial.anomaly_models import TransactionAnomalyInput
+
+        TransactionAnomalyInput(start_at=analysis_start, end_at=analysis_end).bounds(now)
+        if analysis_start >= analysis_end:
+            raise ValueError("分析起点必须早于终点")
+        available = [
             item
             for item in self.bank.list_transactions(user_id=user_id)
             if item.get("status") == "POSTED"
-            and item.get("direction") == "DEBIT"
             and self._occurred_at(item) <= now
+            and (not account_ids or item.get("account_id") in account_ids)
+        ]
+        rows = [
+            item
+            for item in available
+            if item.get("status") == "POSTED"
+            and item.get("direction") == "DEBIT"
+            and self._occurred_at(item) < analysis_end
         ]
         candidates = [item for item in rows if self._occurred_at(item) >= analysis_start]
         findings: dict[str, _Finding] = {}
         baseline_sufficient = False
+        baseline_skipped_count = 0
 
         for item in sorted(candidates, key=self._occurred_at):
             if item.get("category") == "TRANSFER":
@@ -74,7 +97,56 @@ class TransactionAnomalyDetector:
                 <= self._occurred_at(previous)
                 < occurred_at
             ]
-            if len(baseline) < MIN_BASELINE_SAMPLES:
+            merchant_key = normalize_merchant(str(item["merchant"]))
+            merchant_history = [
+                previous
+                for previous in baseline
+                if normalize_merchant(str(previous["merchant"])) == merchant_key
+                and previous.get("category") == item.get("category")
+            ]
+            # Stable monthly bills should not be compared with everyday small purchases.
+            ordered_history = sorted(merchant_history, key=self._occurred_at)
+            if len(ordered_history) >= 2:
+                last_two = ordered_history[-2:]
+                gaps = [
+                    (self._occurred_at(last_two[1]) - self._occurred_at(last_two[0])).days,
+                    (occurred_at - self._occurred_at(last_two[1])).days,
+                ]
+                typical = median([self._amount(previous) for previous in last_two])
+                if all(25 <= gap <= 35 for gap in gaps) and typical > 0:
+                    baseline_sufficient = True
+                    ratio = self._ratio(self._amount(item), typical)
+                    if ratio >= Decimal("1.3"):
+                        finding = findings.setdefault(str(item["transaction_id"]), _Finding(item))
+                        self._add(
+                            finding,
+                            TransactionAnomalyType.AMOUNT_SPIKE,
+                            TransactionAnomalySeverity.HIGH
+                            if ratio >= Decimal("1.5")
+                            else TransactionAnomalySeverity.MEDIUM,
+                            "PERIODIC_BILL_INCREASE_AT_LEAST_30_PERCENT",
+                            TransactionAnomalyEvidence(
+                                baseline_median=typical,
+                                amount=self._amount(item),
+                                ratio=ratio,
+                                sample_count=2,
+                                baseline_scope="同商户周期支出",
+                            ),
+                        )
+                    continue
+            if len(merchant_history) >= 3:
+                baseline = merchant_history
+                baseline_scope = "同商户同分类"
+            else:
+                baseline = [
+                    previous
+                    for previous in baseline
+                    if previous.get("category") == item.get("category")
+                ]
+                baseline_scope = "同分类"
+            required_samples = 3 if baseline_scope == "同商户同分类" else MIN_BASELINE_SAMPLES
+            if len(baseline) < required_samples:
+                baseline_skipped_count += 1
                 continue
             baseline_sufficient = True
             baseline_median = median([self._amount(previous) for previous in baseline])
@@ -96,9 +168,9 @@ class TransactionAnomalyDetector:
                         amount=amount,
                         ratio=ratio,
                         sample_count=len(baseline),
+                        baseline_scope=baseline_scope,
                     ),
                 )
-            merchant_key = normalize_merchant(str(item["merchant"]))
             merchant_seen = any(
                 normalize_merchant(str(previous["merchant"])) == merchant_key
                 for previous in baseline
@@ -116,22 +188,46 @@ class TransactionAnomalyDetector:
                         amount=amount,
                         ratio=ratio,
                         sample_count=len(baseline),
+                        baseline_scope=baseline_scope,
                         merchant_seen_in_lookback=False,
                     ),
                 )
 
-        self._detect_rapid_duplicates(candidates, findings)
+        duplicate_candidates = [
+            item
+            for item in rows
+            if self._occurred_at(item)
+            >= analysis_start - timedelta(minutes=DUPLICATE_WINDOW_MINUTES)
+        ]
+        self._detect_rapid_duplicates(duplicate_candidates, findings)
         self._detect_subscription_price_spikes(rows, analysis_start, findings)
-        items = [self._to_item(finding) for finding in findings.values() if finding.anomaly_types]
+        items = [
+            self._to_item(finding)
+            for finding in findings.values()
+            if finding.anomaly_types
+            and analysis_start <= self._occurred_at(finding.transaction) < analysis_end
+        ]
         items.sort(key=lambda item: item.occurred_at, reverse=True)
         return TransactionAnomalySnapshot(
             user_scope="CURRENT_PRINCIPAL",
             analysis_period_started_at=analysis_start,
-            analysis_period_ended_at=now,
+            analysis_period_ended_at=analysis_end,
             baseline_lookback_days=BASELINE_LOOKBACK_DAYS,
             insufficient_baseline=not baseline_sufficient,
             anomalies=items[:MAX_ANOMALIES],
             generated_at=now,
+            available_data_started_at=min(
+                (self._occurred_at(item) for item in available), default=None
+            ),
+            available_data_ended_at=max(
+                (self._occurred_at(item) for item in available), default=None
+            ),
+            analyzed_transaction_count=sum(
+                item.get("category") != "TRANSFER" for item in candidates
+            ),
+            baseline_skipped_count=baseline_skipped_count,
+            total_anomaly_count=len(items),
+            truncated=len(items) > MAX_ANOMALIES,
         )
 
     def _detect_rapid_duplicates(
@@ -154,15 +250,12 @@ class TransactionAnomalyDetector:
             segment_start = 0
             for index in range(1, len(ordered) + 1):
                 segment_ended = index == len(ordered) or (
-                    self._occurred_at(ordered[index])
-                    - self._occurred_at(ordered[index - 1])
+                    self._occurred_at(ordered[index]) - self._occurred_at(ordered[index - 1])
                     > window
                 )
                 if not segment_ended:
                     continue
-                self._add_duplicate_burst(
-                    ordered[segment_start:index], findings, window
-                )
+                self._add_duplicate_burst(ordered[segment_start:index], findings, window)
                 segment_start = index
 
     def _add_duplicate_burst(
@@ -189,9 +282,7 @@ class TransactionAnomalyDetector:
         self._add(
             finding,
             TransactionAnomalyType.RAPID_DUPLICATE,
-            TransactionAnomalySeverity.HIGH
-            if count >= 3
-            else TransactionAnomalySeverity.MEDIUM,
+            TransactionAnomalySeverity.HIGH if count >= 3 else TransactionAnomalySeverity.MEDIUM,
             "EXACT_DUPLICATE_WITHIN_10_MINUTES",
             TransactionAnomalyEvidence(
                 amount=self._amount(current),
@@ -207,7 +298,21 @@ class TransactionAnomalyDetector:
         analysis_start: datetime,
         findings: dict[str, _Finding],
     ) -> None:
-        for subscription in self.subscription_detector.detect(rows):
+        groups = defaultdict(list)
+        for row in rows:
+            if row.get("category") == "SUBSCRIPTION" or normalize_merchant(
+                str(row["merchant"])
+            ) in set(MERCHANT_ALIASES.values()):
+                groups[
+                    (normalize_merchant(str(row["merchant"])), str(row["currency"]).upper())
+                ].append(row)
+        sequences = []
+        for group in groups.values():
+            ordered = sorted(group, key=self._occurred_at)
+            for index in range(1, len(ordered)):
+                if self._occurred_at(ordered[index]) >= analysis_start:
+                    sequences.extend(self.subscription_detector.detect(ordered[: index + 1]))
+        for subscription in sequences:
             current = subscription.last
             if self._occurred_at(current) < analysis_start:
                 continue

@@ -43,6 +43,10 @@ const toolLabels: Record<string, string> = {
 };
 
 function description(event: Event): string | undefined {
+  if (event.data.skill_id === "skill:transaction-anomaly-analysis") {
+    if (event.event_type === "skill.run.started") return "正在整理异常交易分析";
+    if (event.event_type === "skill.run.completed") return "异常交易分析已整理完成";
+  }
   if (event.event_type.startsWith("tool.call.")) {
     const toolName = typeof event.data.tool_name === "string" ? event.data.tool_name : "";
     const action = toolName === "commit_transfer" ? "转账" : toolName === "cancel_subscription" ? "订阅取消" : undefined;

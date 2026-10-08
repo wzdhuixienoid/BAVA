@@ -4,6 +4,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from banking_api.financial.review_models import SpendingReview
+
 
 class DataQualityStatus(StrEnum):
     COMPLETE = "COMPLETE"
@@ -119,6 +121,7 @@ class MonthlySpendingReportCore(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     report_version: int = 1
+    spending_review: SpendingReview | None = None
     period: str
     scope: ReportScope
     overview: ReportOverview

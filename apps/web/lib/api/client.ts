@@ -184,11 +184,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ expected_version: expectedVersion }),
     }),
-  listReports: (conversationId?: string, limit = 20, offset = 0) => {
+  listReports: (conversationId?: string, limit = 20, offset = 0, deleted = false) => {
     const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (conversationId) query.set("conversation_id", conversationId);
+    if (deleted) query.set("deleted", "true");
     return request<ReportListItem[]>(`/api/v1/reports?${query.toString()}`);
   },
+  deleteReport: (reportId: string) => request<void>(`/api/v1/reports/${encodeURIComponent(reportId)}`, { method: "DELETE" }),
+  restoreReport: (reportId: string) => request<void>(`/api/v1/reports/${encodeURIComponent(reportId)}/restore`, { method: "POST" }),
   getReport: (reportId: string) =>
     request<ReportResponse>(`/api/v1/reports/${encodeURIComponent(reportId)}`),
   listSubscriptions: (upcomingDays = 7) =>

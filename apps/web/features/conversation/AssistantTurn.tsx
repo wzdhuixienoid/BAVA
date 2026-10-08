@@ -1,6 +1,4 @@
-import type { components } from "@banking/api-client";
 import { PlanCard } from "@/features/plans/PlanCard";
-import { SpendingDashboard } from "@/features/dashboard/SpendingDashboard";
 import { AccountResults } from "@/features/accounts/AccountResults";
 import { AuditPanel } from "@/features/audit/AuditPanel";
 import { accountResults } from "@/features/accounts/presentation";
@@ -8,8 +6,8 @@ import { ReportCard } from "@/features/reports/ReportCard";
 import { WorkflowReceipt } from "@/features/results/WorkflowReceipt";
 import { TransferWorkflowCard } from "@/features/workflows/transfer/TransferWorkflowCard";
 import { SubscriptionCancellationCard } from "@/features/workflows/subscriptions/SubscriptionCancellationCard";
-import { TransactionAnomalyCard, type TransactionAnomalySnapshot } from "@/features/anomalies/TransactionAnomalyCard";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { localizeFinancialAnswer, requestsAnomalyAnalysis } from "./financialAnswer";
 import { ResponseProcess } from "./ResponseProcess";
 import { isConfirmedWorkflow, resultElementId, type ConversationTurn } from "./timeline";
 
@@ -44,11 +42,22 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
     ...turn.tasks.map((task) => task.output),
     ...turn.plans.flatMap((plan) => plan.steps.filter((step) => step.status === "COMPLETED").map((step) => step.result_summary)),
   ].filter((output): output is Record<string, unknown> => Boolean(output));
-  const anomalies = [...new Map(outputs.filter((output) => output.transaction_anomaly_snapshot)
-    .map((output) => [JSON.stringify(output.transaction_anomaly_snapshot), output.transaction_anomaly_snapshot as TransactionAnomalySnapshot])).values()];
+  const unrequestedAnomalies = Boolean(turn.user && !requestsAnomalyAnalysis(turn.user.content)
+    && outputs.some((output) => output.transaction_anomaly_snapshot));
+  const anomalyAnswer = unrequestedAnomalies ? null : outputs.find((output) =>
+    typeof output.transaction_anomaly_answer === "string")?.transaction_anomaly_answer as string | undefined;
+  const anomalySnapshot = outputs.find((output) => output.transaction_anomaly_snapshot)?.transaction_anomaly_snapshot as {
+    analysis_period_started_at: string; analysis_period_ended_at: string;
+  } | undefined;
+  const historicalYearMismatch = Boolean(anomalySnapshot && turn.user && /(?:近|最近|过去)(?:一|1)年/.test(turn.user.content)
+    && new Date(anomalySnapshot.analysis_period_ended_at).getTime() - new Date(anomalySnapshot.analysis_period_started_at).getTime() < 364 * 86400000);
   const highlight = (id: string) => highlightedResult === id ? "rounded-xl ring-2 ring-cyan-500 ring-offset-4" : "";
   const hasAnswer = turn.replies.some((message) => message.role === "ASSISTANT");
   const accounts = accountResults(outputs);
+  const isFinancialAnalysis = outputs.some((output) => output.analysis_snapshot || output.financial_display);
+  const needsHistoricalCorrection = unrequestedAnomalies;
+  const replies = needsHistoricalCorrection ? [] : turn.replies;
+  const replyContent = (content: string) => isFinancialAnalysis ? localizeFinancialAnswer(content, outputs) : content;
 
   return (
     <article aria-label="助理回复" className="min-w-0 py-2 text-sm text-slate-800">
@@ -66,13 +75,13 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
           {accounts.length > 0 && <AccountResults results={accounts} />}
-          {outputs.filter((output) => output.financial_display).map((output, index) => <SpendingDashboard key={index} spending={output.financial_display as components["schemas"]["MonthlySpendingReportCore"]} />)}
-          {anomalies.map((snapshot, index) => <TransactionAnomalyCard key={index} snapshot={snapshot} />)}
+          {needsHistoricalCorrection && <p className="text-slate-600">这条历史回复误用了异常交易分析，未按你指定的消费范围执行。现在可按最近任意天数分析消费。</p>}
+
           {turn.reports.map((report) => {
             const id = `report-${report.report_id}`;
             return <div key={id} id={resultElementId(id)} tabIndex={-1} className={highlight(id)}><ReportCard report={report} /></div>;
           })}
-          {turn.tasks.filter((task) => typeof task.output?.report_id === "string" && !turn.reports.some((report) => report.report_id === task.output?.report_id)).map((task) => {
+          {turn.tasks.filter((task) => typeof task.output?.report_id === "string" && task.output?.report_deleted !== true && !turn.reports.some((report) => report.report_id === task.output?.report_id)).map((task) => {
             const id = `report-${task.output!.report_id}`;
             return <div key={id} id={resultElementId(id)} tabIndex={-1} className={highlight(id)}><ReportCard task={task} /></div>;
           })}
@@ -84,15 +93,16 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
                 : <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
             </div>;
           })}
-          {(accounts.length > 0 || outputs.some((output) => output.financial_display) || anomalies.length > 0) ? <details className="rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-xs font-semibold text-slate-600">助理说明</summary><div className="mt-3 space-y-3">
-          {turn.replies.map((message) => <div key={message.message_id}>
+          {(accounts.length > 0 && !anomalyAnswer) ? <details className="rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-xs font-semibold text-slate-600">助理说明</summary><div className="mt-3 space-y-3">
+          {replies.map((message) => <div key={message.message_id}>
             {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
-            <MarkdownMessage content={message.content} />
+            <MarkdownMessage content={replyContent(message.content)} />
           </div>)}
           </div></details> : <div className="space-y-3">
-          {turn.replies.map((message) => <div key={message.message_id}>
+          {historicalYearMismatch && !unrequestedAnomalies && <p className="text-slate-600">这条历史结果只覆盖下面标明的区间，未覆盖你要求的近一年。现在已支持近一年分析，需重新查询才能取得完整区间的结果。</p>}
+          {anomalyAnswer ? <MarkdownMessage content={anomalyAnswer} /> : replies.map((message) => <div key={message.message_id}>
             {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
-            <MarkdownMessage content={message.content} />
+            <MarkdownMessage content={replyContent(message.content)} />
           </div>)}
           </div>}
         </div>

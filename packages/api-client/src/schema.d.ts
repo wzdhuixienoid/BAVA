@@ -225,6 +225,24 @@ export interface paths {
         get: operations["get_report_api_v1_reports__report_id__get"];
         put?: never;
         post?: never;
+        /** Delete Report */
+        delete: operations["delete_report_api_v1_reports__report_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{report_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Report */
+        post: operations["restore_report_api_v1_reports__report_id__restore_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1125,6 +1143,7 @@ export interface components {
              * @default 1
              */
             report_version: number;
+            spending_review?: components["schemas"]["SpendingReview"] | null;
             /** Period */
             period: string;
             scope: components["schemas"]["ReportScope"];
@@ -1147,6 +1166,7 @@ export interface components {
              * @default 1
              */
             report_version: number;
+            spending_review?: components["schemas"]["SpendingReview"] | null;
             /** Period */
             period: string;
             scope: components["schemas"]["ReportScope"];
@@ -1433,6 +1453,8 @@ export interface components {
         ReportInsightType: "STRUCTURE" | "CHANGE" | "TRANSACTION" | "DATA_QUALITY";
         /** ReportListItem */
         ReportListItem: {
+            /** Deleted At */
+            deleted_at?: string | null;
             /**
              * Report Id
              * Format: uuid
@@ -1527,6 +1549,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Account Names */
+            account_names?: {
+                [key: string]: string;
+            };
             content: components["schemas"]["MonthlySpendingReport"];
         };
         /** ReportScope */
@@ -1637,6 +1663,43 @@ export interface components {
             recipient_query: string;
             /** Expected Version */
             expected_version: number;
+        };
+        /** SpendingReview */
+        SpendingReview: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "REVIEWED" | "PARTIAL" | "UNAVAILABLE";
+            /** Message */
+            message: string;
+            /** Notes */
+            notes?: string[];
+            /** Items */
+            items?: components["schemas"]["SpendingReviewItem"][];
+            /**
+             * Total Count
+             * @default 0
+             */
+            total_count: number;
+            /** Answer */
+            answer: string;
+        };
+        /** SpendingReviewItem */
+        SpendingReviewItem: {
+            /** Transaction Id */
+            transaction_id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Merchant */
+            merchant: string;
+            /** Amount Display */
+            amount_display: string;
+            /** Reason */
+            reason: string;
         };
         /** StartReauthenticationAction */
         StartReauthenticationAction: {
@@ -1935,6 +1998,8 @@ export interface components {
             ratio?: string | null;
             /** Sample Count */
             sample_count?: number | null;
+            /** Baseline Scope */
+            baseline_scope?: string | null;
             /** Merchant Seen In Lookback */
             merchant_seen_in_lookback?: boolean | null;
             /** Duplicate Count */
@@ -2014,6 +2079,27 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+            /** Available Data Started At */
+            available_data_started_at?: string | null;
+            /** Available Data Ended At */
+            available_data_ended_at?: string | null;
+            /** Analyzed Transaction Count */
+            analyzed_transaction_count?: number | null;
+            /**
+             * Baseline Skipped Count
+             * @default 0
+             */
+            baseline_skipped_count: number;
+            /**
+             * Total Anomaly Count
+             * @default 0
+             */
+            total_anomaly_count: number;
+            /**
+             * Truncated
+             * @default false
+             */
+            truncated: boolean;
         };
         /**
          * TransactionAnomalyType
@@ -2746,6 +2832,7 @@ export interface operations {
                 conversation_id?: string | null;
                 limit?: number;
                 offset?: number;
+                deleted?: boolean;
             };
             header?: never;
             path?: never;
@@ -2792,6 +2879,64 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_report_api_v1_reports__report_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_report_api_v1_reports__report_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

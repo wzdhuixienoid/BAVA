@@ -3,13 +3,13 @@ import { categoryLabel } from "./presentation";
 
 type Category = components["schemas"]["ReportCategory"];
 
-export function CategoryBreakdown({ categories, yearly = false }: { categories: Category[]; yearly?: boolean }) {
+export function CategoryBreakdown({ categories, yearly = false, columns = false }: { categories: Category[]; yearly?: boolean; columns?: boolean }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-950">分类构成</h2>
-      <div className="mt-4 divide-y divide-slate-100">
+      <div className={columns ? "mt-4 grid gap-x-8 sm:grid-cols-2" : "mt-4 divide-y divide-slate-100"}>
         {categories.map((item) => (
-          <div key={item.category} className="grid grid-cols-[1fr_auto] gap-4 py-3 first:pt-0 last:pb-0">
+          <div key={item.category} className={`grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-4 py-3 ${columns ? "border-b border-slate-100" : "first:pt-0 last:pb-0"}`}>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-slate-900">{categoryLabel(item.category)}</span>

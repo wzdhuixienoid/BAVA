@@ -76,13 +76,23 @@ class ReportRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_for_user(self, report_id: UUID, user_id: str) -> ReportModel | None:
-        result = await self.session.execute(
-            select(ReportModel).where(
-                ReportModel.report_id == report_id,
-                ReportModel.user_id == user_id,
-            )
+    async def get_for_user(
+        self,
+        report_id: UUID,
+        user_id: str,
+        *,
+        include_deleted: bool = False,
+        for_update: bool = False,
+    ) -> ReportModel | None:
+        statement = select(ReportModel).where(
+            ReportModel.report_id == report_id,
+            ReportModel.user_id == user_id,
         )
+        if not include_deleted:
+            statement = statement.where(ReportModel.deleted_at.is_(None))
+        if for_update:
+            statement = statement.with_for_update()
+        result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
     async def list_for_user(
@@ -92,15 +102,15 @@ class ReportRepository:
         conversation_id: UUID | None,
         limit: int,
         offset: int,
+        deleted: bool = False,
     ) -> list[ReportModel]:
-        statement = select(ReportModel).where(ReportModel.user_id == user_id)
+        statement = select(ReportModel).where(
+            ReportModel.user_id == user_id,
+            ReportModel.deleted_at.is_not(None) if deleted else ReportModel.deleted_at.is_(None),
+        )
         if conversation_id is not None:
-            statement = statement.where(
-                ReportModel.conversation_id == conversation_id
-            )
+            statement = statement.where(ReportModel.conversation_id == conversation_id)
         result = await self.session.execute(
-            statement.order_by(ReportModel.created_at.desc())
-            .limit(limit)
-            .offset(offset)
+            statement.order_by(ReportModel.created_at.desc()).limit(limit).offset(offset)
         )
         return list(result.scalars())

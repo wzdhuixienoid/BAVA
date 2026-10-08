@@ -55,7 +55,9 @@ def test_monthly_report_core_matches_committed_golden_exactly() -> None:
         ],
     )
 
-    actual = MonthlySpendingReportSkill().build_core(snapshot).model_dump(mode="json")
+    actual = MonthlySpendingReportSkill().build_core(snapshot).model_dump(
+        mode="json", exclude={"spending_review"}
+    )
 
     assert actual == expected["report_core"]
     assert actual["overview"]["total_spending"] == "16547.30"

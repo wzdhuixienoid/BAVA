@@ -28,17 +28,13 @@ DATA_DIR = Path(__file__).parents[1] / "src/banking_api/mock_bank/data"
 
 
 def golden_snapshot() -> FinancialAnalysisSnapshot:
-    golden = json.loads(
-        (DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8")
-    )
+    golden = json.loads((DATA_DIR / "golden_financial_metrics.json").read_text(encoding="utf-8"))
     august = golden["months"]["2026-08"]
     return FinancialAnalysisSnapshot(
         period="2026-08",
         account_ids=[],
         spending_summary=SpendingSummary.model_validate(august["summary"]),
-        category_breakdown=CategoryBreakdown.model_validate(
-            august["category_breakdown"]
-        ),
+        category_breakdown=CategoryBreakdown.model_validate(august["category_breakdown"]),
         period_comparison=SpendingPeriodComparison.model_validate(
             golden["comparisons"]["2026-07_to_2026-08"]
         ),
@@ -112,9 +108,7 @@ async def create_source(app, *, user_id: str = "dev-user-001"):  # type: ignore[
 async def persist_golden_report(app, *, user_id: str = "dev-user-001"):  # type: ignore[no-untyped-def]
     conversation, accepted = await create_source(app, user_id=user_id)
     snapshot = golden_snapshot()
-    report = await SkillExecutor(FakeLLMProvider([narrative_response()])).execute(
-        snapshot
-    )
+    report = await SkillExecutor(FakeLLMProvider([narrative_response()])).execute(snapshot)
     async with app.state.test_session_factory() as session:
         artifact = await ReportService(session).create_report(
             user_id=user_id,
@@ -182,9 +176,7 @@ async def test_report_ownership_isolation_returns_not_found(app, client) -> None
             raise AssertionError("Cross-user report lookup must fail closed")
 
 
-async def test_report_api_uses_exact_decimal_strings_and_lightweight_list(
-    app, client
-) -> None:  # type: ignore[no-untyped-def]
+async def test_report_api_uses_exact_decimal_strings_and_lightweight_list(app, client) -> None:  # type: ignore[no-untyped-def]
     artifact, conversation, _ = await persist_golden_report(app)
 
     detail_response = await client.get(f"/api/v1/reports/{artifact.report_id}")
@@ -202,9 +194,7 @@ async def test_report_api_uses_exact_decimal_strings_and_lightweight_list(
     assert comparison["previous_spending"] == "9333.20"
     assert comparison["absolute_change"] == "7214.10"
     assert comparison["absolute_change_display"] == "+¥7,214.10"
-    assert comparison["percentage_change"] == (
-        "77.29503278618265975228217546"
-    )
+    assert comparison["percentage_change"] == ("77.29503278618265975228217546")
     assert comparison["percentage_change_display"] == "+77.3%"
     assert body["source_snapshot_hash"] == source_snapshot_hash(golden_snapshot())
 
@@ -215,10 +205,12 @@ async def test_report_api_uses_exact_decimal_strings_and_lightweight_list(
     assert items[0]["total_spending_display"] == "¥16,547.30"
 
 
-async def test_report_api_is_read_only_and_validates_pagination(app, client) -> None:  # type: ignore[no-untyped-def]
+async def test_report_content_cannot_be_overwritten_and_pagination_is_validated(
+    app, client
+) -> None:  # type: ignore[no-untyped-def]
     artifact, _, _ = await persist_golden_report(app)
 
-    for method in ("post", "put", "patch", "delete"):
+    for method in ("post", "put", "patch"):
         response = await client.request(
             method.upper(),
             f"/api/v1/reports/{artifact.report_id}",
@@ -237,3 +229,73 @@ def test_snapshot_hash_is_canonical_and_stable() -> None:
     )
 
     assert source_snapshot_hash(snapshot) == source_snapshot_hash(reordered)
+
+
+async def test_report_delete_restore_preserves_snapshot_and_hides_conversation_entry(app, client):
+    from banking_api.persistence.models import ReportModel, TaskModel
+
+    artifact, conversation, accepted = await persist_golden_report(app)
+    url = f"/api/v1/reports/{artifact.report_id}"
+    original = (await client.get(url)).json()
+    async with app.state.test_session_factory() as session:
+        task = await session.get(TaskModel, accepted.task_id)
+        task.output_json = {
+            "report_id": str(artifact.report_id),
+            "requested_output": "MONTHLY_REPORT",
+        }
+        await session.commit()
+
+    assert (await client.delete(url)).status_code == 204
+    assert (await client.delete(url)).status_code == 204
+    assert (await client.get(url)).status_code == 404
+    assert (await client.get("/api/v1/reports")).json() == []
+    assert (
+        await client.get(
+            "/api/v1/reports", params={"conversation_id": str(conversation.conversation_id)}
+        )
+    ).json() == []
+    trash = (await client.get("/api/v1/reports?deleted=true")).json()
+    assert [item["report_id"] for item in trash] == [str(artifact.report_id)]
+    assert trash[0]["deleted_at"]
+    async with app.state.test_session_factory() as session:
+        stored = await session.get(ReportModel, artifact.report_id)
+        assert stored.content_json == original["content"]
+        assert stored.source_snapshot_hash == original["source_snapshot_hash"]
+        task = await session.get(TaskModel, accepted.task_id)
+        assert task.output_json["report_deleted"] is True
+
+    assert (await client.post(f"{url}/restore")).status_code == 204
+    assert (await client.post(f"{url}/restore")).status_code == 204
+    restored = (await client.get(url)).json()
+    assert restored == original
+    assert len((await client.get("/api/v1/reports")).json()) == 1
+    assert (await client.get("/api/v1/reports?deleted=true")).json() == []
+    async with app.state.test_session_factory() as session:
+        task = await session.get(TaskModel, accepted.task_id)
+        assert task.output_json["report_deleted"] is False
+
+
+async def test_report_delete_and_restore_cannot_access_another_user(app, client):
+    artifact, _, _ = await persist_golden_report(app, user_id="another-user")
+    url = f"/api/v1/reports/{artifact.report_id}"
+    assert (await client.delete(url)).status_code == 404
+    assert (await client.post(f"{url}/restore")).status_code == 404
+    assert (await client.get("/api/v1/reports?deleted=true")).json() == []
+    async with app.state.test_session_factory() as session:
+        service = ReportService(session)
+        await service.get_report_for_user(artifact.report_id, user_id="another-user")
+        await service.set_deleted(artifact.report_id, user_id="another-user", deleted=True)
+        await session.commit()
+    assert (await client.post(f"{url}/restore")).status_code == 404
+
+
+async def test_report_account_names_are_scoped_display_metadata(app, client):
+    artifact, _, _ = await persist_golden_report(app)
+    body = (await client.get(f"/api/v1/reports/{artifact.report_id}")).json()
+    assert body["account_names"] == {
+        "acc_salary": "工资卡",
+        "acc_credit": "信用卡",
+        "acc_travel": "旅行卡",
+    }
+    assert body["content"] == artifact.content.model_dump(mode="json")
+    assert body["source_snapshot_hash"] == artifact.source_snapshot_hash

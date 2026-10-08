@@ -81,7 +81,7 @@ def test_cold_start_does_not_invent_long_term_anomaly() -> None:
         user_id="a", generated_at=now
     )
 
-    assert snapshot.insufficient_baseline is True
+    assert snapshot.baseline_skipped_count > 0
     assert snapshot.anomalies == []
 
 

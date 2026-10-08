@@ -5,7 +5,14 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
 from banking_api.agents.models import AgentDefinition
+from banking_api.config.demo_time import reference_now
 from banking_api.context.builder import ContextBuilder
+from banking_api.financial.request_scope import (
+    anomaly_requested,
+    declines_anomaly_review,
+    request_scope,
+    restrict_financial_agent,
+)
 from banking_api.llm.models import LLMMessage, LLMToolCall
 from banking_api.llm.provider import LLMProvider, LLMProviderError
 from banking_api.registries.tool_registry import ToolRegistry
@@ -20,7 +27,7 @@ from banking_api.runtime.base import (
 )
 from banking_api.runtime.langgraph.state import BankingAgentGraphState
 from banking_api.tools.executor import ToolExecutor
-from banking_api.tools.models import ToolErrorDisposition
+from banking_api.tools.models import ToolErrorCode, ToolErrorDisposition
 
 
 class LangGraphAgentRuntime:
@@ -88,6 +95,25 @@ class LangGraphAgentRuntime:
         if resume:
             initial = None
         else:
+            scope = (
+                request_scope(
+                    request.current_task,
+                    reference_now(),
+                    include_calendar=anomaly_requested(request.current_task),
+                )
+                if agent.agent_id == "agent:financial-analysis"
+                else None
+            )
+            if scope and scope.window and anomaly_requested(request.current_task):
+                from banking_api.financial.anomaly_models import TransactionAnomalyInput
+                from banking_api.financial.errors import FinancialDomainError
+
+                try:
+                    TransactionAnomalyInput.model_validate(scope.window).bounds(reference_now())
+                except FinancialDomainError as exc:
+                    from banking_api.financial.request_scope import FinancialRequestScope
+
+                    scope = FinancialRequestScope(clarification=exc.message)
             initial = {
                 "task_id": str(request.task_id),
                 "conversation_id": str(request.conversation_id),
@@ -97,6 +123,8 @@ class LangGraphAgentRuntime:
                 "tool_call_count": 0,
                 "pending_tool_calls": [],
                 "successful_tool_results": [],
+                "financial_window": scope.window if scope else None,
+                "financial_clarification": scope.clarification if scope else None,
                 "final_answer": None,
                 "error": None,
             }
@@ -115,6 +143,8 @@ class LangGraphAgentRuntime:
         effective_caller = request.caller or agent.agent_id
 
         async def llm_node(state: BankingAgentGraphState) -> dict[str, Any]:
+            if state.get("financial_clarification"):
+                return {"final_answer": state["financial_clarification"]}
             if state["step_count"] >= self.max_steps:
                 return {
                     "error": self._error("AGENT_STEP_LIMIT_EXCEEDED", "Agent step limit exceeded")
@@ -130,6 +160,19 @@ class LangGraphAgentRuntime:
                 runtime_messages=runtime_messages,
                 allowed_tools=allowed_tools,
             )
+            if state.get("financial_window"):
+                window = state["financial_window"]
+                llm_request.messages.append(
+                    LLMMessage(
+                        role="system",
+                        content=(
+                            f"本次用户明确要求的消费区间为 {window['start_at']} "
+                            f"至 {window['end_at']}。"
+                            "所有消费工具必须使用该起止时间；这优先于默认自然月。工具执行层会固定此区间。"
+                            "请将起止时间按北京时间用中文说明，不得切换月份。"
+                        ),
+                    )
+                )
             if (
                 agent.agent_id == "agent:financial-analysis"
                 and state["tool_call_count"] >= self.max_tool_calls
@@ -222,13 +265,56 @@ class LangGraphAgentRuntime:
                         "argument_keys": argument_keys,
                     },
                 )
-                result = await self.executor.execute(
-                    tool_name=call.name,
-                    arguments=call.arguments,
-                    caller=effective_caller,
-                    principal=request.principal,
-                    agent_allowlist=agent.allowed_capabilities,
-                )
+                spec = self.registry.get_by_name(call.name)
+                arguments = call.arguments
+                if (
+                    spec
+                    and spec.capability_id == "transaction.spending_summary"
+                    and isinstance(arguments, dict)
+                ):
+                    # The user controls opting out; the model cannot disable the default check.
+                    arguments = dict(arguments)
+                    arguments.pop("include_review", None)
+                    if declines_anomaly_review(request.current_task):
+                        arguments["include_review"] = False
+                if (
+                    state.get("financial_window")
+                    and spec
+                    and spec.capability_id
+                    in {
+                        "transaction.spending_summary",
+                        "transaction.category_breakdown",
+                        "transaction.top_transactions",
+                        "transaction.compare_periods",
+                        "transaction.detect_anomalies",
+                    }
+                    and isinstance(arguments, dict)
+                ):
+                    arguments = {
+                        key: value
+                        for key, value in arguments.items()
+                        if key
+                        not in {"month", "recent_days", "analysis_days", "start_at", "end_at"}
+                    } | state["financial_window"]
+                if (
+                    agent.agent_id == "agent:financial-analysis"
+                    and spec
+                    and spec.capability_id == "transaction.detect_anomalies"
+                    and spec.capability_id not in agent.allowed_capabilities
+                ):
+                    result = self.executor._error(
+                        ToolErrorCode.TOOL_ARGUMENT_VALIDATION_FAILED,
+                        "用户没有要求异常交易分析。请按用户指定期间分析普通消费；无法分析时说明所缺信息。",
+                        capability_id=spec.capability_id,
+                    )
+                else:
+                    result = await self.executor.execute(
+                        tool_name=call.name,
+                        arguments=arguments,
+                        caller=effective_caller,
+                        principal=request.principal,
+                        agent_allowlist=agent.allowed_capabilities,
+                    )
                 metadata: dict[str, Any] = {
                     "tool_name": call.name,
                     "tool_call_id": call.id,
@@ -242,7 +328,7 @@ class LangGraphAgentRuntime:
                     await sink("tool.call.completed", metadata)
                     spec = self.registry.get_by_name(call.name)
                     sanitized_arguments = (
-                        spec.input_model.model_validate(call.arguments).model_dump(
+                        spec.input_model.model_validate(arguments).model_dump(
                             mode="json", exclude_none=True
                         )
                         if spec is not None
@@ -353,6 +439,52 @@ class LangGraphAgentRuntime:
             raise AgentRuntimeError(
                 "AGENT_GRAPH_INCOMPLETE", "LangGraph run ended without a final answer"
             )
+        from banking_api.financial.anomaly_models import TransactionAnomalySnapshot
+        from banking_api.skills.transaction_anomaly_analysis import TransactionAnomalyAnalysisSkill
+
+        anomaly = next(
+            (
+                item
+                for item in state.successful_tool_results
+                if item.capability_id == "transaction.detect_anomalies"
+            ),
+            None,
+        )
+        if anomaly is not None:
+            snapshot = TransactionAnomalySnapshot.model_validate(anomaly.output["snapshot"])
+            skill = TransactionAnomalyAnalysisSkill()
+            metadata = {
+                "skill_id": skill.definition.skill_id,
+                "skill_version": skill.definition.version,
+            }
+            await sink("skill.run.started", metadata)
+            detailed_answer = skill.execute(snapshot).answer
+            if any(
+                item.capability_id == "transaction.spending_summary"
+                for item in state.successful_tool_results
+            ):
+                graph_state["final_answer"] += "\n\n" + detailed_answer
+            else:
+                graph_state["final_answer"] = detailed_answer
+            await sink("skill.run.completed", metadata)
+        elif self._resolve_agent(request).agent_id == "agent:financial-analysis":
+            review = next(
+                (
+                    item.output.get("spending_review")
+                    for item in state.successful_tool_results
+                    if item.capability_id == "transaction.spending_summary"
+                ),
+                None,
+            )
+            if review:
+                metadata = {
+                    "skill_id": "skill:transaction-anomaly-analysis",
+                    "skill_version": 1,
+                    "presentation": "brief",
+                }
+                await sink("skill.run.started", metadata)
+                graph_state["final_answer"] += "\n\n" + review["answer"]
+                await sink("skill.run.completed", metadata)
         state.status = AgentRunStatus.COMPLETED
         await sink(
             "agent.run.completed",
@@ -367,7 +499,7 @@ class LangGraphAgentRuntime:
                 "AGENT_NOT_SELECTED",
                 "LangGraph runtime requires an AgentDefinition",
             )
-        return agent
+        return restrict_financial_agent(agent, request.current_task)
 
     @staticmethod
     def _error(

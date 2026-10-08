@@ -29,7 +29,12 @@ class FinancialAnalyticsService:
         self._bank = bank
 
     def spending_summary(
-        self, month: str, account_ids: list[str] | None = None, *, user_id: str
+        self,
+        month: str,
+        account_ids: list[str] | None = None,
+        *,
+        user_id: str,
+        include_review: bool = True,
     ) -> SpendingSummary:
         transactions = self._period_transactions(month, account_ids, user_id=user_id)
         currency = self._single_currency(transactions)
@@ -39,7 +44,33 @@ class FinancialAnalyticsService:
             if item["direction"] == "CREDIT" and item["category"] != TRANSFER_CATEGORY
         ]
         spending = [item for item in transactions if self._is_spending(item)]
+        from banking_api.config.demo_time import reference_now
+        from banking_api.financial.anomaly_detector import TransactionAnomalyDetector
+        from banking_api.financial.review_models import SpendingReview
+        from banking_api.skills.transaction_anomaly_analysis import TransactionAnomalyAnalysisSkill
+
+        start, end = self._period_bounds(month)
+        review = None
+        try:
+            if include_review:
+                review = TransactionAnomalyAnalysisSkill().review(
+                    TransactionAnomalyDetector(self._bank).detect(
+                        user_id=user_id,
+                        generated_at=reference_now(),
+                        analysis_started_at=start,
+                        analysis_ended_at=end,
+                        account_ids=account_ids,
+                    )
+                )
+        except FinancialDomainError as exc:
+            if exc.code != FinancialErrorCode.INVALID_PERIOD:
+                raise
+            message = "消费分析已完成；所选区间超过一年，未执行异常检查。"
+            review = SpendingReview(
+                status="UNAVAILABLE", message=message, answer=f"### 值得核对的交易\n\n{message}"
+            )
         return SpendingSummary(
+            spending_review=review,
             period=month,
             total_income=self._sum_amounts(income),
             total_spending=self._sum_amounts(spending),
@@ -81,11 +112,16 @@ class FinancialAnalyticsService:
         self, month: str, account_ids: list[str] | None = None, *, user_id: str
     ) -> SpendingPeriodComparison:
         current_start, _ = self._period_bounds(month)
-        previous_month = (
-            f"{current_start.year - 1:04d}"
-            if len(month) == 4
-            else self._previous_month(current_start)
-        )
+        if "/" in month:
+            _, current_end = self._period_bounds(month)
+            previous_start = current_start - (current_end - current_start)
+            previous_month = f"{previous_start.isoformat()}/{current_start.isoformat()}"
+        else:
+            previous_month = (
+                f"{current_start.year - 1:04d}"
+                if len(month) == 4
+                else self._previous_month(current_start)
+            )
         current = self._period_transactions(month, account_ids, user_id=user_id)
         previous = self._period_transactions(
             previous_month,
@@ -138,6 +174,10 @@ class FinancialAnalyticsService:
                 str(item["transaction_id"]),
             ),
         )
+        account_names = {
+            str(account["account_id"]): str(account["display_name"])
+            for account in self._bank.list_accounts(user_id=user_id)
+        }
         return TopTransactions(
             period=month,
             currency=currency,
@@ -151,6 +191,7 @@ class FinancialAnalyticsService:
                     amount=self._amount(item),
                     currency=str(item["currency"]),
                     account_id=str(item["account_id"]),
+                    account_display=account_names.get(str(item["account_id"]), "账户"),
                 )
                 for item in ordered[:limit]
             ],
@@ -197,6 +238,17 @@ class FinancialAnalyticsService:
 
     @staticmethod
     def _period_bounds(month: str) -> tuple[datetime, datetime]:
+        if "/" in month:
+            try:
+                left, right = month.split("/")
+                start, end = datetime.fromisoformat(left), datetime.fromisoformat(right)
+                if start.tzinfo is None or end.tzinfo is None or start >= end:
+                    raise ValueError("无效起止时间")
+                return start.astimezone(UTC), end.astimezone(UTC)
+            except ValueError as exc:
+                raise FinancialDomainError(
+                    FinancialErrorCode.INVALID_PERIOD, "请提供有效且包含时区的起止时间"
+                ) from exc
         match = _PERIOD_PATTERN.fullmatch(month)
         if match is None:
             raise FinancialDomainError(

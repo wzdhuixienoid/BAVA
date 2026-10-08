@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from financial_assertions import raw_financial_facts
+
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.mock_bank.service import MockBankService
 
@@ -19,19 +21,27 @@ def test_expanded_months_and_years_match_independent_decimal_reference() -> None
     for metrics in [golden["months"], golden["years"]]:
         for period, expected in metrics.items():
             assert (
-                service.spending_summary(period, user_id=USER_ID).model_dump(mode="json")
+                raw_financial_facts(
+                    service.spending_summary(period, user_id=USER_ID).model_dump(mode="json")
+                )
                 == expected["summary"]
             )
             assert (
-                service.category_breakdown(period, user_id=USER_ID).model_dump(mode="json")
+                raw_financial_facts(
+                    service.category_breakdown(period, user_id=USER_ID).model_dump(mode="json")
+                )
                 == expected["category_breakdown"]
             )
             assert (
-                service.top_transactions(period, user_id=USER_ID).model_dump(mode="json")
+                raw_financial_facts(
+                    service.top_transactions(period, user_id=USER_ID).model_dump(mode="json")
+                )
                 == expected["top_transactions"]
             )
     assert (
-        service.compare_periods("2026", user_id=USER_ID).model_dump(mode="json")
+        raw_financial_facts(
+            service.compare_periods("2026", user_id=USER_ID).model_dump(mode="json")
+        )
         == golden["year_comparisons"]["2025_to_2026"]
     )
 
@@ -41,11 +51,15 @@ def test_july_and_august_summaries_match_committed_golden_exactly() -> None:
     golden = load_golden()["months"]
 
     assert (
-        service.spending_summary("2026-07", user_id=USER_ID).model_dump(mode="json")
+        raw_financial_facts(
+            service.spending_summary("2026-07", user_id=USER_ID).model_dump(mode="json")
+        )
         == golden["2026-07"]["summary"]
     )
     assert (
-        service.spending_summary("2026-08", user_id=USER_ID).model_dump(mode="json")
+        raw_financial_facts(
+            service.spending_summary("2026-08", user_id=USER_ID).model_dump(mode="json")
+        )
         == golden["2026-08"]["summary"]
     )
     assert golden["2026-07"]["summary"]["total_spending"] == "9333.20"
@@ -57,7 +71,7 @@ def test_august_category_breakdown_matches_committed_golden_exactly() -> None:
     expected = load_golden()["months"]["2026-08"]["category_breakdown"]
 
     actual = service.category_breakdown("2026-08", user_id=USER_ID)
-    assert actual.model_dump(mode="json") == expected
+    assert raw_financial_facts(actual.model_dump(mode="json")) == expected
     categories = {item["category"]: item for item in expected["categories"]}
     assert categories["FOOD"]["amount"] == "1005.30"
     assert categories["TRAVEL"]["amount"] == "4260.00"
@@ -69,7 +83,7 @@ def test_august_top_transactions_match_committed_golden_exactly() -> None:
     expected = load_golden()["months"]["2026-08"]["top_transactions"]
 
     actual = service.top_transactions("2026-08", limit=5, user_id=USER_ID)
-    assert actual.model_dump(mode="json") == expected
+    assert raw_financial_facts(actual.model_dump(mode="json")) == expected
     assert [item["transaction_id"] for item in expected["transactions"]] == [
         "txn_0014",
         "txn_0113",
@@ -83,7 +97,12 @@ def test_july_to_august_comparison_matches_committed_golden_exactly() -> None:
     service = FinancialAnalyticsService(MockBankService())
     expected = load_golden()["comparisons"]["2026-07_to_2026-08"]
 
-    assert service.compare_periods("2026-08", user_id=USER_ID).model_dump(mode="json") == expected
+    assert (
+        raw_financial_facts(
+            service.compare_periods("2026-08", user_id=USER_ID).model_dump(mode="json")
+        )
+        == expected
+    )
     assert expected["absolute_change"] == "7214.10"
     changes = {item["category"]: item for item in expected["category_changes"]}
     assert changes["FOOD"]["absolute_change"] == "589.10"

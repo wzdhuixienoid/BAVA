@@ -25,6 +25,7 @@ MONTHLY_SPENDING_REPORT_INSTRUCTIONS = """
 避免“之一”“第一”“进一步”等含禁用字符的措辞。使用简短解释。
 月份、金额、比例、交易编号只保留在系统事实及 evidence_refs 中。
 重点解释消费结构和主要变化。
+交易核对提示由系统单独展示，不要在文字洞察中重复输出 spending_review 或重新判断异常。
 每条洞察必须引用提供的 evidence reference。
 只输出符合指定 schema 的 JSON，不要输出 Markdown 或推理过程。
 默认使用中文。
@@ -142,6 +143,7 @@ class MonthlySpendingReportSkill:
             notes.append("未提供主要交易数据。")
 
         return MonthlySpendingReportCore(
+            spending_review=summary.spending_review,
             period=snapshot.period,
             scope=ReportScope(account_ids=list(snapshot.account_ids)),
             overview=ReportOverview(

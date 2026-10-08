@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.domain.enums import ReportType
 from banking_api.financial.report_models import (
@@ -23,6 +23,7 @@ class ReportResponse(BaseModel):
     period: str
     source_snapshot_hash: str
     created_at: datetime
+    account_names: dict[str, str] = Field(default_factory=dict)
     content: MonthlySpendingReport
 
 
@@ -31,6 +32,7 @@ class Report(ReportResponse):
 
 
 class ReportListItem(BaseModel):
+    deleted_at: datetime | None = None
     report_id: UUID
     report_type: ReportType
     period: str

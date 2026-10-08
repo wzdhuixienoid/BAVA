@@ -26,7 +26,13 @@ apps/api/.venv/bin/python scripts/generate_golden_financial_metrics.py
 apps/api/.venv/bin/python scripts/validate_mock_data.py
 ```
 
-近期消费默认使用最近一个完整自然月，回答说明所用期间；本月使用当前业务月。未提供年份的月份按业务参考日期补全年份。年度聚合使用自然年，与上年比较。无完整账单数据时说明原因，不生成空报告。报告存储类型与 Skill ID 保留现有月度标识以兼容历史数据，由 `period`（`YYYY`／`YYYY-MM`）区分年度与月度。
+未指定天数或起止时间的近期消费默认使用当前业务时间向前30天到当前时间，回答说明所用期间；本月使用当前业务月。未提供年份的月份按业务参考日期补全年份。年度聚合使用自然年，与上年比较。无完整账单数据时说明原因，不生成空报告。报告存储类型与 Skill ID 保留现有月度标识以兼容历史数据，由 `period`（`YYYY`／`YYYY-MM`）区分年度与月度。
+
+指定“最近 N 天”或“N 天消费”时，从当前业务参考时间向前 N 天到当前时间进行汇总、分类和主要交易查询，支持跨月、跨年。各工具共享固定区间；区间比较使用紧邻的等长前期。工具也接受带时区的 `start_at` / `end_at` 明确区间，或 `recent_days`，三种期间参数互斥。区间为左闭右开。普通消费分析不会调用异常识别；只有本次用户明确要求异常检查时才提供该工具。无法确定天数或日期时先说明缺少的信息。
+
+异常分析支持一年以内的天数和起止时间；“近一年”使用当前时间向前一个日历年。每笔交易的比较基线为前90天，优先同商户同分类（至少3笔），其次同分类（至少8笔）；不拿房租与餐饮小额交易混合比较。已证实按月出现的同商户支出按自身历史比较，金额上涨至少30%才提示，稳定房租不反复报警。快照记录比较范围、可用交易时间、样本不足的笔数、异常总数及截断标记。异常分析Skill统一组织中文说明和表格，金额（元）与倍数保留两位小数，不显示币种列。完整明细最多展示最近50笔并明确截断。
+
+消费汇总自动在同期间、同账户和同用户范围执行检查，以 `spending_review` 保留最多3笔优先核对提示（重复扣款、订阅涨价优先）。普通回答附简短提示，报告保存该段快照；明确询问异常时才展开完整明细。用户明确拒绝异常检查时不执行自动检查。超过一年或历史不足时明确说明限制，仍正常完成消费汇总；未检出不表示安全或排除欺诈。自动检查在汇总工具内完成，不额外消耗模型工具调用预算，也不修改历史报告。
 
 ## 当前能力
 
@@ -38,7 +44,7 @@ apps/api/.venv/bin/python scripts/validate_mock_data.py
 | 审计证据链 | owner-scoped 只读 Domain API | 持久 Event、风险历史、授权 hash、Guard、Operation / Provider、Condition 零写入证据；不暴露隐藏推理或凭证 |
 | Demo readiness / preflight | dev/test-only 只读 projection + CLI | version/head、初始余额/exposure、订阅、Guard、Mock modes 与无未收敛 Operation |
 | 月度／年度支出、分类、环比／同比、主要交易分析 | `agent:financial-analysis` | 四个只读 Financial Tools |
-| 异常交易分析 | `agent:financial-analysis` | `transaction.detect_anomalies` → bounded deterministic Snapshot |
+| 异常交易分析 | `agent:financial-analysis` | `transaction.detect_anomalies` → 确定性快照 → `skill:transaction-anomaly-analysis` → 单条助理回答 |
 | 生成月度／年度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
 | 订阅分析 | `agent:subscription-analysis` | 自动识别周期扣费、按币种成本、涨价、即将续费 |
 | 订阅管理分类 | deterministic Subscription service | `MANAGED` / `DETECTED_ONLY`，仅合同可管理者允许取消 |

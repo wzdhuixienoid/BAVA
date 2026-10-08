@@ -13,11 +13,15 @@ def build_detect_anomalies_tool(detector: TransactionAnomalyDetector) -> ToolSpe
     def handler(
         context: ToolExecutionContext, arguments: TransactionAnomalyInput
     ) -> TransactionAnomalyOutput:
+        now = reference_now()
+        start, end = arguments.bounds(now)
         return TransactionAnomalyOutput(
             snapshot=detector.detect(
                 user_id=context.principal.user_id,
-                analysis_days=arguments.analysis_days,
-                generated_at=reference_now(),
+                analysis_started_at=start,
+                analysis_ended_at=end,
+                generated_at=now,
+                account_ids=arguments.account_ids,
             )
         )
 
@@ -25,7 +29,7 @@ def build_detect_anomalies_tool(detector: TransactionAnomalyDetector) -> ToolSpe
         capability_id="transaction.detect_anomalies",
         name="detect_transaction_anomalies",
         description=(
-            "按当前 Principal 和币种隔离，用确定性规则返回有界异常交易快照；"
+            "支持一年以内的天数或带时区的起止时间；按当前用户和币种隔离返回异常交易快照；"
             "不会返回完整原始流水，也不会确认欺诈。"
         ),
         input_model=TransactionAnomalyInput,

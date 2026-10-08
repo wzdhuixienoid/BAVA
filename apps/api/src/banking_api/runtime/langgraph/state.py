@@ -10,5 +10,7 @@ class BankingAgentGraphState(TypedDict):
     tool_call_count: int
     pending_tool_calls: list[dict[str, Any]]
     successful_tool_results: list[dict[str, Any]]
+    financial_window: dict[str, str] | None
+    financial_clarification: str | None
     final_answer: str | None
     error: dict[str, Any] | None

@@ -367,6 +367,7 @@ class ReportModel(Base):
     skill_version: Mapped[int] = mapped_column(Integer)
     period: Mapped[str] = mapped_column(String(7), index=True)
     content_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     source_snapshot_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, index=True

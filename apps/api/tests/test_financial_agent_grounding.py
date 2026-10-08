@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
+from financial_assertions import raw_financial_facts
 from langgraph.checkpoint.memory import InMemorySaver
 
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
@@ -91,10 +92,17 @@ async def test_financial_agent_numeric_evidence_matches_committed_golden() -> No
 
     expected_august = golden["months"]["2026-08"]
     expected_comparison = golden["comparisons"]["2026-07_to_2026-08"]
-    assert snapshot["spending_summary"] == expected_august["summary"]
-    assert snapshot["category_breakdown"] == expected_august["category_breakdown"]
-    assert snapshot["period_comparison"] == expected_comparison
-    assert snapshot["top_transactions"] == expected_august["top_transactions"]
+    assert {
+        key: value
+        for key, value in snapshot["spending_summary"].items()
+        if key != "spending_review"
+    } == expected_august["summary"]
+    assert snapshot["spending_summary"]["spending_review"] is not None
+    assert (
+        raw_financial_facts(snapshot["category_breakdown"]) == expected_august["category_breakdown"]
+    )
+    assert raw_financial_facts(snapshot["period_comparison"]) == expected_comparison
+    assert raw_financial_facts(snapshot["top_transactions"]) == expected_august["top_transactions"]
     assert snapshot["spending_summary"]["total_spending"] == "16547.30"
     assert snapshot["period_comparison"]["previous_spending"] == "9333.20"
     assert snapshot["period_comparison"]["absolute_change"] == "7214.10"

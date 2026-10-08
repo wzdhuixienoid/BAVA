@@ -4,6 +4,7 @@ import { PeriodComparison } from "./PeriodComparison";
 import { ReportInsights } from "./ReportInsights";
 import { ReportOverview } from "./ReportOverview";
 import { TopTransactions } from "./TopTransactions";
+import { SpendingReview } from "./SpendingReview";
 import { dateTimeLabel, periodLabel } from "./presentation";
 
 type ReportResponse = components["schemas"]["ReportResponse"];
@@ -13,7 +14,7 @@ export function MonthlyReportView({ report }: { report: ReportResponse }) {
   const isPartial = content.data_quality.status === "PARTIAL";
 
   return (
-    <article className="space-y-6">
+    <article className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-cyan-700">{report?.period.length === 4 ? "年度消费报告" : "月度消费报告"}</p>
@@ -22,9 +23,7 @@ export function MonthlyReportView({ report }: { report: ReportResponse }) {
           </h1>
           <p className="mt-2 text-sm text-slate-500">生成于 {dateTimeLabel(report.created_at)}</p>
         </div>
-        <div className="rounded-lg bg-slate-100 px-3 py-2 font-mono text-xs text-slate-500">
-          v{report.report_version} · {report.skill_id}
-        </div>
+
       </header>
 
       {isPartial && (
@@ -37,17 +36,16 @@ export function MonthlyReportView({ report }: { report: ReportResponse }) {
       )}
 
       <ReportOverview overview={content.overview} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <PeriodComparison comparison={content.period_comparison} />
-        <CategoryBreakdown categories={content.category_breakdown} yearly={report.period.length === 4} />
-      </div>
+      <PeriodComparison comparison={content.period_comparison} currentSpending={content.overview.total_spending_display} />
+      <CategoryBreakdown categories={content.category_breakdown} yearly={report.period.length === 4} columns />
       <ReportInsights headline={content.headline} insights={content.insights} />
-      <TopTransactions transactions={content.top_transactions} />
+      <SpendingReview review={content.spending_review} />
+      <TopTransactions transactions={content.top_transactions} accountNames={report.account_names} />
 
       <section className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span>数据质量：{isPartial ? "部分数据" : "完整"}</span>
-          <span>范围：{content.scope.account_ids.length ? content.scope.account_ids.join("、") : "全部允许账户"}</span>
+          <span>范围：{content.scope.account_ids.length ? content.scope.account_ids.map((id) => report.account_names?.[id] ?? "账户").join("、") : "全部账户"}</span>
         </div>
       </section>
     </article>

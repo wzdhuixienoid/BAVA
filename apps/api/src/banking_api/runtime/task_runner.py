@@ -63,7 +63,6 @@ from banking_api.skill_runtime.executor import (
 from banking_api.skills.models import SkillDefinition
 from banking_api.skills.monthly_spending_report import (
     MONTHLY_SPENDING_REPORT_SKILL_ID,
-    MonthlySpendingReportSkill,
 )
 from banking_api.subscriptions.answers import subscription_answer
 from banking_api.workflows.subscription_cancel.engine import SubscriptionCancellationWorkflow
@@ -807,10 +806,6 @@ class InProcessTaskRunner:
         if agent_id == FINANCIAL_ANALYSIS_AGENT_ID:
             snapshot = build_financial_analysis_snapshot(successful_tool_results)
             output["analysis_snapshot"] = snapshot.model_dump(mode="json")
-            if snapshot.spending_summary is not None and snapshot.category_breakdown is not None:
-                output["financial_display"] = (
-                    MonthlySpendingReportSkill().build_core(snapshot).model_dump(mode="json")
-                )
             anomaly_result = next(
                 (
                     item
@@ -821,6 +816,23 @@ class InProcessTaskRunner:
             )
             if anomaly_result is not None and "snapshot" in anomaly_result.output:
                 output["transaction_anomaly_snapshot"] = anomaly_result.output["snapshot"]
+                from banking_api.financial.anomaly_models import TransactionAnomalySnapshot
+                from banking_api.skills.transaction_anomaly_analysis import (
+                    TransactionAnomalyAnalysisSkill,
+                )
+
+                output["transaction_anomaly_answer"] = (
+                    TransactionAnomalyAnalysisSkill()
+                    .execute(
+                        TransactionAnomalySnapshot.model_validate(anomaly_result.output["snapshot"])
+                    )
+                    .answer
+                )
+                output["anomaly_skill_id"] = "skill:transaction-anomaly-analysis"
+                output["anomaly_skill_version"] = 1
+                if snapshot.spending_summary is not None:
+                    output["anomaly_presentation"] = "combined"
+                    output.pop("transaction_anomaly_answer", None)
         if agent_id == MINIMAL_BANKING_AGENT.agent_id:
             payees = [
                 item.output

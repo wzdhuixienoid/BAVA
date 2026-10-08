@@ -43,3 +43,5 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .message-markdown th { background: #e2e8f0; font-weight: 600; }
 .message-markdown hr { margin: 1em 0; border-color: #cbd5e1; }
 .message-markdown img { max-width: 100%; height: auto; border-radius: 8px; }
+
+.message-markdown th:first-child, .message-markdown td:first-child { white-space: nowrap; overflow-wrap: normal; }

@@ -50,7 +50,9 @@ def build_financial_analysis_snapshot(
             )
         )
         if result.capability_id.startswith("transaction.") and period is None:
-            raw_period = sanitized_input.get("month")
+            raw_period = result.output.get("period", result.output.get("current_period"))
+            if raw_period is None:
+                raw_period = sanitized_input.get("month")
             period = raw_period if isinstance(raw_period, str) else None
             raw_accounts = sanitized_input.get("account_ids")
             if isinstance(raw_accounts, list):
