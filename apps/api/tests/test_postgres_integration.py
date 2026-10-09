@@ -172,7 +172,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
+                "TRUNCATE notifications, subscription_notification_cursors, mock_subscription_charges, "
+                "security_guard_states, identity_mappings, mock_bank_transfers, "
                 "mock_subscription_cancellations, mock_subscription_actions, "
                 "mock_subscription_states, payees, "
                 "events, tasks, messages, "
@@ -184,7 +185,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE security_guard_states, identity_mappings, mock_bank_transfers, "
+                "TRUNCATE notifications, subscription_notification_cursors, mock_subscription_charges, "
+                "security_guard_states, identity_mappings, mock_bank_transfers, "
                 "mock_subscription_cancellations, mock_subscription_actions, "
                 "mock_subscription_states, payees, "
                 "events, tasks, messages, "

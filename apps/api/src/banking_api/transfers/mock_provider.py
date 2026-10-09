@@ -14,6 +14,7 @@ from banking_api.persistence.models import (
     AARequestModel,
     AAShareModel,
     MockBankTransferModel,
+    MockSubscriptionChargeModel,
     OperationModel,
 )
 from banking_api.transfers.provider import (
@@ -223,7 +224,10 @@ class MockTransferProvider:
                     ):
                         await self._serialize_source_account(session, account_id)
                     confirmed = await session.get(
-                        MockBankTransferModel, transfer.provider_reference, with_for_update=True
+                        MockBankTransferModel,
+                        MockSubscriptionChargeModel,
+                        transfer.provider_reference,
+                        with_for_update=True,
                     )
                     if confirmed.status == "PENDING":
                         confirmed.status = "SUCCEEDED"
@@ -286,7 +290,19 @@ class MockTransferProvider:
                 MockBankTransferModel.credited_at.is_not(None),
             )
         )
-        return base - Decimal(str(debited)) + Decimal(str(credited))
+        subscription_debits = await session.scalar(
+            select(func.coalesce(func.sum(MockSubscriptionChargeModel.amount), 0)).where(
+                MockSubscriptionChargeModel.user_id == user_id,
+                MockSubscriptionChargeModel.source_account_id == account_id,
+                MockSubscriptionChargeModel.status == "SUCCEEDED",
+            )
+        )
+        return (
+            base
+            - Decimal(str(debited))
+            + Decimal(str(credited))
+            - Decimal(str(subscription_debits))
+        )
 
     @staticmethod
     def _submission_from(transfer: MockBankTransferModel) -> TransferSubmissionResult:

@@ -641,3 +641,46 @@ class AAShareModel(Base):
     operation_id: Mapped[UUID | None] = mapped_column(
         Uuid, ForeignKey("operations.id"), nullable=True, unique=True
     )
+
+
+class NotificationModel(Base):
+    __tablename__ = "notifications"
+    kind: Mapped[str] = mapped_column(
+        String(40), default="SCHEDULE_RESULT", server_default="SCHEDULE_RESULT"
+    )
+    notification_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    source_key: Mapped[str] = mapped_column(String(255), unique=True)
+    title: Mapped[str] = mapped_column(String(100))
+    message: Mapped[str] = mapped_column(Text)
+    schedule_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SubscriptionNotificationCursorModel(Base):
+    __tablename__ = "subscription_notification_cursors"
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    seen_transaction_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    last_billing_scan_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class MockSubscriptionChargeModel(Base):
+    __tablename__ = "mock_subscription_charges"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "subscription_id", "billing_at", name="uq_subscription_billing"
+        ),
+    )
+    charge_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    subscription_id: Mapped[str] = mapped_column(String(255))
+    source_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    merchant: Mapped[str] = mapped_column(String(100))
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    billing_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    status: Mapped[str] = mapped_column(String(20))
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)

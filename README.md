@@ -1,10 +1,14 @@
 # AI Banking Agent
 
-当前版本：`v0.9.3`；数据库迁移：`0019`。
+当前版本：`v0.10.2`；数据库迁移：`0030`。
 
-版本主题：统一资金支出强验证、对话软删除、持久化收款人和订阅恢复。沿用只读 Agent、确定性 Workflow、Approval、Operation 和 Mock Provider，修复重复分析卡片、收款人查询误路由及转账交互。当前验证包含后端自动回归、PostgreSQL 并发／迁移、前端展示和 Mock 浏览器流程；本版另完成真实模型账单分析定向复测；完整报告稳定性与 S1–S12 验收仍属于 v0.9.2 历史证据。详见本版测试结果。
+版本主题：转账备注、单次与有限次按月预约、站内 AA 收款、收款人编辑删除，以及预约和对话管理完善。手机号转账已移除，当前转账目标通过已登记的银行卡收款人或 AA 发布快照确定。
 
-面向中文用户的个人银行 Agent 应用。当前产品支持账户查询、消费分析、月度／年度报告、安全转账、确定性异常交易提示、安全写熔断，以及收款人管理、对话删除、订阅识别、取消和恢复。Workflow 写业务成功展示必须同时满足 `Workflow SUCCEEDED` 与 `Operation SUCCEEDED`，由对应 Mock Provider 最终确认。
+面向中文用户的个人银行 Agent 应用，支持账户与余额查询、消费分析、月度／年度报告、确定性异常提示、订阅管理、安全转账、预约与周期转账和 AA 收款。所有银行操作、强身份验证与 AA 参与者流程均为 Mock；不接入真实银行、不发送短信、不集成外部支付。
+
+Task 完成、预约创建或 AA 请求发布都不代表付款成功；只有 Provider 明确成功且原 Operation 已收敛才显示付款成功。`UNKNOWN` 持续查询原 Operation，不能另建扣款。
+
+本版功能与授权说明见 [智能转账指南](report/08-intelligent-transfer-guide.md)，实际检查范围见 [验证记录](report/09-transfer-extensions-validation.md)。历史版本测试与报告保留原日期和版本，不视为本版重新运行的结果。
 
 核心设计原则：金融金额、分类汇总、占比、排名和环比全部由确定性 Python `Decimal` 代码计算；LLM 只负责意图识别、工具选择和基于可信事实的自然语言解释。
 
@@ -48,13 +52,16 @@ apps/api/.venv/bin/python scripts/validate_mock_data.py
 | 生成月度／年度消费报告 | Financial Agent + `skill:monthly-spending-report` | Snapshot → immutable Report Artifact |
 | 订阅分析 | `agent:subscription-analysis` | 自动识别周期扣费、按币种成本、涨价、即将续费 |
 | 订阅管理分类 | deterministic Subscription service | `MANAGED` / `DETECTED_ONLY`，仅合同可管理者允许取消 |
-| 查询和新增收款人 | 只读 Agent + `/payees` Domain API | 对话列表／搜索；页面核对后确认保存，按用户持久化，重复保存去重 |
-| 对话名称 | Conversation service + 工作台 | 手动改名；首条回复按首个请求自动命名；手动名称保留 |
-| 删除对话 | Conversation service + 工作台 | 软删除、活动流程拦截、并发消息保护、保留业务与审计记录 |
+| 查询、新增、编辑与删除收款人 | 只读 Agent + `/payees` Domain API | 对话列表／搜索；页面核对后确认保存，按用户持久化，重复保存去重 |
+| 对话名称 | Conversation service + 工作台 | 手动编辑名称；首条回复按首个请求自动命名；手动名称保留 |
+| 删除对话 | Conversation service + 工作台 | 软删除、未授权及资金处理中流程拦截；已授权预约独立继续执行，保留业务与审计记录 |
 | 恢复订阅续费授权 | `workflow:subscription-resume` | RED → Approval → Reauthentication → Operation；恢复原套餐，本次不扣款 |
 | 安全取消订阅 | `workflow:subscription-cancel` | YELLOW → Approval → Operation → MockSubscriptionProvider |
 | 风险控制 | deterministic Risk Policy | GREEN 查询自动执行；YELLOW 管理写操作确认；所有转账与恢复续费授权均 RED 确认 + 强验证 |
 | 转账全链路 | `workflow:transfer` | 收款人选择 → Draft → Validation → RED → Approval → Reauthentication → Operation |
+| 转账备注 | 同一 Transfer Workflow | 最多 100 个 Unicode 字符；备注纳入确认哈希，修改后重新确认及强验证，历史保留提交快照 |
+| 单次及按月周期预约 | ScheduleService + ScheduleWorker | 核对 → 确认 → 强验证 → 显式授权创建；到时自动执行 Mock 转账，持久化 lease、限定执行窗口与每期唯一 Operation |
+| AA 收款与付款 | AAService + 既有 Transfer Workflow | 平均或手动按整数分分摊；发起者自己承担；其他参与者独立授权，Provider 成功后入账 |
 | Operation 自动恢复 | PostgreSQL-backed recovery worker | due scan → `SKIP LOCKED` claim → lease → reconcile → retry/terminal |
 | 并发转账资金安全 | `MockTransferProvider` | account-scoped advisory lock → authoritative balance → atomic ledger fact |
 | 并发转账认证安全 | Application Risk Gate | user-scoped advisory lock → fresh daily exposure → controls → Operation |
@@ -117,7 +124,7 @@ LLM 自然语言承担解释职责，不拥有余额、金额、风险、Princip
 
 订阅查询为 GREEN；订阅取消为 YELLOW，必须 Approval；恢复原套餐续费授权为 RED，必须 Approval 与 Reauthentication，本次不立即扣费。取消与恢复使用合同状态及持久动作账本，支持反复管理。
 
-收款人在对话中列表／搜索，在 `/payees` 核对姓名、虚构银行、四位模拟账户尾号和可选别名后确认保存。转账卡提供“选择已有收款人”和“新增收款人”，新增后可返回原草稿；同名账户必须按银行与尾号选择。未匹配时等待补充，旧版无 Operation 的 `PAYEE_NOT_FOUND` 草稿可重新选择；修改收款人使原确认与强验证失效。
+收款人在对话中列表／搜索，在 `/payees` 核对姓名、虚构银行、完整收款账号和可选别名后确认保存。转账卡提供“选择已有收款人”和“新增收款人”，新增后可返回原草稿；同名账户必须按银行与尾号选择。未匹配时等待补充，旧版无 Operation 的 `PAYEE_NOT_FOUND` 草稿可重新选择；修改收款人使原确认与强验证失效。
 
 对话采用 `deleted_at` 软删除，未结束 Task/Plan/Workflow/Operation 会阻止删除。删除与发消息使用同一行锁；删除后禁止打开聊天和重新启动相关任务，保留业务及审计记录，切换剩余对话并清理 SSE。侧栏不显示开发身份标签和内部对话编号。
 
@@ -140,6 +147,21 @@ LLM 自然语言承担解释职责，不拥有余额、金额、风险、Princip
 ```
 
 报告生成后可在 Conversation 中通过 ReportCard 打开，也可以从 `/reports` 查看历史报告。
+
+## 0.10.2 转账与收款使用
+
+| 示例 | 处理方式 |
+|---|---|
+| 给张三转 100 元，备注本月餐费 | 选择收款人与付款账户，核对备注，再确认、强验证和提交 |
+| 明天早上 9 点从工资卡给物业转 200 元，备注房租 | 模型提取时间语义，后端规范化；部分姓名匹配由用户选择，强验证后显式授权创建预约 |
+| 每月 1 号上午 9 点给物业转 100 元，共 3 次 | 展示每期日期、每期金额与总额，强验证后创建有限次周期授权 |
+| 昨天聚餐 100 元，和张三、李四 AA，我也参与 | 展示 33.34、33.33、33.33 元的分摊；确认发布不扣款，其他参与者独立付款 |
+
+预约不冻结余额，超过迟到执行窗口不无限补扣。创建时完成强验证，页面显示等待执行时间，到时重新校验后自动执行 Mock 转账。预约和周期任务在 `/scheduled-transfers` 集中管理；已取消任务可从列表移除，历史与审计保留。删除对话不会撤销已授权预约。
+
+AA 的“自己承担”无需系统扣款；其他参与者在 `/aa` 以自己的身份选择付款账户并走既有资金操作链路。“撤回收款请求”取消对方尚未付款的请求，不重新分摊金额，保留已付款证据，提交中或 UNKNOWN 不可直接撤回。核对失败会标红对应字段并说明原因。
+
+手机号转账当前不提供。所有新增功能均为站内 Mock，详细状态、API、配置与限制见 [智能转账指南](report/08-intelligent-transfer-guide.md)。
 
 ## 受约束任务规划
 
@@ -541,7 +563,9 @@ GET  /api/v1/conversations/{conversation_id}
 DELETE /api/v1/conversations/{conversation_id}
 POST /api/v1/conversations/{conversation_id}/messages
 GET  /api/v1/payees?query=...&offset=...
-POST /api/v1/payees   # confirmed=true；仅虚构银行和四位模拟尾号
+POST /api/v1/payees   # 核对后 confirmed=true；输入完整收款账号，后续仅显示尾号
+PATCH /api/v1/payees/{payee_id}
+DELETE /api/v1/payees/{payee_id}
 GET  /api/v1/tasks/{task_id}
 GET  /api/v1/tasks/{task_id}/events
 GET  /api/v1/tasks/{task_id}/audit
@@ -558,7 +582,16 @@ POST /api/v1/plans/{plan_id}/actions/resume
 POST /api/v1/plans/{plan_id}/actions/rollback
 GET  /api/v1/workflows/{workflow_id}
 GET  /api/v1/workflows?conversation_id=...
-POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|select-subscription|approve|start-reauth|verify-reauth|commit|cancel}
+POST /api/v1/workflows/{workflow_id}/actions/{set-recipient-query|select-payee|select-source-account|set-amount|select-subscription|set-remark|set-execution-time|approve|start-reauth|verify-reauth|commit|cancel}
+GET  /api/v1/scheduled-transfers
+GET  /api/v1/scheduled-transfers/{schedule_id}
+POST /api/v1/scheduled-transfers/{schedule_id}/actions/{authorize|cancel|cancel-series|delete}
+GET  /api/v1/aa-requests
+GET  /api/v1/aa-requests/{request_id}
+PATCH /api/v1/aa-requests/{request_id}
+POST /api/v1/aa-requests/{request_id}/actions/publish
+GET  /api/v1/aa-accounts
+POST /api/v1/aa-shares/{share_id}/actions/{pay|reject|cancel}
 GET  /api/v1/operations/{operation_id}
 POST /api/v1/operations/{operation_id}/actions/reconcile
 ```
@@ -570,6 +603,8 @@ POST /api/v1/operations/{operation_id}/actions/reconcile
 /reports/{reportId}  Structured monthly report
 /subscriptions       Subscription overview and cancellation/resume entry
 /payees              Persistent simulated payee management
+/scheduled-transfers Single and monthly scheduled transfer management
+/aa                  Mock AA participant requests and payments
 ```
 
 SSE 用于实时通知；Task、Report 和 Workflow API 始终是页面刷新恢复的 authoritative source。`business state + Event + Outbox intent` 在同一 PostgreSQL transaction 内提交；Outbox Publisher 使用 `SKIP LOCKED` + durable lease 向现有 EventBus 做 at-least-once 发布。发布成功后、`published_at` 写回前崩溃可能导致重复通知，但不会重复业务副作用。
@@ -604,13 +639,25 @@ docs/                     版本交付、测试结果与设计记录
 
 ## 当前交付文档
 
+- [v0.10.2 更新说明](docs/release-notes-v0.10.2.md)
+- [智能转账、备注、预约与 AA 指南](report/08-intelligent-transfer-guide.md)
+- [转账扩展实际验证记录](report/09-transfer-extensions-validation.md)
+
+以下是保留的历史 v0.9.3 交付文档：
+
 - [Implementation Report v0.9.3](docs/implementation-report-v0.9.3.md)
 - [Repository Tree v0.9.3](docs/repository-tree-v0.9.3.md)
 - [Test Results v0.9.3](docs/test-results-v0.9.3.md)
 
 具体浏览器反馈、截图和本地更新记录见 [管理功能修复与验收](docs/banking-management-repairs.md)。历史版本文档保留在 `docs/`，其中旧黄色转账规则不代表当前规则。
 
-### 升级到 v0.9.3
+### 升级到 v0.10.2
+
+数据库目标为 `0030`。从现有库升级时先备份并暂停新业务写入，运行 `alembic upgrade head`，同步更新 API/Web；不要清库或重置账本。迁移 `0028` 移除手机号转账业务，保留历史操作恢复；`0029` 添加有限次按月授权和期次关联；`0030` 添加已取消预约列表软删除标记。更早的备注、预约、AA 和管理表迁移随 Alembic 链自动执行。
+
+预约需要 `MOCK_SCHEDULED_TRANSFERS_ENABLED=true`，仅允许 Mock Provider。默认单次最少提前 60 秒、最长 30 天、迟到窗口 300 秒；按月最多 12 次、跨度最多 366 天，分别由 `RECURRING_TRANSFER_MAX_OCCURRENCES` 与 `RECURRING_TRANSFER_MAX_DAYS` 控制。即时 Approval 600 秒与强验证 300 秒不延长；预约转换为仅适用于固定内容与执行窗口的一次性授权。
+
+### 历史：升级到 v0.9.3
 
 从 0017 升级需要迁移 `0018_banking_management.py`，添加对话删除标记、收款人、订阅状态／动作账本和恢复操作枚举，并回填旧成功取消状态。先暂停新业务写请求，让已有 CREATED／SUBMITTED／UNKNOWN Operation 收敛，再备份、迁移并同步更新 API/Web；不要为升级重置业务数据。已有管理记录时迁移降级会拒绝执行，避免丢失数据。新建环境可使用上面的 `docker compose up --build`，容器启动自动运行迁移。
 
@@ -623,13 +670,13 @@ Plan 最多 8 步、2 个 CONDITION、一个写 Workflow，按 ordinal 顺序执
 
 当前写入仅限比赛 synthetic banking environment 中的持久化 `MockTransferProvider` 和正式 `MockSubscriptionProvider`；未连接真实商户订阅 API。RED 强验证使用 `MockReauthenticationProvider`。
 
-订阅检测当前只支持固定的月度/年度 cadence 窗口和 fixture alias；不做 FX、不根据商户类型主观判断“重复”，不推断用户是否真正使用某项订阅，也未实现主动通知调度。
+订阅检测当前只支持固定的月度/年度 cadence 窗口和 fixture alias；不做 FX、不根据商户类型主观判断“重复”，不推断用户是否真正使用某项订阅。订阅消息 Worker 每 30 秒检查账期：提前 7 天一次站内提醒；可管理合同模拟自动扣费后一次结果提醒（余额不足或安全锁定时提醒失败，不扣款）。首次启用不补扣旧账期、不推送已有历史流水；停机后按持久扫描进度恢复。每个账期和事件持久去重，已读或删除后不会重复生成。`MOCK_SUBSCRIPTION_BILLING_ENABLED` 仅可在 development/test 开启，示例合同绑定工资卡；DETECTED_ONLY 只提示预计日期，不自动扣费。
 
 异常检测只是可解释的确定性分析，不是完整 Fraud Detection Platform；不做 FX、主动通知、Fraud ML、通用 Rule Engine/DSL 或人工审核台。Security Guard 只有 `NORMAL / WRITE_LOCKED`，本版无管理员手工解锁。
 
 登录 Authentication 只回答“是谁”，不替代 canonical payload Approval，也不替代 RED 在 commit 前要求的 Reauthentication。
 
-仍然没有 balance reservation/hold/capture 系统。TaskExecutionWorker、OperationRecoveryWorker 和 OutboxPublisher 是三个明确、独立的专用 loop，不是 Celery、Redis、Kafka、通用任务队列或 Generic Worker/Scheduler Framework。Task worker 仍由 API process 托管，未提供独立 worker deployment、优先级队列或 per-conversation ordering。
+仍然没有 balance reservation/hold/capture 系统。TaskExecutionWorker、ScheduleWorker、OperationRecoveryWorker 和 OutboxPublisher 是明确、独立的专用 loop，不是 Celery、Redis、Kafka、通用任务队列或 Generic Worker/Scheduler Framework。Task worker 仍由 API process 托管，未提供独立 worker deployment、优先级队列或 per-conversation ordering。
 
 EventBus 仍是 process-local：多 API process 下，某个 publisher 的本地发布不保证另一 process 上的 SSE client 收到。本版也没有 client acknowledgement、SSE replay、Outbox DLQ、archival/cleanup、分布式 metrics/tracing 或跨进程 realtime broker；Resource API 仍是事实源。
 
@@ -651,4 +698,4 @@ PLAN_SMOKE_BASE_URL=http://127.0.0.1:8001 \
 
 该脚本完成只读 DAG，以及一次明确 Approval + commit 的 synthetic 订阅取消，并核对原 Operation 幂等复用；不要指向真实业务环境。完成后停止临时 API。report smoke 自行运行 TaskRunner，不与该测试库的 API worker 并行；PostgreSQL fixture tests 也不能与该库 worker 同时运行。
 
-订阅取消／恢复链接只预填一次，工作台读取后移除 URL 的 cancel／resume 参数。新建对话不会再次带入。最近对话右侧「改名」保存名称，手动名称不会被自动命名覆盖。
+订阅管理页面支持直接取消：点击「取消订阅」，在页面内弹窗确认后调用 `POST /api/v1/subscriptions/{id}/cancel`，持久化取消状态并刷新费用汇总，不再跳转到对话。请求需要明确确认、合同版本和幂等键；接口校验当前用户归属、安全写锁和可取消性，沿用 Mock Provider 的合同锁与动作账本，取消后自动扣费执行器不再生成后续扣费。该接口不提供给 Agent 工具；对话中的订阅取消／恢复仍走原 Workflow。其他页面的取消／恢复链接只预填一次，工作台读取后移除 URL 的 cancel／resume 参数。新建对话不会再次带入。最近对话右侧「编辑」保存名称，手动名称不会被自动命名覆盖。

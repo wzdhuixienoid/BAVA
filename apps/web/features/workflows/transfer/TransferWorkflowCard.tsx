@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
 import { StatusBadge } from "@/components/agent-ui/StatusBadge";
@@ -55,6 +55,8 @@ export function TransferWorkflowCard({
   const state = (workflow.presentation?.transfer_state ?? workflow.state) as TransferState;
   const required = state.required_input;
   const [busy, setBusy] = useState(false);
+  const cancelDialog = useRef<HTMLDialogElement>(null);
+  const cancelTitleId = useId();
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [recipientQuery, setRecipientQuery] = useState("");
@@ -390,14 +392,22 @@ export function TransferWorkflowCard({
         </div>
       )}
 
+      <dialog ref={cancelDialog} aria-labelledby={cancelTitleId} className="w-[calc(100%-40px)] max-w-md rounded-xl border-0 bg-white p-6 text-slate-900 shadow-xl backdrop:bg-slate-950/50">
+        <h2 id={cancelTitleId} className="text-lg font-semibold">确认取消转账？</h2>
+        <p className="mt-3 text-sm text-slate-600">{appointmentActive ? "取消后，这笔转账将不再按预约时间执行。" : "取消后，如需转账，请重新发起。"}</p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button autoFocus type="button" onClick={() => cancelDialog.current?.close()} className="rounded-lg border px-4 py-2 text-sm">暂不取消</button>
+          <button type="button" disabled={busy} onClick={() => { cancelDialog.current?.close(); void cancel(); }} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">确认取消转账</button>
+        </div>
+      </dialog>
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
       {cancellable && !state.draft.aa_share_id && (!appointmentActive || schedule?.status === "SCHEDULED") && !schedule?.series_id && (
         <button
           disabled={busy}
-          onClick={() => void cancel()}
+          onClick={() => cancelDialog.current?.showModal()}
           className="mt-3 text-xs font-semibold text-slate-500 underline disabled:opacity-50"
         >
-          取消
+          取消转账
         </button>
       )}
     </section>

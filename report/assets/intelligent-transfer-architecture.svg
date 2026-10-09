@@ -11,7 +11,7 @@
   </defs>
   <rect width="1100" height="620" rx="16" fill="#f8fafc"/>
   <text x="30" y="48" class="title">智能转账：理解意图 → 用户授权 → 银行确认</text>
-  <text x="30" y="76" class="note">v0.9.3 工作区 · 2026-10-08 · 银行与强身份验证使用 Mock 实现</text>
+  <text x="30" y="76" class="note">v0.10.2 工作区 · 2026-10-09 · 银行与强身份验证使用 Mock 实现</text>
   <rect x="448" y="98" width="630" height="225" rx="15" fill="#f0fdf4" stroke="#86efac" stroke-dasharray="6 4"/>
   <text x="468" y="121" class="note">确定性后端控制：模型不能直接提交资金</text>
   <g>

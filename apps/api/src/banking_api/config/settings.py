@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     mock_participant_login_enabled: bool = False
     mock_participant_signing_key: str = ""
     mock_scheduled_transfers_enabled: bool = False
+    mock_subscription_billing_enabled: bool = False
     recurring_transfer_max_occurrences: int = Field(default=12, ge=2, le=12)
     recurring_transfer_max_days: int = Field(default=366, ge=1, le=366)
     scheduled_transfer_min_advance_seconds: int = Field(default=60, ge=1)
@@ -99,6 +100,8 @@ class Settings(BaseSettings):
                 raise ValueError("DEMO_REFERENCE_TIME is forbidden in production")
             if self.demo_reference_time.tzinfo is None:
                 raise ValueError("DEMO_REFERENCE_TIME must include a timezone")
+        if self.app_environment == "production" and self.mock_subscription_billing_enabled:
+            raise ValueError("Mock subscription billing is forbidden in production")
         if self.app_environment == "production" and self.auth_mode == "development":
             raise ValueError("AUTH_MODE=development is forbidden in production")
         if self.auth_mode == "oidc":

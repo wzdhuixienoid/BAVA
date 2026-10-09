@@ -36,6 +36,7 @@ from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorke
 from banking_api.runtime.outbox_publisher import OutboxPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
 from banking_api.runtime.schedule_worker import ScheduleWorker
+from banking_api.runtime.subscription_notification_worker import SubscriptionNotificationWorker
 from banking_api.runtime.task_execution_worker import TaskExecutionWorker
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -77,6 +78,7 @@ def create_app() -> FastAPI:
     runtime_factory = AgentRuntimeFactory()
     checkpoint_manager: LangGraphCheckpointManager | None = None
     schedule_worker = None
+    subscription_notification_worker = None
     operation_recovery_worker: OperationRecoveryWorker | None = None
     outbox_publisher: OutboxPublisher | None = None
     task_execution_worker: TaskExecutionWorker | None = None
@@ -84,7 +86,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         nonlocal checkpoint_manager, operation_recovery_worker, outbox_publisher
-        nonlocal task_execution_worker, schedule_worker
+        nonlocal task_execution_worker, schedule_worker, subscription_notification_worker
         checkpoint_url = settings.langgraph_checkpoint_database_url or settings.database_url
         if checkpoint_url:
             checkpoint_manager = LangGraphCheckpointManager(
@@ -130,6 +132,14 @@ def create_app() -> FastAPI:
             )
             operation_recovery_worker.start()
             application.state.operation_recovery_worker = operation_recovery_worker
+        subscription_notification_worker = SubscriptionNotificationWorker(
+            session_factory,
+            bank,
+            transfer_provider=transfer_provider,
+            billing_enabled=settings.mock_subscription_billing_enabled,
+        )
+        subscription_notification_worker.start()
+        application.state.subscription_notification_worker = subscription_notification_worker
         if settings.mock_scheduled_transfers_enabled:
             schedule_worker = ScheduleWorker(session_factory, bus, transfer_engine)
             schedule_worker.start()
@@ -147,6 +157,8 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            if subscription_notification_worker is not None:
+                await subscription_notification_worker.stop()
             if schedule_worker is not None:
                 await schedule_worker.stop()
             if task_execution_worker is not None:

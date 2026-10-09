@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
@@ -810,6 +810,18 @@ class OperationService:
         if updated_workflow is None:
             await self.session.rollback()
             raise OperationVersionConflictError
+        if terminal:
+            from banking_api.application.notification_service import notify_schedule_result
+
+            scheduled = await self.session.scalar(
+                select(ScheduledTransferModel).where(
+                    ScheduledTransferModel.operation_id == updated_operation.operation_id
+                )
+            )
+            if scheduled is not None:
+                await notify_schedule_result(
+                    self.session, scheduled, workflow, status.value, now
+                )
         await self._operation_event(updated_operation, event_type)
         workflow_event_type = {
             WorkflowStatus.SUCCEEDED: "workflow.succeeded",

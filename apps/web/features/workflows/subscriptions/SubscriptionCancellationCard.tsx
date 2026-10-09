@@ -45,7 +45,7 @@ export function SubscriptionCancellationCard({ workflow, onRefresh }: { workflow
           {state.required_input.options.map((item, index) => (
             <div key={item.subscription_id ?? index} className="rounded border bg-white p-2">
               <p className="font-semibold">{item.merchant} · {item.plan_name ?? "套餐未提供"}</p>
-              <p className="text-xs text-slate-500">{item.amount} {item.currency} · {item.management_type === "MANAGED" ? "可管理" : "仅检测"}</p>
+              <p className="text-xs text-slate-500">¥{item.amount} · {item.management_type === "MANAGED" ? "可管理" : "到商户管理"}</p>
               {(resume ? item.resumable : item.cancellable) && item.subscription_id && <button disabled={busy} className="mt-2 rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white" onClick={() => void act(() => api.selectSubscription(workflow.workflow_id, item.subscription_id!, workflow.version))}>选择</button>}
             </div>
           ))}
@@ -55,7 +55,7 @@ export function SubscriptionCancellationCard({ workflow, onRefresh }: { workflow
         <dl className="mt-3 grid grid-cols-[82px_1fr] gap-y-2 rounded border border-amber-200 bg-white p-3 text-xs">
           <dt className="text-slate-500">商户</dt><dd className="font-semibold">{review.merchant}</dd>
           <dt className="text-slate-500">套餐</dt><dd>{review.plan_name ?? "—"}</dd>
-          <dt className="text-slate-500">扣费</dt><dd>{workflow.presentation?.amount_display ?? `${review.amount} ${review.currency}`}</dd>
+          <dt className="text-slate-500">扣费</dt><dd>{workflow.presentation?.amount_display ?? `¥${review.amount}`}</dd>
           <dt className="text-slate-500">下次扣费</dt><dd>{dateTime(review.next_billing_at)}</dd>
         </dl>
       )}

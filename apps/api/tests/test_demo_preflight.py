@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import text
 from test_transfer_operations import operation_runtime
 
+from banking_api import __version__
 from banking_api.api.routes.demo import DemoReadiness
 from banking_api.config.settings import get_settings
 from banking_api.subscriptions.provider import MockSubscriptionProvider
@@ -18,7 +19,7 @@ spec.loader.exec_module(preflight)
 
 def good():
     return dict(
-        version="0.9.3",
+        version=__version__,
         database_revision="0018",
         owner_is_demo_user=True,
         expected_accounts_exist=True,
@@ -37,12 +38,12 @@ def good():
 
 def test_preflight_is_default_deny_per_check_and_never_exports_secret():
     data = good()
-    assert all(preflight.evaluate(data, {"info": {"version": "0.9.3"}}, "0018").values())
+    assert all(preflight.evaluate(data, {"info": {"version": __version__}}, "0018").values())
     for key in data:
         if key == "reference_time":
             continue
         bad = {**data, key: None}
-        assert not all(preflight.evaluate(bad, {"info": {"version": "0.9.3"}}, "0018").values())
+        assert not all(preflight.evaluate(bad, {"info": {"version": __version__}}, "0018").values())
     assert (
         not {"llm_api_key", "mock_reauth_code", "jwt", "authorization"}
         & DemoReadiness.model_fields.keys()

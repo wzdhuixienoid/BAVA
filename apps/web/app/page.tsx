@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { components } from "@banking/api-client";
 import Link from "next/link";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
+import { APP_VERSION } from "@/lib/version";
 import { ConversationPanel } from "@/features/conversation/ConversationPanel";
 import { api } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -80,12 +82,13 @@ export default function HomePage() {
   return (
     <main className="mx-auto grid h-dvh min-h-0 max-w-[1600px] grid-cols-1 grid-rows-[160px_minmax(0,1fr)] overflow-hidden bg-white shadow-sm md:grid-cols-[260px_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
       <aside aria-label="对话导航" className="min-h-0 overflow-y-auto overscroll-contain border-b border-slate-200 bg-slate-950 p-5 text-white md:border-b-0 md:border-r">
-        <div className="mb-6">
+        <div className="mb-6 relative">
+          <div className="absolute right-0 top-0"><NotificationBell /></div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
             智能银行服务
           </p>
-          <h1 className="mt-2 text-xl font-semibold">银行助理工作台</h1>
-          <p className="mt-1 text-xs text-slate-400">v0.9.3 · 对话、收款人与订阅管理</p>
+          <h1 className="mt-2 pr-8 text-xl font-semibold">银行助理工作台</h1>
+          <p className="mt-1 text-xs text-slate-400">v{APP_VERSION} · 转账、预约与 AA 收款</p>
         </div>
         <button
           className="mb-5 w-full rounded-lg bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 hover:bg-cyan-300"
@@ -105,9 +108,9 @@ export default function HomePage() {
         </Link>
         <Link
           href="/subscriptions"
-          className="mb-6 block w-full rounded-lg border border-cyan-700 px-4 py-2.5 text-center text-sm font-semibold text-cyan-100 hover:bg-slate-900"
+          className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm"
         >
-          订阅与代扣总览
+          订阅管理
         </Link>
         {!auth.development && <button className="mb-5 text-sm text-cyan-300 hover:text-cyan-200" onClick={() => void auth.logout()}>登出</button>}
         <Link href="/scheduled-transfers" className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">预约与周期转账</Link>

@@ -25,9 +25,9 @@ export default function SubscriptionsPage() {
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-cyan-700">确定性周期扣费分析</p>
-            <h1 className="mt-1 text-3xl font-semibold text-slate-950">订阅与代扣</h1>
-            <p className="mt-2 text-sm text-slate-500">多币种分组展示，不做汇率换算。</p>
+            <p className="text-sm font-semibold text-cyan-700">查看订阅与续费安排</p>
+            <h1 className="mt-1 text-3xl font-semibold text-slate-950">订阅管理</h1>
+            <p className="mt-2 text-sm text-slate-500">查看费用、续费时间，按需取消或重新订阅。</p>
           </div>
           <Link href="/" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">返回工作台</Link>
         </header>
@@ -44,7 +44,11 @@ export default function SubscriptionsPage() {
               <p className="font-semibold">即将续费：{snapshot.upcoming_renewals.length} 项</p>
               <p className="mt-1">价格变动：{snapshot.price_changes.length} 项</p>
             </div>
-            <SubscriptionSummaryCard snapshot={snapshot} />
+            <SubscriptionSummaryCard snapshot={snapshot} onCancelled={(item) => {
+              setSnapshot(current => current ? { ...current, subscriptions: current.subscriptions.map(row => row.subscription_id === item.subscription_id ? item : row) } : current);
+              setError(null);
+              void api.listSubscriptions(30).then(setSnapshot).catch(() => setError("订阅已取消，费用汇总更新失败，请刷新页面。"));
+            }} />
           </>
         )}
       </div>

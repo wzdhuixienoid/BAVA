@@ -68,3 +68,9 @@ Docker API/Web 构建通过，已同步到 localhost:3000。实际页面验收�
 实际网页验证：已授权张三 ¥10.00 预约显示用户确认及强验证已完成、等待 2026-10-10 09:00:00 自动执行；已取消任务出现删除按钮，确认弹窗说明保留审计和历史。验收仅打开并关闭删除弹窗，没有删除用户任务或提交资金。截图 `/private/tmp/banking-schedule-waiting.png`、`/private/tmp/banking-schedule-delete.png`。本地数据库迁移至 `0030 (head)`；API/web Docker 生产构建成功，前端类型检查和 61 项测试通过。
 
 最终相关后端回归 42 项通过，包含强验证过期时禁止创建预约、删除对话后预约仍能到期执行、PostgreSQL 删除保留证据、跨进程 Worker 与取消竞争、UNKNOWN 原操作恢复。初次 PostgreSQL 运行因独立测试库尚未应用新增列失败，应用 0030 后完整重跑通过；未运行全仓库后端测试。
+
+### v0.10.2 版本与文档同步
+
+同步根项目、Web、API Client、Python 包及 uv.lock 的应用版本为 0.10.2。工作台和 Dashboard 读取 Web 包版本；README 更新迁移 0030、备注、单次/有限次按月预约、AA、列表删除与对话删除授权边界，注明手机号转账移除，保留历史测试证据。新增 `docs/release-notes-v0.10.2.md`。
+
+本次实际检查：前端 61 项测试、类型检查、版本预检 6 项测试、包/API/OpenAPI 版本一致性检查、API/Web Docker 生产构建与 git diff --check 通过。实际更新本地 API/Web，网页工作台及 Dashboard 均显示 0.10.2，运行中 OpenAPI 为 0.10.2。未重跑全量后端业务测试。网页截图 `/private/tmp/banking-v0.10.2.png`。

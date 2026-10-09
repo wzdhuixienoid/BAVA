@@ -50,6 +50,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  listNotifications: (offset = 0) => request<components["schemas"]["NotificationInbox"]>(`/api/v1/notifications?offset=${offset}`),
+  readNotification: (id: string) => request<components["schemas"]["Notification"]>(`/api/v1/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }),
+  deleteNotification: (id: string) => request<void>(`/api/v1/notifications/${encodeURIComponent(id)}`, { method: "DELETE" }),
   listAA: () => request<AARequest[]>("/api/v1/aa-requests"),
   getAA: (id:string) => request<AARequest>(`/api/v1/aa-requests/${encodeURIComponent(id)}`),
   aaAccounts: () => request<AAAccount[]>("/api/v1/aa-accounts"),
@@ -219,6 +222,11 @@ export const api = {
     request<SubscriptionItem>(
       `/api/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
     ),
+  cancelSubscription: (subscriptionId: string, expectedVersion: number, idempotencyKey: string) =>
+    request<SubscriptionItem>(`/api/v1/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed: true, expected_version: expectedVersion, idempotency_key: idempotencyKey }),
+    }),
   selectSubscription: (
     workflowId: string,
     subscriptionId: string,

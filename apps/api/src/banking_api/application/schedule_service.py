@@ -399,6 +399,10 @@ class ScheduleService:
 
     async def _event(self, row, event_type):
         workflow = await self.session.get(WorkflowModel, row.workflow_id)
+        if event_type in {"schedule.failed", "schedule.expired"}:
+            from banking_api.application.notification_service import notify_schedule_result
+
+            await notify_schedule_result(self.session, row, workflow, row.status, self.clock())
         await EventPublisher(self.session).persist(
             event_type=event_type,
             conversation_id=workflow.conversation_id,

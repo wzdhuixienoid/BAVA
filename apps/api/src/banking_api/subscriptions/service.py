@@ -2,11 +2,14 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from banking_api.config.demo_time import reference_now
 from banking_api.mock_bank.service import MockBankService
+from banking_api.persistence.models import MockSubscriptionChargeModel
 from banking_api.subscriptions.contracts import effective_contracts
+from banking_api.subscriptions.contracts import next_billing as future_billing
 from banking_api.subscriptions.detector import (
     MAX_EVIDENCE_IDS,
     SubscriptionDetector,
@@ -41,7 +44,29 @@ class SubscriptionAnalysisService:
         upcoming_days: int = 7,
     ) -> SubscriptionAnalysisSnapshot:
         now = generated_at or reference_now()
-        detected = self.detector.detect(self.bank.list_transactions(user_id=user_id))
+        transactions = self.bank.list_transactions(user_id=user_id)
+        charges = (
+            await self.session.scalars(
+                select(MockSubscriptionChargeModel).where(
+                    MockSubscriptionChargeModel.user_id == user_id,
+                    MockSubscriptionChargeModel.status == "SUCCEEDED",
+                )
+            )
+        ).all()
+        transactions.extend(
+            {
+                "transaction_id": str(row.charge_id),
+                "merchant": row.merchant,
+                "amount": str(row.amount),
+                "currency": row.currency,
+                "occurred_at": row.created_at.isoformat(),
+                "status": "POSTED",
+                "direction": "DEBIT",
+                "category": "SUBSCRIPTION",
+            }
+            for row in charges
+        )
+        detected = self.detector.detect(transactions)
         contracts = await effective_contracts(self.bank, self.session, user_id)
         cancellations = {
             str(item["subscription_id"]) for item in contracts if item["status"] == "CANCELLED"
@@ -88,6 +113,8 @@ class SubscriptionAnalysisService:
                     if contract.get("next_billing_at") and status is SubscriptionStatus.ACTIVE
                     else None
                 )
+                if next_billing and next_billing <= now:
+                    next_billing = future_billing(contract, now)
                 item = SubscriptionItem(
                     subscription_id=subscription_id,
                     contract_version=int(contract["version"]),
@@ -134,9 +161,7 @@ class SubscriptionAnalysisService:
                     currency=contract["currency"],
                     last_charge_date=None,
                     next_billing_at=(
-                        datetime.fromisoformat(
-                            str(contract["next_billing_at"]).replace("Z", "+00:00")
-                        )
+                        future_billing(contract, now)
                         if contract.get("next_billing_at") and contract["status"] == "ACTIVE"
                         else None
                     ),

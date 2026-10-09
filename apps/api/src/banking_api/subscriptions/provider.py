@@ -15,6 +15,7 @@ from banking_api.persistence.models import (
     MockSubscriptionCancellationModel,
     MockSubscriptionStateModel,
 )
+from banking_api.security.guard import SecurityGuardService
 from banking_api.subscriptions.contracts import effective_contracts, next_billing, utc
 
 
@@ -66,9 +67,9 @@ class MockSubscriptionProvider:
         self._locks: dict[str, asyncio.Lock] = {}
 
     async def cancel(
-        self, request: SubscriptionCancellationRequest
+        self, request: SubscriptionCancellationRequest, *, check_security: bool = False
     ) -> SubscriptionCancellationResult:
-        return await self._apply(request, "SUBSCRIPTION_CANCEL")
+        return await self._apply(request, "SUBSCRIPTION_CANCEL", check_security=check_security)
 
     async def resume(
         self, request: SubscriptionCancellationRequest
@@ -76,13 +77,17 @@ class MockSubscriptionProvider:
         return await self._apply(request, "SUBSCRIPTION_RESUME")
 
     async def _apply(
-        self, request: SubscriptionCancellationRequest, action: str
+        self, request: SubscriptionCancellationRequest, action: str, *, check_security: bool = False
     ) -> SubscriptionCancellationResult:
         key = f"{request.user_id}:{request.subscription_id}"
         async with self._locks.setdefault(key, asyncio.Lock()):
             try:
                 async with self.session_factory() as session:
                     async with session.begin():
+                        if check_security:
+                            await SecurityGuardService(session).require_write_allowed(
+                                request.user_id
+                            )
                         if session.get_bind().dialect.name == "postgresql":
                             digest = hashlib.sha256(f"mock-subscription:{key}".encode()).digest()
                             await session.execute(
@@ -93,6 +98,13 @@ class MockSubscriptionProvider:
                             session, request.user_id, request.idempotency_key
                         )
                         if existing is not None:
+                            if (
+                                existing.subscription_id != request.subscription_id
+                                or getattr(existing, "action", "SUBSCRIPTION_CANCEL") != action
+                            ):
+                                return SubscriptionCancellationResult(
+                                    outcome="FAILED", error_code="IDEMPOTENCY_KEY_CONFLICT"
+                                )
                             return self._result(existing)
                         contracts = await effective_contracts(self.bank, session, request.user_id)
                         contract = next(
@@ -175,6 +187,13 @@ class MockSubscriptionProvider:
                 existing = await self._find(request.user_id, request.idempotency_key)
                 if existing is None:
                     raise
+                if (
+                    existing.subscription_id != request.subscription_id
+                    or getattr(existing, "action", "SUBSCRIPTION_CANCEL") != action
+                ):
+                    return SubscriptionCancellationResult(
+                        outcome="FAILED", error_code="IDEMPOTENCY_KEY_CONFLICT"
+                    )
                 return self._result(existing)
             result = self._result(row)
             if (

@@ -51,6 +51,9 @@ class MockBankService:
                 scoped.extend({**item, "user_id": user_id} for user_id in user_ids)
         return scoped
 
+    def list_user_ids(self) -> list[str]:
+        return sorted({item["user_id"] for item in self._accounts})
+
     def list_accounts(self, *, user_id: str) -> list[dict[str, Any]]:
         return [
             {

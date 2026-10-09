@@ -14,7 +14,9 @@ from banking_api.persistence.models import (
     MockBankTransferModel,
     MockSubscriptionActionModel,
     MockSubscriptionCancellationModel,
+    MockSubscriptionChargeModel,
     MockSubscriptionStateModel,
+    NotificationModel,
     OperationModel,
     OutboxEventModel,
     PayeeModel,
@@ -23,6 +25,7 @@ from banking_api.persistence.models import (
     ReauthenticationModel,
     ReportModel,
     SecurityGuardStateModel,
+    SubscriptionNotificationCursorModel,
     TaskModel,
     WorkflowModel,
 )
@@ -135,6 +138,15 @@ async def reset_demo_state(
                 "Active outbox lease detected; wait for expiry after stopping workers"
             )
         scopes = [
+            (
+                MockSubscriptionChargeModel,
+                MockSubscriptionChargeModel.user_id == user_id,
+            ),
+            (
+                SubscriptionNotificationCursorModel,
+                SubscriptionNotificationCursorModel.user_id == user_id,
+            ),
+            (NotificationModel, NotificationModel.user_id == user_id),
             (OutboxEventModel, OutboxEventModel.event_id.in_(events)),
             (EventModel, EventModel.conversation_id.in_(conversations)),
             (PlanModel, PlanModel.user_id == user_id),

@@ -1,6 +1,6 @@
 {
   "name": "@banking/api-client",
-  "version": "0.9.3",
+  "version": "0.10.2",
   "private": true,
   "types": "./src/schema.d.ts",
   "scripts": {
