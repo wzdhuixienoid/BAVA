@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { components } from "@banking/api-client";
+import type { AARequest } from "@/features/aa/types";
 import { api } from "@/lib/api/client";
 import { subscribeToConversation } from "@/lib/events/sse";
 import { MessageComposer } from "./MessageComposer";
@@ -29,6 +30,7 @@ export function ConversationPanel({ conversationId, onDeleted, onUpdated }: { co
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reports, setReports] = useState<ReportListItem[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [aaRequests, setAARequests] = useState<AARequest[]>([]);
   const [plans, setPlans] = useState<components["schemas"]["Plan"][]>([]);
   const [securityStatus, setSecurityStatus] = useState<SecurityStatus | null>(null);
   const [connected, setConnected] = useState(false);
@@ -42,13 +44,14 @@ export function ConversationPanel({ conversationId, onDeleted, onUpdated }: { co
   const refresh = useCallback(async () => {
     const version = ++requestVersion.current;
     try {
-      const [nextConversation, nextTasks, nextReports, nextWorkflows, nextSecurityStatus, nextPlans] = await Promise.all([
+      const [nextConversation, nextTasks, nextReports, nextWorkflows, nextSecurityStatus, nextPlans, nextAA] = await Promise.all([
         api.getConversation(conversationId),
         api.listTasks(conversationId),
         loadReports(conversationId),
         api.listWorkflows(conversationId),
         api.getSecurityStatus(),
         api.listPlans(conversationId),
+        api.listAA(),
       ]);
       if (!active.current || version !== requestVersion.current) return;
       setConversation(nextConversation);
@@ -56,6 +59,7 @@ export function ConversationPanel({ conversationId, onDeleted, onUpdated }: { co
       setReports(nextReports);
       setWorkflows(nextWorkflows);
       setPlans(nextPlans);
+      setAARequests(nextAA.filter(row => row.conversation_id === conversationId));
       setSecurityStatus(nextSecurityStatus);
       setError(null);
     } catch (reason) {
@@ -133,7 +137,7 @@ export function ConversationPanel({ conversationId, onDeleted, onUpdated }: { co
             <MessageComposer onSend={send} />
           </section>
           <div className={`min-h-0 min-w-0 ${mobilePane === "results" ? "block" : "hidden lg:block"}`}>
-            <ResultsPanel reports={reports} workflows={workflows} onLocateResult={locateResult} />
+            <ResultsPanel aaRequests={aaRequests} reports={reports} workflows={workflows} onLocateResult={locateResult} />
           </div>
         </div>
     </div>

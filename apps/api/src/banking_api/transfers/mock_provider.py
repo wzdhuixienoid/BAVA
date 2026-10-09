@@ -10,7 +10,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.mock_bank.service import MockBankService
-from banking_api.persistence.models import MockBankTransferModel
+from banking_api.persistence.models import (
+    AARequestModel,
+    AAShareModel,
+    MockBankTransferModel,
+    OperationModel,
+)
 from banking_api.transfers.provider import (
     TransferProviderAmbiguousError,
     TransferProviderFaultMode,
@@ -115,6 +120,46 @@ class MockTransferProvider:
                     status = "FAILED"
                     error_code = "INSUFFICIENT_FUNDS"
                     error_message = "Insufficient available balance"
+                if request.aa_share_id:
+                    share = await session.get(AAShareModel, request.aa_share_id)
+                    operation = await session.scalar(
+                        select(OperationModel).where(
+                            OperationModel.idempotency_key == request.idempotency_key,
+                            OperationModel.user_id == request.user_id,
+                        )
+                    )
+                    group = await session.get(AARequestModel, share.request_id) if share else None
+                    target = (
+                        group.snapshot_json["collection_account"]
+                        if group and group.snapshot_json
+                        else None
+                    )
+                    if (
+                        share is None
+                        or operation is None
+                        or share.operation_id != operation.operation_id
+                        or share.user_id != request.user_id
+                        or group.user_id != request.destination_user_id
+                        or target["account_id"] != request.destination_account_id
+                        or Decimal(share.amount_cents) / 100 != request.amount
+                        or request.currency != "CNY"
+                        or request.remark != group.snapshot_json["remark"]
+                    ):
+                        status, error_code, error_message = (
+                            "FAILED",
+                            "AA_PROVIDER_SCOPE_INVALID",
+                            "AA scope invalid",
+                        )
+                    elif status == "SUCCEEDED":
+                        # Settlement is acknowledged by a query of the original request.
+                        # Until then reserve the debit, and never expose an unconfirmed credit.
+                        status = "PENDING"
+                elif request.destination_user_id or request.destination_account_id:
+                    status, error_code, error_message = (
+                        "FAILED",
+                        "DESTINATION_SCOPE_INVALID",
+                        "Destination scope invalid",
+                    )
                 transfer = MockBankTransferModel(
                     provider_reference=f"mocktr_{uuid4().hex}",
                     idempotency_key=request.idempotency_key,
@@ -123,6 +168,10 @@ class MockTransferProvider:
                     payee_id=request.payee_id,
                     amount=request.amount,
                     currency=request.currency,
+                    remark=request.remark,
+                    destination_user_id=request.destination_user_id,
+                    destination_account_id=request.destination_account_id,
+                    aa_share_id=request.aa_share_id,
                     status=status,
                     error_code=error_code,
                     error_message=error_message,
@@ -166,6 +215,20 @@ class MockTransferProvider:
             return TransferProviderStatus(status=TransferProviderStatusValue.UNKNOWN)
         if provider_reference is not None and transfer.provider_reference != provider_reference:
             return TransferProviderStatus(status=TransferProviderStatusValue.UNKNOWN)
+        if transfer.status == "PENDING" and transfer.aa_share_id:
+            async with self._session_factory() as session:
+                async with session.begin():
+                    for account_id in sorted(
+                        {transfer.source_account_id, transfer.destination_account_id}
+                    ):
+                        await self._serialize_source_account(session, account_id)
+                    confirmed = await session.get(
+                        MockBankTransferModel, transfer.provider_reference, with_for_update=True
+                    )
+                    if confirmed.status == "PENDING":
+                        confirmed.status = "SUCCEEDED"
+                        confirmed.applied_at = confirmed.credited_at = datetime.now(UTC)
+                    transfer = confirmed
         if transfer.status == "SUCCEEDED":
             return TransferProviderStatus(
                 status=TransferProviderStatusValue.SUCCEEDED,
@@ -211,15 +274,23 @@ class MockTransferProvider:
                 select(func.coalesce(func.sum(MockBankTransferModel.amount), 0)).where(
                     MockBankTransferModel.source_account_id == account_id,
                     MockBankTransferModel.user_id == user_id,
-                    MockBankTransferModel.status == "SUCCEEDED",
+                    MockBankTransferModel.status.in_(["SUCCEEDED", "PENDING"]),
                 )
             )
         ).scalar_one()
-        return base - Decimal(str(debited))
+        credited = await session.scalar(
+            select(func.coalesce(func.sum(MockBankTransferModel.amount), 0)).where(
+                MockBankTransferModel.destination_user_id == user_id,
+                MockBankTransferModel.destination_account_id == account_id,
+                MockBankTransferModel.status == "SUCCEEDED",
+                MockBankTransferModel.credited_at.is_not(None),
+            )
+        )
+        return base - Decimal(str(debited)) + Decimal(str(credited))
 
     @staticmethod
     def _submission_from(transfer: MockBankTransferModel) -> TransferSubmissionResult:
-        if transfer.status == "SUCCEEDED":
+        if transfer.status in {"SUCCEEDED", "PENDING"}:
             return TransferSubmissionResult(
                 outcome=TransferSubmissionOutcome.ACCEPTED,
                 provider_reference=transfer.provider_reference,

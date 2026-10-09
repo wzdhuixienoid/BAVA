@@ -32,7 +32,7 @@ def build_search_payees_tool(bank: MockBankService, session_factory=None) -> Too
     return ToolSpec(
         capability_id="payee.search",
         name="search_payees",
-        description="按姓名或别名精确查找最多 10 个当前用户的收款人。",
+        description="按姓名或别名查找候选最多 10 个当前用户的收款人。",
         input_model=SearchPayeesInput,
         output_model=SearchPayeesOutput,
         risk_level=RiskLevel.R1_PRIVATE_READ,

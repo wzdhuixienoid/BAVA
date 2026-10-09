@@ -22,8 +22,8 @@ export function localizeFinancialAnswer(content: string, outputs: Record<string,
     .replace(/\bacc_[a-zA-Z0-9_]+\b/g, (value) => accountNames[value] ?? "账户")
     .replace(/\bCNY\b/g, "人民币")
     .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/g, transactionTime)
-    .replace(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})(?::\d{2})?\s*[（(](?:协调世界时|UTC)[）)]/g,
-      (_, year, month, day, clock) => transactionTime(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${clock}:00Z`));
+    .replace(/(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{2}:\d{2})(?::(\d{2}))?\s*[（(](?:协调世界时|UTC)[）)]/g,
+      (_, year, month, day, clock, second) => transactionTime(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${clock}:${second ?? "00"}Z`));
   const lines = result.split("\n");
   let shareColumn = -1;
   for (let index = 0; index < lines.length; index++) {

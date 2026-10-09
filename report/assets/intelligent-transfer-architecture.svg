@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">智能转账实现架构</title>
+  <desc id="desc">用户界面经过模型意图理解进入确定性工作流，经授权校验建立银行操作。数据库保存业务、授权、事件和账本；恢复工作器查询原操作状态。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10Z" fill="#64748b"/></marker>
+    <style>
+      text{font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;fill:#1e293b;font-size:15px}
+      .title{font-size:27px;font-weight:700}.head{font-size:18px;font-weight:700}.note{font-size:13px;fill:#64748b}
+      .box{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.line{fill:none;stroke:#64748b;stroke-width:1.8;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1100" height="620" rx="16" fill="#f8fafc"/>
+  <text x="30" y="48" class="title">智能转账：理解意图 → 用户授权 → 银行确认</text>
+  <text x="30" y="76" class="note">v0.9.3 工作区 · 2026-10-08 · 银行与强身份验证使用 Mock 实现</text>
+  <rect x="448" y="98" width="630" height="225" rx="15" fill="#f0fdf4" stroke="#86efac" stroke-dasharray="6 4"/>
+  <text x="468" y="121" class="note">确定性后端控制：模型不能直接提交资金</text>
+  <g>
+    <rect x="20" y="145" width="192" height="152" rx="12" class="box"/>
+    <text x="36" y="176" class="head">用户与页面</text>
+    <text x="36" y="205">自然语言 / 补充资料</text>
+    <text x="36" y="230">确认 / 验证 / 提交</text>
+    <text x="36" y="255">回执与审计查看</text>
+    <rect x="236" y="145" width="192" height="152" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="252" y="176" class="head">意图理解</text>
+    <text x="252" y="205">Router + LLM</text>
+    <text x="252" y="230">受限 JSON + 校验</text>
+    <text x="252" y="255">不输出内部资源 ID</text>
+    <rect x="452" y="145" width="192" height="152" rx="12" class="box"/>
+    <text x="468" y="176" class="head">Workflow</text>
+    <text x="468" y="205">收款人 / 账户 / 余额</text>
+    <text x="468" y="230">版本 / 风险 / 确认</text>
+    <text x="468" y="255">强验证与状态推进</text>
+    <rect x="668" y="145" width="192" height="152" rx="12" class="box"/>
+    <text x="684" y="176" class="head">Operation</text>
+    <text x="684" y="205">最终校验 / 消费确认</text>
+    <text x="684" y="230">固定幂等键 / 提交</text>
+    <text x="684" y="255">查询并收敛银行结果</text>
+    <rect x="884" y="145" width="192" height="152" rx="12" class="box"/>
+    <text x="900" y="176" class="head">Bank Provider</text>
+    <text x="900" y="205">幂等受理与账户串行</text>
+    <text x="900" y="230">模拟账本 / 有效余额</text>
+    <text x="900" y="255">成功 / 失败 / 未知</text>
+  </g>
+  <path d="M212 215 H233" class="line"/><path d="M428 215 H449" class="line"/>
+  <path d="M644 215 H665" class="line"/><path d="M860 215 H881" class="line"/>
+  <path d="M548 298 V373" class="line"/><path d="M764 298 V373" class="line"/><path d="M980 298 V373" class="line"/>
+  <rect x="452" y="377" width="624" height="111" rx="12" class="box"/>
+  <text x="470" y="407" class="head">PostgreSQL 持久化</text>
+  <text x="470" y="433">Workflow · Approval · Reauthentication · Operation · Payee</text>
+  <text x="470" y="461">Event / Outbox · Security Guard · Mock Bank Ledger</text>
+  <rect x="20" y="377" width="408" height="111" rx="12" class="box"/>
+  <text x="36" y="407" class="head">恢复与实时通知</text>
+  <text x="36" y="433">Recovery Worker：租约领取、退避、查询原操作</text>
+  <text x="36" y="461">Outbox Publisher：持久事件发布与页面刷新</text>
+  <path d="M452 433 H431" class="line"/>
+  <path d="M224 377 V341 H764 V300" class="line"/>
+  <path d="M116 377 V300" class="line"/>
+  <rect x="20" y="523" width="1056" height="64" rx="10" fill="#e2e8f0"/>
+  <text x="38" y="550">业务成功依据：银行 Operation 确认成功 → Workflow 成功 → 展示回执</text>
+  <text x="38" y="573" class="note">Task 完成、用户确认、验证通过和网络超时，都不能单独证明资金转账成功。</text>
+</svg>

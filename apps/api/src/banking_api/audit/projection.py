@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import ValidationError
@@ -17,6 +18,8 @@ from banking_api.audit.safety import safe_text
 from banking_api.domain.enums import OperationStatus, WorkflowStatus
 from banking_api.domain.risk import TransferRiskDecision
 from banking_api.persistence.models import (
+    AARequestModel,
+    AAShareModel,
     ApprovalModel,
     ConversationModel,
     EventModel,
@@ -26,6 +29,8 @@ from banking_api.persistence.models import (
     OperationModel,
     PlanModel,
     ReauthenticationModel,
+    RecurringTransferModel,
+    ScheduledTransferModel,
     TaskModel,
     WorkflowModel,
 )
@@ -34,6 +39,26 @@ from banking_api.planning.models import ConditionDecision
 
 # No runtime message, raw tool payload, model answer or credential enters this projection.
 LABELS = {
+    "schedule.authorized": "用户创建可撤销的 Mock 预约授权；尚未付款",
+    "schedule.series.authorized": (
+        "用户确认有限次周期范围并强验证，创建可撤销的 Mock 周期授权；尚未付款"
+    ),
+    "schedule.occurrence.authorized": "根据已确认周期范围派生本期一次性授权；不代表付款成功",
+    "schedule.series.revoked": "周期授权已撤销，未提交期次已取消；已提交操作继续查询",
+    "schedule.cancelled": "预约已取消，未提交扣款",
+    "schedule.expired": "预约超出执行窗口，禁止补扣",
+    "schedule.failed": "预约重新校验失败，未创建扣款操作",
+    "aa.created": "创建 AA 草稿；不产生扣款",
+    "aa.draft.updated": "更新未发布 AA 分摊草稿",
+    "aa.published": "用户确认发布不可变 AA 请求；参与者尚未授权付款",
+    "aa.share.cancelled": "取消未提交份额，保留已付款证据",
+    "aa.share.rejected": "参与者拒绝付款",
+    "aa.payment.workflow.created": "参与者建立自己的付款 Workflow",
+    "aa.payment.operation.created": "参与者授权后创建唯一付款 Operation",
+    "aa.payment.created": "AA 份额绑定唯一付款 Operation",
+    "aa.payment.succeeded": "Mock Provider 明确确认 AA 份额付款成功",
+    "aa.payment.failed": "Mock Provider 明确确认 AA 份额付款失败",
+    "aa.payment.unknown": "AA 付款结果未知，继续查询原 Operation",
     "conversation.message.created": "用户请求已接收（原文见当前对话）",
     "task.created": "任务已创建",
     "task.started": "任务开始执行",
@@ -77,6 +102,13 @@ LABELS = {
     "plan.step_state_changed": "计划步骤状态变化",
 }
 FACT_LABELS = {
+    "aa_request_id": "关联 AA 主记录",
+    "aa_share_id": "关联 AA 份额",
+    "schedule_id": "关联预约",
+    "series_id": "关联周期",
+    "occurrence_index": "周期期次",
+    "operation_id": "关联资金 Operation",
+    "scheduled_for": "预约执行时间",
     "route": "路由",
     "risk_level": "后端风险等级",
     "executor_id": "注册执行者",
@@ -235,6 +267,104 @@ class AuditProjection:
             ).all()
         )
         resources = []
+        groups = (
+            await self.session.scalars(
+                select(AARequestModel).where(
+                    AARequestModel.source_task_id == task_id, AARequestModel.user_id == user_id
+                )
+            )
+        ).all()
+        for group in groups:
+            resources.append(
+                AuditResource(
+                    resource_type="AA_REQUEST",
+                    resource_id=group.request_id,
+                    status=group.status,
+                    facts=facts({"payload_hash": group.payload_hash, "version": group.version}),
+                )
+            )
+            for share in (
+                await self.session.scalars(
+                    select(AAShareModel).where(AAShareModel.request_id == group.request_id)
+                )
+            ).all():
+                status = share.status
+                if share.operation_id:
+                    operation = await self.session.get(OperationModel, share.operation_id)
+                    status = operation.status.value
+                resources.append(
+                    AuditResource(
+                        resource_type="AA_SHARE",
+                        resource_id=share.share_id,
+                        status=status,
+                        facts=facts(
+                            {
+                                "aa_request_id": str(group.request_id),
+                                "amount": format(Decimal(share.amount_cents) / 100, ".2f"),
+                                "workflow_id": str(share.workflow_id)
+                                if share.workflow_id
+                                else None,
+                                "operation_id": str(share.operation_id)
+                                if share.operation_id
+                                else None,
+                            }
+                        ),
+                    )
+                )
+        for scheduled in (
+            await self.session.scalars(
+                select(ScheduledTransferModel).where(
+                    ScheduledTransferModel.workflow_id.in_(workflow_ids),
+                    ScheduledTransferModel.user_id == user_id,
+                )
+            )
+        ).all():
+            resources.append(
+                AuditResource(
+                    resource_type="SCHEDULE",
+                    resource_id=scheduled.schedule_id,
+                    status=scheduled.status,
+                    facts=facts(
+                        {
+                            "scheduled_for": scheduled.scheduled_for,
+                            "series_id": str(scheduled.series_id) if scheduled.series_id else None,
+                            "occurrence_index": scheduled.occurrence_index,
+                            "operation_id": scheduled.operation_id,
+                        }
+                    ),
+                )
+            )
+
+        series_ids = {
+            item.series_id
+            for item in (
+                await self.session.scalars(
+                    select(ScheduledTransferModel).where(
+                        ScheduledTransferModel.workflow_id.in_(workflow_ids),
+                        ScheduledTransferModel.user_id == user_id,
+                    )
+                )
+            ).all()
+            if item.series_id
+        }
+        for series_id in series_ids:
+            series = await self.session.get(RecurringTransferModel, series_id)
+            if series and series.user_id == user_id:
+                resources.append(
+                    AuditResource(
+                        resource_type="RECURRING_AUTHORIZATION",
+                        resource_id=series_id,
+                        status="REVOKED" if series.revoked_at else "AUTHORIZED",
+                        facts=facts(
+                            {
+                                "payload_hash": series.scope_hash,
+                                "approval_id": str(series.approval_id),
+                                "reauth_id": str(series.reauth_id),
+                            }
+                        ),
+                    )
+                )
+
         for item in approvals:
             resources.append(
                 AuditResource(
@@ -411,6 +541,10 @@ class AuditProjection:
         related = {
             key: identifier
             for key in (
+                "aa_request_id",
+                "aa_share_id",
+                "schedule_id",
+                "series_id",
                 "workflow_id",
                 "operation_id",
                 "approval_id",

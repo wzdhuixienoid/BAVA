@@ -19,11 +19,14 @@ export function WorkflowReceipt({ workflow }: { workflow: Workflow }) {
   return (
     <section aria-label={transfer ? "转账回执" : resume ? "订阅恢复回执" : "订阅取消回执"} className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
       <p className="text-xs font-semibold text-emerald-700">✓ {transfer ? "转账已完成" : resume ? "订阅已恢复续费，本次未扣款" : "订阅已取消"}</p>
+      {transfer && <p className="mt-2 text-xs text-slate-500">Mock 模拟转账回执，未进入真实银行清算网络。</p>}
+      {reviewField(workflow, "aa_share_id") && <a href="/aa" className="mt-2 block text-xs text-cyan-700 underline">查看关联 AA 收款请求与份额</a>}
       {transfer ? (
         <>
           <p className="mt-2 text-2xl font-semibold text-slate-950">{workflow.presentation?.amount_display ?? `${reviewField(workflow, "amount")} ${reviewField(workflow, "currency")}`}</p>
           <dl className="mt-3 grid grid-cols-[80px_minmax(0,1fr)] gap-y-2 text-sm">
             <dt className="text-slate-500">收款人</dt><dd className="break-words">{reviewField(workflow, "payee_display_name") || "—"} · {reviewField(workflow, "payee_masked_account")}</dd>
+            {reviewField(workflow, "remark") && <><dt className="text-slate-500">备注</dt><dd className="break-words">{reviewField(workflow, "remark")}</dd></>}
             <dt className="text-slate-500">转出账户</dt><dd className="break-words">{reviewField(workflow, "source_account_display_name") || "—"} · {reviewField(workflow, "source_account_masked_number")}</dd>
             <dt className="text-slate-500">收款银行</dt><dd>{reviewField(workflow, "payee_bank_name") || "—"}</dd>
           </dl>
@@ -31,6 +34,7 @@ export function WorkflowReceipt({ workflow }: { workflow: Workflow }) {
       ) : (
         <p className="mt-3 font-medium">{reviewField(workflow, "merchant") || "订阅"}{reviewField(workflow, "plan_name") ? ` · ${reviewField(workflow, "plan_name")}` : ""}</p>
       )}
+      {Boolean((workflow.state.review_payload as Record<string, unknown> | undefined)?.recurrence) && <a href="/scheduled-transfers" className="mt-3 block text-xs text-cyan-700 underline">查看本周期所有期次与撤销后续授权</a>}
       {workflow.presentation?.transfer_state?.risk_decision && <RiskDetails risk={workflow.presentation.transfer_state.risk_decision} />}
       <WorkflowTimeline workflow={workflow} />
       {operation?.provider_reference && <p className="mt-3 break-all text-xs text-slate-500">参考号：{operation.provider_reference}</p>}

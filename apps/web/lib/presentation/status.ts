@@ -1,6 +1,6 @@
 import type { components } from "@banking/api-client";
 
-type Status = components["schemas"]["TaskStatus"] | components["schemas"]["WorkflowStatus"]
+type Status = "SCHEDULED" | components["schemas"]["TaskStatus"] | components["schemas"]["WorkflowStatus"]
   | components["schemas"]["OperationStatus"] | components["schemas"]["ApprovalStatus"]
   | components["schemas"]["ReauthenticationStatus"] | components["schemas"]["PlanStatus"]
   | components["schemas"]["PlanStepStatus"] | components["schemas"]["SecurityGuardStatus"]
@@ -8,6 +8,7 @@ type Status = components["schemas"]["TaskStatus"] | components["schemas"]["Workf
 
 export type StatusDisplay = { label: string; description: string; tone: "neutral" | "blue" | "amber" | "green" | "red"; icon: string };
 export const statuses = {
+  SCHEDULED: { label: "等待执行时间", description: "已预约，无需再次提交，到时自动执行模拟转账", tone: "blue", icon: "◷" },
   PENDING: { label: "等待处理", description: "等待前置步骤或执行调度", tone: "neutral", icon: "○" },
   RUNNING: { label: "执行中", description: "正在处理当前任务", tone: "blue", icon: "◉" },
   INTERRUPTED: { label: "已中断", description: "等待恢复执行", tone: "amber", icon: "Ⅱ" },

@@ -1,7 +1,8 @@
+
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
-from banking_api.payees.service import PayeeCreate, PayeeService
+from banking_api.payees.service import PayeeCreate, PayeeService, PayeeUpdate
 from banking_api.security.guard import (
     SecurityGuardService,
     SecurityGuardStatus,
@@ -42,3 +43,50 @@ async def create_payee(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     await session.commit()
     return item
+
+
+async def require_payee_write(session, user_id: str) -> None:
+    await acquire_security_user_lock(session, user_id)
+    guard = await SecurityGuardService(session).get_status(user_id=user_id)
+    if guard.status is SecurityGuardStatus.WRITE_LOCKED:
+        raise HTTPException(status_code=423, detail="SECURITY_WRITE_LOCKED")
+
+
+@router.patch("/{payee_id}", response_model=PayeeSummary)
+async def update_payee(
+    payee_id: str,
+    body: PayeeUpdate,
+    request: Request,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+):
+    await require_payee_write(session, principal.user_id)
+    try:
+        item = await PayeeService(request.app.state.mock_bank, session).update(
+            payee_id, body, user_id=principal.user_id
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()
+    return item
+
+
+@router.delete("/{payee_id}", status_code=204)
+async def delete_payee(
+    payee_id: str,
+    request: Request,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+):
+    await require_payee_write(session, principal.user_id)
+    try:
+        await PayeeService(request.app.state.mock_bank, session).delete(
+            payee_id, user_id=principal.user_id
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await session.commit()

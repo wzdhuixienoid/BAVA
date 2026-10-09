@@ -10,6 +10,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
 from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
+from banking_api.application.aa_intent_extractor import AAIntentExtractor
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.application.outbox_publication_policy import OutboxPublicationPolicy
 from banking_api.application.task_execution_policy import TaskExecutionPolicy
@@ -34,6 +35,7 @@ from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
 from banking_api.runtime.operation_recovery_worker import OperationRecoveryWorker
 from banking_api.runtime.outbox_publisher import OutboxPublisher
 from banking_api.runtime.runtime_factory import AgentRuntimeFactory
+from banking_api.runtime.schedule_worker import ScheduleWorker
 from banking_api.runtime.task_execution_worker import TaskExecutionWorker
 from banking_api.runtime.task_reconciliation import TaskReconciliationService
 from banking_api.runtime.task_runner import InProcessTaskRunner
@@ -74,6 +76,7 @@ def create_app() -> FastAPI:
     bus = EventBus()
     runtime_factory = AgentRuntimeFactory()
     checkpoint_manager: LangGraphCheckpointManager | None = None
+    schedule_worker = None
     operation_recovery_worker: OperationRecoveryWorker | None = None
     outbox_publisher: OutboxPublisher | None = None
     task_execution_worker: TaskExecutionWorker | None = None
@@ -81,7 +84,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         nonlocal checkpoint_manager, operation_recovery_worker, outbox_publisher
-        nonlocal task_execution_worker
+        nonlocal task_execution_worker, schedule_worker
         checkpoint_url = settings.langgraph_checkpoint_database_url or settings.database_url
         if checkpoint_url:
             checkpoint_manager = LangGraphCheckpointManager(
@@ -127,6 +130,10 @@ def create_app() -> FastAPI:
             )
             operation_recovery_worker.start()
             application.state.operation_recovery_worker = operation_recovery_worker
+        if settings.mock_scheduled_transfers_enabled:
+            schedule_worker = ScheduleWorker(session_factory, bus, transfer_engine)
+            schedule_worker.start()
+            application.state.schedule_worker = schedule_worker
         if settings.outbox_publisher_enabled:
             outbox_publisher = OutboxPublisher(
                 session_factory,
@@ -140,6 +147,8 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            if schedule_worker is not None:
+                await schedule_worker.stop()
             if task_execution_worker is not None:
                 await task_execution_worker.stop()
             if operation_recovery_worker is not None:
@@ -169,7 +178,15 @@ def create_app() -> FastAPI:
         model=settings.llm_model,
         timeout_seconds=settings.llm_timeout_seconds,
     )
-    bank = MockBankService()
+    from banking_api.application.aa_service import MOCK_PARTICIPANTS, AAService
+
+    bank = MockBankService(
+        fixture_user_ids=frozenset(
+            {settings.development_user_id, *MOCK_PARTICIPANTS.values()}
+            if settings.mock_participant_login_enabled
+            else {settings.development_user_id}
+        )
+    )
     transfer_provider = MockTransferProvider(session_factory, bank)
     subscription_provider = MockSubscriptionProvider(session_factory, bank)
     analytics = FinancialAnalyticsService(bank)
@@ -194,6 +211,15 @@ def create_app() -> FastAPI:
     registry.register(build_subscription_status_tool(session_factory, subscription_provider))
     executor = ToolExecutor(registry, PolicyService())
     transfer_engine = TransferWorkflowEngine(executor)
+    from banking_api.workflows.transfer.time_intent import ExecutionTimeExtractor
+
+    transfer_engine.time_extractor = ExecutionTimeExtractor(provider)
+
+    async def resolve_aa(**kwargs):
+        async with session_factory() as session:
+            return await AAService(session, bus, transfer_engine, bank).resolve_payment(**kwargs)
+
+    transfer_engine.aa_resolver = resolve_aa
     subscription_engine = SubscriptionCancellationWorkflow(executor)
     agent_registry = AgentRegistry()
     agent_registry.register(MINIMAL_BANKING_AGENT)
@@ -221,6 +247,7 @@ def create_app() -> FastAPI:
     application.state.runtime_factory = runtime_factory
     application.state.transfer_workflow_engine = transfer_engine
     application.state.subscription_workflow_engine = subscription_engine
+    transfer_engine.mock_scheduling_supported = isinstance(transfer_provider, MockTransferProvider)
     application.state.transfer_provider = transfer_provider
     application.state.subscription_provider = subscription_provider
     application.state.mock_bank = bank
@@ -233,7 +260,11 @@ def create_app() -> FastAPI:
         agent_registry=agent_registry,
         skill_registry=skill_registry,
         skill_executor=SkillExecutor(provider),
-        transfer_intent_extractor=TransferIntentExtractor(provider),
+        aa_intent_extractor=AAIntentExtractor(provider),
+        aa_bank=bank,
+        transfer_intent_extractor=TransferIntentExtractor(
+            provider, time_extractor=transfer_engine.time_extractor
+        ),
         transfer_workflow_engine=transfer_engine,
         subscription_intent_extractor=SubscriptionCancelIntentExtractor(provider),
         subscription_workflow_engine=subscription_engine,

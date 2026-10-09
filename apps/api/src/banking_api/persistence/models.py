@@ -242,6 +242,11 @@ class OperationModel(Base):
 
 
 class MockBankTransferModel(Base):
+    remark: Mapped[str] = mapped_column(String(100), default="", server_default="")
+    destination_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    destination_account_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    aa_share_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True, unique=True)
+    credited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __tablename__ = "mock_bank_transfers"
 
     provider_reference: Mapped[str] = mapped_column(String(255), primary_key=True)
@@ -501,16 +506,82 @@ class PayeeModel(Base):
     __tablename__ = "payees"
     __table_args__ = (
         UniqueConstraint(
-            "user_id", "display_name", "bank_name", "account_suffix", name="uq_payee_identity"
+            "user_id", "display_name", "bank_name", "account_fingerprint", name="uq_payee_identity"
         ),
+        UniqueConstraint("user_id", "source_payee_id", name="uq_payee_source"),
     )
     payee_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(255), index=True)
     display_name: Mapped[str] = mapped_column(String(100))
     bank_name: Mapped[str] = mapped_column(String(100))
     account_suffix: Mapped[str] = mapped_column(String(4))
+    account_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_payee_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone_alias: Mapped[str] = mapped_column(String(100), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class RecurringTransferModel(Base):
+    __tablename__ = "recurring_transfers"
+    series_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    root_workflow_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workflows.id"), unique=True)
+    approval_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("approvals.id"))
+    reauth_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("reauthentications.id"))
+    scope_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    scope_hash: Mapped[str] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    authorized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ScheduledTransferModel(Base):
+    __tablename__ = "scheduled_transfers"
+    __table_args__ = (
+        UniqueConstraint("series_id", "occurrence_index", name="uq_recurring_occurrence"),
+    )
+    series_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("recurring_transfers.series_id"), nullable=True, index=True
+    )
+    occurrence_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    schedule_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    workflow_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workflows.id"), unique=True)
+    status: Mapped[str] = mapped_column(String(32), default="PENDING_AUTHORIZATION")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    execute_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    business_timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai")
+    authorization_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    operation_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("operations.id"), nullable=True, unique=True
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class ScheduledAuthorizationModel(Base):
+    __tablename__ = "scheduled_authorizations"
+    authorization_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    schedule_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("scheduled_transfers.schedule_id"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(255))
+    workflow_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workflows.id"))
+    approval_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("approvals.id"))
+    reauth_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("reauthentications.id"))
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    authorized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class MockSubscriptionStateModel(Base):
@@ -534,3 +605,39 @@ class MockSubscriptionActionModel(Base):
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AARequestModel(Base):
+    __tablename__ = "aa_requests"
+    request_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    conversation_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("conversations.id"))
+    source_task_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("tasks.id"), unique=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(32), default="DRAFT")
+    draft_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    snapshot_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class AAShareModel(Base):
+    __tablename__ = "aa_shares"
+    __table_args__ = (
+        UniqueConstraint("request_id", "user_id", name="uq_aa_participant"),
+        CheckConstraint("amount_cents > 0", name="ck_aa_positive_share"),
+    )
+    share_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    request_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("aa_requests.request_id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    display_name: Mapped[str] = mapped_column(String(100))
+    position: Mapped[int] = mapped_column(Integer)
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32), default="PENDING")
+    workflow_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("workflows.id"), nullable=True, unique=True
+    )
+    operation_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("operations.id"), nullable=True, unique=True
+    )

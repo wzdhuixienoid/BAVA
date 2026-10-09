@@ -30,7 +30,17 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_timeout_seconds: float = 30
     agent_max_steps: int = 6
-    agent_max_tool_calls: int = 4
+    mock_participant_login_enabled: bool = False
+    mock_participant_signing_key: str = ""
+    mock_scheduled_transfers_enabled: bool = False
+    recurring_transfer_max_occurrences: int = Field(default=12, ge=2, le=12)
+    recurring_transfer_max_days: int = Field(default=366, ge=1, le=366)
+    scheduled_transfer_min_advance_seconds: int = Field(default=60, ge=1)
+    scheduled_transfer_max_days: int = Field(default=30, ge=1, le=365)
+    scheduled_transfer_late_window_seconds: int = Field(default=300, ge=1, le=3600)
+    scheduled_transfer_lease_seconds: int = Field(default=60, ge=1)
+    # Account overview needs list_accounts plus one balance call per account.
+    agent_max_tool_calls: int = 8
     agent_runtime: RuntimeBackend = RuntimeBackend.LANGGRAPH
     langgraph_checkpoint_database_url: str = ""
     langgraph_strict_msgpack: bool = True
@@ -76,6 +86,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_and_worker_settings(self) -> "Settings":
+        if self.mock_participant_login_enabled and (
+            self.app_environment == "production"
+            or self.auth_mode != "development"
+            or len(self.mock_participant_signing_key) < 32
+        ):
+            raise ValueError(
+                "Mock login requires development auth, non-production and a 32-character key"
+            )
         if self.demo_reference_time is not None:
             if self.app_environment == "production":
                 raise ValueError("DEMO_REFERENCE_TIME is forbidden in production")

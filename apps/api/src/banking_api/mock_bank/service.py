@@ -111,14 +111,23 @@ class MockBankService:
         return [dict(item) for item in self._payees if item["user_id"] == user_id]
 
     def search_payees(self, query: str, *, user_id: str) -> list[dict[str, Any]]:
-        """Bounded exact matching only; no fuzzy or model-selected resolution."""
+        """Bounded substring candidates; the Workflow confirms non-exact matches."""
         normalized = self._normalize(query)
-        return [
+        if not normalized:
+            return []
+        candidates = [
             dict(item)
             for item in self._payees
             if item["user_id"] == user_id
             and (
-                self._normalize(item["display_name"]) == normalized
-                or self._normalize(item["phone_alias"]) == normalized
+                normalized in self._normalize(item["display_name"])
+                or normalized in self._normalize(item["phone_alias"])
             )
-        ][:10]
+        ]
+        exact = [
+            item
+            for item in candidates
+            if normalized
+            in {self._normalize(item["display_name"]), self._normalize(item["phone_alias"])}
+        ]
+        return (exact or candidates)[:10]

@@ -44,16 +44,16 @@ export function PayeeSelector({ workflow, busy, act }: {
   return <section aria-label="收款人确认" className="mt-3 rounded-lg border border-amber-200 bg-white p-3">
     <h3 className="text-sm font-semibold">收款人确认</h3>
     {state.required_input?.message && <p className="mt-2 text-xs text-slate-600">{state.required_input.message}</p>}
-    <div className="mt-3 flex flex-wrap gap-2">
+    {<div className="mt-3 flex flex-wrap gap-2">
       <button disabled={busy || loading} onClick={() => void loadExisting()} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">选择已有收款人</button>
       <Link href={addHref} className="rounded-lg border border-cyan-700 px-3 py-2 text-xs font-semibold text-cyan-800">新增收款人</Link>
-    </div>
+    </div>}
     <p className="mt-2 text-[11px] text-slate-500">新增后可返回这笔转账，选择保存的收款人继续。</p>
     {showExisting && <label className="mt-3 block text-xs text-slate-600">搜索已有收款人<input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="姓名、银行、尾号或别名" className="mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>}
     {loading && <p role="status" className="mt-3 text-xs">正在读取收款人…</p>}
     {error && <p role="alert" className="mt-3 text-xs text-red-700">{error}</p>}
     <div aria-label="已有收款人" className="mt-3 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
-      {choices.map((item) => <button key={item.payee_id} disabled={busy || loading} aria-label={`选择${item.display_name}，${item.bank_name}，${item.masked_account}${item.phone_alias ? `，${item.phone_alias}` : ""}`} onClick={() => void act(() => api.selectPayee(workflow.workflow_id, item.payee_id, workflow.version, item.display_name))} className="rounded-lg border border-slate-200 p-3 text-left hover:border-cyan-600 hover:bg-cyan-50 disabled:opacity-50">
+      {choices.map((item) => <button key={item.payee_id} disabled={busy || loading} aria-label={`选择${item.display_name}，${item.bank_name}，${item.masked_account}`} onClick={() => void act(() => api.selectPayee(workflow.workflow_id,item.payee_id,workflow.version,item.display_name))} className="rounded-lg border border-slate-200 p-3 text-left hover:border-cyan-600 hover:bg-cyan-50 disabled:opacity-50">
         <span className="block text-sm font-semibold">{item.display_name}</span><span className="mt-1 block text-xs text-slate-600">{item.bank_name} · {item.masked_account}</span>{item.phone_alias && <span className="mt-1 block text-xs text-slate-500">{item.phone_alias}</span>}
       </button>)}
       {showExisting && !loading && !error && choices.length === 0 && <p className="text-xs text-slate-500">未找到收款人，可以使用新增入口。</p>}

@@ -33,6 +33,10 @@ class TransferProviderRequest(BaseModel):
     payee_id: str
     amount: Decimal
     currency: str
+    remark: str = ""
+    destination_user_id: str | None = None
+    destination_account_id: str | None = None
+    aa_share_id: UUID | None = None
 
 
 class TransferSubmissionResult(BaseModel):

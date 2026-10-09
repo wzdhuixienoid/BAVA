@@ -82,13 +82,14 @@ async def test_payee_confirmation_persistence_isolation_and_transfer(app, client
     body = {
         "display_name": "新朋友",
         "bank_name": "星河银行（虚构）",
-        "account_suffix": "6789",
+        "account_number": "6222021234566789",
         "confirmed": False,
     }
     assert (await client.post("/api/v1/payees", json=body)).status_code == 409
     body["confirmed"] = True
     first = (await client.post("/api/v1/payees", json=body)).json()
     assert first["masked_account"] == "****6789"
+    assert body["account_number"] not in str(first)
     assert (await client.post("/api/v1/payees", json=body)).json()["payee_id"] == first["payee_id"]
     assert len((await client.get("/api/v1/payees?query=新朋友")).json()) == 1
     _, _, registry, engine = operation_runtime(app)
@@ -128,6 +129,46 @@ async def test_payee_confirmation_persistence_isolation_and_transfer(app, client
         user_id="another", issuer="test", subject="another"
     )
     assert (await client.get("/api/v1/payees")).json() == []
+
+
+async def test_full_payee_account_identity_distinguishes_equal_suffixes(app, client):
+    from banking_api.persistence.models import PayeeModel
+
+    body = {
+        "display_name": "同尾号收款人",
+        "bank_name": "星河银行（虚构）",
+        "account_number": "6222021234566789",
+        "confirmed": True,
+    }
+    first = (await client.post("/api/v1/payees", json=body)).json()
+    body["account_number"] = "6222029999996789"
+    second = (await client.post("/api/v1/payees", json=body)).json()
+    assert first["payee_id"] != second["payee_id"]
+    assert first["masked_account"] == second["masked_account"] == "****6789"
+    body["account_number"] = "6222 0299 9999 6789"
+    repeated = (await client.post("/api/v1/payees", json=body)).json()
+    assert repeated["payee_id"] == second["payee_id"]
+    items = (await client.get("/api/v1/payees", params={"query": body["display_name"]})).json()
+    assert len(items) == 2
+    assert "622202" not in str(items)
+    async with app.state.test_session_factory() as session:
+        row = await session.get(PayeeModel, second["payee_id"])
+        assert row.account_suffix == "6789"
+        assert len(row.account_fingerprint) == 64
+
+
+@pytest.mark.parametrize("account_number", ["6789", "12345678901", "1" * 33, "622202abcd126789"])
+async def test_payee_requires_full_numeric_account(client, account_number):
+    response = await client.post(
+        "/api/v1/payees",
+        json={
+            "display_name": "新朋友",
+            "bank_name": "星河银行（虚构）",
+            "account_number": account_number,
+            "confirmed": True,
+        },
+    )
+    assert response.status_code == 422
 
 
 async def new_subscription_workflow(app, runtime, *, resume=False):

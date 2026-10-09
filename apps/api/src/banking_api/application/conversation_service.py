@@ -13,7 +13,13 @@ from banking_api.domain.enums import (
     WorkflowStatus,
 )
 from banking_api.domain.message import Message, MessageAccepted
-from banking_api.persistence.models import OperationModel, PlanModel, TaskModel, WorkflowModel
+from banking_api.persistence.models import (
+    OperationModel,
+    PlanModel,
+    ScheduledTransferModel,
+    TaskModel,
+    WorkflowModel,
+)
 from banking_api.persistence.repositories.conversations import ConversationRepository
 from banking_api.persistence.repositories.messages import MessageRepository
 from banking_api.persistence.repositories.tasks import TaskRepository
@@ -108,17 +114,30 @@ class ConversationService:
             WorkflowStatus.CANCELLED,
         ]
         terminal_plans = [PlanStatus.COMPLETED, PlanStatus.FAILED, PlanStatus.CANCELLED]
+        # A durable authorized appointment survives deletion of its chat. It is
+        # managed on the schedules page; pending authorization and in-flight funds
+        # still retain the existing active-conversation protection.
+        independent_schedules = select(ScheduledTransferModel.workflow_id).where(
+            ScheduledTransferModel.user_id == user_id,
+            ScheduledTransferModel.status.in_(["SCHEDULED", "CANCELLED", "EXPIRED", "FAILED"]),
+            ScheduledTransferModel.operation_id.is_(None),
+        )
+        scheduled_tasks = select(WorkflowModel.source_task_id).where(
+            WorkflowModel.workflow_id.in_(independent_schedules)
+        )
         checks = [
             select(
                 exists().where(
                     TaskModel.conversation_id == conversation_id,
                     TaskModel.status.not_in(terminal_tasks),
+                    TaskModel.task_id.not_in(scheduled_tasks),
                 )
             ),
             select(
                 exists().where(
                     WorkflowModel.conversation_id == conversation_id,
                     WorkflowModel.status.not_in(terminal_workflows),
+                    WorkflowModel.workflow_id.not_in(independent_schedules),
                 )
             ),
             select(

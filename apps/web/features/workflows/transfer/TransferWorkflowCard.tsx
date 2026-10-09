@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { components } from "@banking/api-client";
 import { api } from "@/lib/api/client";
 import { StatusBadge } from "@/components/agent-ui/StatusBadge";
@@ -8,12 +8,19 @@ import { RiskDetails } from "@/features/workflows/RiskDetails";
 import { ReauthenticationForm } from "@/features/workflows/ReauthenticationForm";
 import { WorkflowTimeline } from "@/features/workflows/WorkflowTimeline";
 import { PayeeSelector } from "./PayeeSelector";
+import { queryTime as formatDateTime } from "@/lib/presentation/time";
 
 type Workflow = components["schemas"]["Workflow"];
 type TransferState = components["schemas"]["TransferWorkflowState"];
 
+function recurrenceTotal(amount: string, count: number) {
+  const [whole, fraction = ""] = amount.split(".");
+  const cents = (BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, "0"))) * BigInt(count);
+  return `${cents / BigInt(100)}.${String(cents % BigInt(100)).padStart(2, "0")}`;
+}
+
 function expiresAt(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "short", timeStyle: "medium" }).format(new Date(value));
+  return formatDateTime(value);
 }
 
 function ReviewDetails({ state, amountDisplay }: { state: TransferState; amountDisplay?: string | null }) {
@@ -31,6 +38,9 @@ function ReviewDetails({ state, amountDisplay }: { state: TransferState; amountD
       <dd className="font-semibold">{amountDisplay ?? `${review.amount} ${review.currency}`}</dd>
       <dt className="text-slate-500">币种</dt>
       <dd>{review.currency}</dd>
+      {review.scheduled_for && <><dt className="text-slate-500">执行时间</dt><dd>{formatDateTime(review.scheduled_for)}</dd><dt className="text-slate-500">最晚执行</dt><dd>{formatDateTime(review.execute_deadline ?? "")}</dd></>}
+      {review.recurrence && <><dt className="text-slate-500">周期规则</dt><dd>每月 {review.recurrence.day} 日 {String(review.recurrence.hour).padStart(2, "0")}:{String(review.recurrence.minute).padStart(2, "0")}:{String(review.recurrence.second ?? 0).padStart(2, "0")}，共 {review.recurrence.count} 次</dd><dt className="text-slate-500">授权总额</dt><dd>¥{recurrenceTotal(review.amount, review.recurrence.count)}</dd><dt className="text-slate-500">全部执行日期</dt><dd>{review.recurrence.occurrences.map(value => <p key={value}>{formatDateTime(value)}</p>)}<p className="mt-1 text-slate-500">无此日期的月份跳过；每期超过最晚执行时间即过期，不补扣。</p></dd></>}
+      {review.remark && <><dt className="text-slate-500">备注</dt><dd className="break-words">{review.remark}</dd></>}
     </dl>
   );
 }
@@ -48,7 +58,21 @@ export function TransferWorkflowCard({
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [recipientQuery, setRecipientQuery] = useState("");
+  const [remark, setRemark] = useState(state.draft.remark ?? "");
   const [editing, setEditing] = useState(false);
+  const [executionTime, setExecutionTime] = useState(state.draft.recurrence_text ?? "");
+  const [schedule, setSchedule] = useState<components["schemas"]["ScheduledTransfer"] | null>(null);
+  const scheduleId = state.draft.schedule_id;
+  useEffect(() => {
+    if (!scheduleId) return;
+    let active = true;
+    const refresh = () => api.getSchedule(scheduleId).then((value) => {if (active) setSchedule(value);}).catch(() => {});
+    void refresh();
+    const timer = setInterval(() => void refresh(), 3000);
+    return () => { active = false; clearInterval(timer); };
+  }, [scheduleId, workflow.version]);
+  const appointmentActive = schedule && schedule.status !== "PENDING_AUTHORIZATION";
+  const timeEditor = <div className="mt-3"><label className="block text-xs">{state.draft.recurrence_text ? "按月执行规则（请补齐时间和总次数）" : "预约执行时间"}<input value={executionTime} onChange={(event) => setExecutionTime(event.target.value)} placeholder={state.draft.recurrence_text ? "每月1号上午9点，共3次" : "明天早上9点或2026-10-09 09:00"} className="mt-1 w-full rounded border px-2 py-1.5" /></label><button disabled={busy || !executionTime} onClick={() => void act(() => api.setExecutionTime(workflow.workflow_id, executionTime, workflow.version))} className="mt-2 rounded border px-3 py-1.5 text-xs">保存时间并重新核对</button></div>;
 
   async function act(action: () => Promise<unknown>) {
     setBusy(true);
@@ -64,12 +88,15 @@ export function TransferWorkflowCard({
     }
   }
 
-  const cancel = () => act(() => api.cancelWorkflow(workflow.workflow_id, workflow.version));
+  const cancel = () => act(async () => {
+    if (scheduleId) {const current = await api.getSchedule(scheduleId); setSchedule(await api.scheduleAction(scheduleId, "cancel", current.version));}
+    else await api.cancelWorkflow(workflow.workflow_id, workflow.version);
+  });
   const stable = ["READY_FOR_REVIEW", "REAUTH_REQUIRED", "READY_FOR_COMMIT"].includes(
     workflow.status,
   );
   const operation = workflow.operation_summary;
-  const needsVerification = workflow.risk_decision?.required_reauthentication && workflow.reauth_summary?.status !== "VERIFIED";
+  const needsVerification = !appointmentActive && workflow.risk_decision?.required_reauthentication && workflow.reauth_summary?.status !== "VERIFIED";
   const cancellable = [
     "WAITING_FOR_INPUT",
     "READY_FOR_REVIEW",
@@ -93,11 +120,11 @@ export function TransferWorkflowCard({
           </p>
           <p className="mt-1 text-xs text-slate-500">版本 {workflow.version}</p>
         </div>
-        <StatusBadge status={needsVerification && workflow.status === "READY_FOR_COMMIT" ? "REAUTH_REQUIRED" : workflow.presentation?.business_success === false && workflow.status === "SUCCEEDED" ? "WAITING_EXTERNAL" : workflow.status} />
+        {appointmentActive ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{({SCHEDULED:"已预约，等待执行时间",EXECUTING:"预约执行中",UNKNOWN:"结果确认中",SUCCEEDED:"付款成功",FAILED:"预约执行失败",CANCELLED:"已取消",EXPIRED:"已过期"} as Record<string,string>)[schedule.status] ?? schedule.status}</span> : <StatusBadge status={needsVerification && workflow.status === "READY_FOR_COMMIT" ? "REAUTH_REQUIRED" : workflow.presentation?.business_success === false && workflow.status === "SUCCEEDED" ? "WAITING_EXTERNAL" : workflow.status} />}
       </div>
 
       {workflow.risk_decision && <RiskDetails risk={workflow.risk_decision} />}
-      <WorkflowTimeline workflow={workflow} />
+      <WorkflowTimeline workflow={workflow} scheduleStatus={appointmentActive ? schedule.status : undefined} />
 
       {((workflow.status === "WAITING_FOR_INPUT" && ["RECIPIENT_QUERY", "PAYEE_SELECTION"].includes(required?.type ?? "")) ||
         (workflow.status === "FAILED" && !operation && state.validation?.issues?.some((issue) => issue.code === "PAYEE_NOT_FOUND"))) &&
@@ -162,7 +189,9 @@ export function TransferWorkflowCard({
         </div>
       )}
 
-      {workflow.status === "READY_FOR_REVIEW" && state.review_payload && (
+      {workflow.status === "WAITING_FOR_INPUT" && required?.type === "EXECUTION_TIME" && <><p className="mt-3 text-xs">{required.message}</p>{timeEditor}</>}
+
+      {!appointmentActive && workflow.status === "READY_FOR_REVIEW" && state.review_payload && (
         <div className="mt-3 rounded-md border border-emerald-200 bg-white p-3">
           <p className="text-sm font-semibold text-emerald-800">转账信息已准备完成，尚未提交。</p>
           <ReviewDetails state={state} amountDisplay={workflow.presentation?.amount_display} />
@@ -181,9 +210,9 @@ export function TransferWorkflowCard({
         </div>
       )}
 
-      {workflow.status === "REAUTH_REQUIRED" && <ReauthenticationForm workflow={workflow} busy={busy} act={act} />}
+      {!appointmentActive && workflow.status === "REAUTH_REQUIRED" && <ReauthenticationForm workflow={workflow} busy={busy} act={act} />}
 
-      {workflow.status === "READY_FOR_COMMIT" && state.review_payload && (
+      {!appointmentActive && workflow.status === "READY_FOR_COMMIT" && state.review_payload && (
         <div className="mt-3 rounded-md border border-indigo-200 bg-white p-3">
           <p className="text-sm font-semibold text-indigo-900">转账信息已确认</p>
           <p className="mt-1 text-sm font-semibold text-emerald-700">
@@ -198,16 +227,19 @@ export function TransferWorkflowCard({
             {needsVerification ? "当前确认来自旧版本，补充强身份验证后才可提交。" : "可以提交表示当前内容已批准并满足当前风险所需的安全控制。提交前会再次评估风险。"}
           </p>
           <p className="mt-3 text-xs font-semibold text-red-700">
-            {needsVerification ? "旧版本确认需要补充强验证后才能转账" : "这一步将真正提交资金转账"}
+            {needsVerification ? "旧版本确认需要补充强验证后才能转账" : scheduleId ? state.draft.recurrence ? "创建有限次按月模拟转账，到各期日期自动执行" : "创建单次模拟转账预约，到时自动执行" : "这一步将提交模拟资金转账"}
           </p>
           <button
             disabled={busy}
             onClick={() =>
-              void act(() => api.commitTransfer(workflow.workflow_id, workflow.version))
+              void act(async () => {
+                if (scheduleId) setSchedule(await api.scheduleAction(scheduleId, "authorize", workflow.version));
+                else await api.commitTransfer(workflow.workflow_id, workflow.version);
+              })
             }
             className="mt-2 rounded bg-red-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
-            {needsVerification ? "去强验证" : "提交转账"}
+            {needsVerification ? "去强验证" : scheduleId ? state.draft.recurrence ? "授权并创建周期转账" : "授权并创建预约" : "提交转账"}
           </button>
         </div>
       )}
@@ -255,7 +287,9 @@ export function TransferWorkflowCard({
         </div>
       )}
 
-      {stable && (
+      {state.draft.schedule_requested && <p className="mt-3 text-xs text-amber-900">仅支持 Mock 预约，到时自动执行模拟转账；不冻结余额，每期重新检查余额与安全状态。周期必须限定次数，创建成功不代表付款成功。</p>}
+      {appointmentActive && <div className="mt-3 rounded border bg-white p-3"><p className="font-semibold">预约状态：{({SCHEDULED:"已预约", EXECUTING:"执行中", UNKNOWN:"结果未知", SUCCEEDED:"付款成功", FAILED:"失败，需要检查或重新授权", CANCELLED:"已取消", EXPIRED:"已过期"} as Record<string,string>)[schedule.status] ?? schedule.status}</p><p className="my-2 text-sm text-slate-600">{schedule.status === "SCHEDULED" ? "预约已创建，无需再次提交。到达执行时间后系统会自动执行模拟转账，执行前重新检查余额与安全状态。" : "预约创建与实际付款分别记录，请以最终付款结果为准。"}</p><ReviewDetails state={state} />{schedule.error_code && <p className="text-xs text-red-700">{schedule.error_code}</p>}{schedule.operation_id && <button className="mt-2 text-xs underline" disabled={busy} onClick={() => void act(async () => {const op = await api.getOperation(schedule.operation_id!); await api.reconcileOperation(op.operation_id, op.version); setSchedule(await api.getSchedule(scheduleId!));})}>查询原操作</button>}{schedule.series_id && <p className="mt-2 text-xs">按月周期第 {schedule.occurrence_index} 期 · {schedule.series_revoked ? "后续授权已撤销" : "周期授权有效"}。取消本期不影响其他期次；撤销后续期次请进入列表。</p>}<a href="/scheduled-transfers" className="ml-3 text-xs underline">预约与周期列表</a></div>}
+      {stable && !state.draft.aa_share_id && (!appointmentActive || schedule?.status === "SCHEDULED") && !schedule?.series_id && (
         <div className="mt-3 border-t border-amber-200 pt-3">
           <button
             className="text-xs font-semibold text-slate-600 underline"
@@ -266,6 +300,9 @@ export function TransferWorkflowCard({
           {editing && (
             <div className="mt-3 space-y-3 rounded-md bg-white p-3">
               <p className="text-[11px] text-amber-800">任何修改都会使现有确认和身份验证失效。</p>
+              {state.draft.schedule_requested && timeEditor}
+              <label className="block text-xs">转账备注（选填）<input value={remark} maxLength={100} onChange={(event) => setRemark(event.target.value)} className="mt-1 w-full rounded border px-2 py-1.5" /></label>
+              <button disabled={busy} onClick={() => void act(() => api.setTransferRemark(workflow.workflow_id, remark, workflow.version))} className="rounded border px-3 py-1.5 text-xs">保存备注并重新核对</button>
               <div className="flex gap-2">
                 <input
                   value={recipientQuery}
@@ -354,7 +391,7 @@ export function TransferWorkflowCard({
       )}
 
       {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-      {cancellable && (
+      {cancellable && !state.draft.aa_share_id && (!appointmentActive || schedule?.status === "SCHEDULED") && !schedule?.series_id && (
         <button
           disabled={busy}
           onClick={() => void cancel()}

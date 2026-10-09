@@ -1,3 +1,4 @@
+import type { AARequest, AAIntent, AAAccount } from "@/features/aa/types";
 import type { components } from "@banking/api-client";
 import { errorDisplay } from "../presentation/errors";
 
@@ -23,7 +24,7 @@ export function setAccessTokenProvider(provider: () => Promise<string | null>) {
 }
 
 export async function getAuthorizationHeaders(): Promise<Record<string, string>> {
-  const token = await accessTokenProvider();
+  const token = await accessTokenProvider() ?? (typeof window !== "undefined" ? localStorage.getItem("banking-mock-session") : null);
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -49,6 +50,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  listAA: () => request<AARequest[]>("/api/v1/aa-requests"),
+  getAA: (id:string) => request<AARequest>(`/api/v1/aa-requests/${encodeURIComponent(id)}`),
+  aaAccounts: () => request<AAAccount[]>("/api/v1/aa-accounts"),
+  updateAA: (id:string, expected_version:number, intent:AAIntent, collection_account_id:string, deadline:string) => request<AARequest>(`/api/v1/aa-requests/${encodeURIComponent(id)}`, {method:"PATCH",body:JSON.stringify({expected_version,intent,collection_account_id,deadline})}),
+  publishAA: (id:string, expected_version:number) => request<AARequest>(`/api/v1/aa-requests/${encodeURIComponent(id)}/actions/publish`, {method:"POST",body:JSON.stringify({expected_version})}),
+  payAA: (id:string, expected_version:number, source_account_id:string) => request<Workflow>(`/api/v1/aa-shares/${encodeURIComponent(id)}/actions/pay`, {method:"POST",body:JSON.stringify({expected_version,source_account_id})}),
+  closeAAShare: (id:string, action:"cancel"|"reject", expected_version:number) => request<AARequest>(`/api/v1/aa-shares/${encodeURIComponent(id)}/actions/${action}`, {method:"POST",body:JSON.stringify({expected_version})}),
+  mockSessions: () => request<{enabled:boolean;current_user_id:string;identities:{name:string;identity:string}[]}>("/api/v1/mock-sessions"),
+  mockLogin: (identity:string) => request<{access_token:string}>("/api/v1/mock-sessions", {method:"POST",body:JSON.stringify({identity})}),
+  listSchedules: () => request<components["schemas"]["ScheduledTransfer"][]>("/api/v1/scheduled-transfers"),
+  getSchedule: (id: string) => request<components["schemas"]["ScheduledTransfer"]>(`/api/v1/scheduled-transfers/${encodeURIComponent(id)}`),
+  scheduleAction: (id: string, action: "authorize" | "cancel" | "cancel-series" | "delete", expected_version: number) => request<components["schemas"]["ScheduledTransfer"]>(`/api/v1/scheduled-transfers/${encodeURIComponent(id)}/actions/${action}`, {method: "POST", body: JSON.stringify({expected_version})}),
+  setExecutionTime: (id: string, execution_time_text: string, expected_version: number) => request<Workflow>(`/api/v1/workflows/${encodeURIComponent(id)}/actions/set-execution-time`, {method: "POST", body: JSON.stringify({execution_time_text, expected_version})}),
   getTaskAudit: (taskId: string) => request<components["schemas"]["AuditTrace"]>(
     `/api/v1/tasks/${encodeURIComponent(taskId)}/audit`,
   ),
@@ -73,6 +87,9 @@ export const api = {
   listPayees: (query?: string, offset = 0) => request<components["schemas"]["PayeeSummary"][]>(
     `/api/v1/payees?offset=${offset}${query ? `&query=${encodeURIComponent(query)}` : ""}`),
   createPayee: (body: components["schemas"]["PayeeCreate"]) => request<components["schemas"]["PayeeSummary"]>("/api/v1/payees", { method: "POST", body: JSON.stringify(body) }),
+  setTransferRemark: (id: string, remark: string, expected_version: number) => request<Workflow>(`/api/v1/workflows/${encodeURIComponent(id)}/actions/set-remark`, { method: "POST", body: JSON.stringify({ remark, expected_version }) }),
+  updatePayee: (id: string, body: components["schemas"]["PayeeUpdate"]) => request<components["schemas"]["PayeeSummary"]>(`/api/v1/payees/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deletePayee: (id: string) => request<void>(`/api/v1/payees/${encodeURIComponent(id)}`, { method: "DELETE" }),
   deleteConversation: (id: string) => request<void>(`/api/v1/conversations/${encodeURIComponent(id)}`, { method: "DELETE" }),
   renameConversation: (id: string, title: string) => request<Conversation>(
     `/api/v1/conversations/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) },

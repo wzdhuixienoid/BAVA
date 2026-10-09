@@ -23,6 +23,11 @@ function emptyTurn(id: string, user?: Message): ConversationTurn {
 export function buildConversationTurns({ messages, tasks, plans, workflows, reports }: {
   messages: Message[]; tasks: Task[]; plans: Plan[]; workflows: Workflow[]; reports: Report[];
 }): ConversationTurn[] {
+  // Future derived occurrences are already listed in the original cycle review.
+  // Surface each occurrence in the conversation once it starts or has a result.
+  const futureOccurrences = new Set(tasks.filter(task => task.task_type === "recurring_transfer_occurrence" && workflows.some(workflow => workflow.source_task_id === task.task_id && workflow.status === "READY_FOR_COMMIT" && !workflow.operation_summary)).map(task => task.task_id));
+  tasks = tasks.filter(task => !futureOccurrences.has(task.task_id));
+  workflows = workflows.filter(workflow => !futureOccurrences.has(workflow.source_task_id));
   const turns: ConversationTurn[] = [];
   const userTurns = new Map<string, ConversationTurn>();
   const fallbackOwners = new Map<string, ConversationTurn>();

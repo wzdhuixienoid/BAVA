@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { components } from "@banking/api-client";
 import { dateTimeLabel, periodLabel } from "@/features/reports/presentation";
 import { isConfirmedWorkflow } from "@/features/conversation/timeline";
+import type { AARequest } from "@/features/aa/types";
 import { reviewField } from "./WorkflowReceipt";
 
 type Report = components["schemas"]["ReportListItem"];
@@ -11,11 +12,12 @@ type Workflow = components["schemas"]["Workflow"];
 
 type CompletedEvent = { id: string; time: string; type: string; title: string; summary: string; search: string };
 
-export function ResultsPanel({ reports, workflows, onLocateResult }: {
-  reports: Report[]; workflows: Workflow[]; onLocateResult: (resultId: string) => void;
+export function ResultsPanel({ reports, workflows, aaRequests = [], onLocateResult }: {
+  reports: Report[]; workflows: Workflow[]; aaRequests?: AARequest[]; onLocateResult: (resultId: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const events: CompletedEvent[] = [
+    ...aaRequests.filter(row => row.status === "COLLECTED" || row.status === "PARTIAL_CLOSED").map(row => ({id:`aa-${row.request_id}`, time:row.created_at, type:"AA 收款结果", title:row.snapshot?.remark || "AA 收款", summary:`已收 ¥${row.received} · 未收 ¥${row.outstanding}`, search:`${row.snapshot?.total} ${row.snapshot?.remark} ${row.received}`})),
     ...reports.map((report) => ({
       id: `report-${report.report_id}`, time: report.created_at, type: "消费报告",
       title: `${periodLabel(report.period)}消费报告`, summary: report.total_spending_display,

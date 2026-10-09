@@ -1,5 +1,6 @@
+import { AARequestCard } from "@/features/aa/AARequestCard";
 import { PlanCard } from "@/features/plans/PlanCard";
-import { AccountResults } from "@/features/accounts/AccountResults";
+import { AccountAnswer } from "@/features/accounts/AccountAnswer";
 import { AuditPanel } from "@/features/audit/AuditPanel";
 import { accountResults } from "@/features/accounts/presentation";
 import { ReportCard } from "@/features/reports/ReportCard";
@@ -56,7 +57,11 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
   const accounts = accountResults(outputs);
   const isFinancialAnalysis = outputs.some((output) => output.analysis_snapshot || output.financial_display);
   const needsHistoricalCorrection = unrequestedAnomalies;
-  const replies = needsHistoricalCorrection ? [] : turn.replies;
+  const accountOnlyAnswer = accounts.length > 0 && !isFinancialAnalysis && !anomalyAnswer
+    && !outputs.some((output) => output.payee_results)
+    && !turn.plans.length && !turn.workflows.length && !turn.reports.length;
+  const replies = needsHistoricalCorrection || accountOnlyAnswer
+    ? turn.replies.filter((message) => message.role === "SYSTEM_NOTICE") : turn.replies;
   const replyContent = (content: string) => isFinancialAnalysis ? localizeFinancialAnswer(content, outputs) : content;
 
   return (
@@ -73,8 +78,9 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           {turn.tasks.map((task) => <AuditPanel key={task.task_id} taskId={task.task_id} revision={activityRevision} />)}
           {turn.tasks.map((task) => typeof task.error?.message === "string" ? <p key={task.task_id} role="alert" className="text-red-700">{task.error.code === "REPORT_NARRATIVE_VALIDATION_FAILED" ? "报告说明未通过安全校验，请重新生成。" : task.error.message}</p> : null)}
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}
+          {turn.tasks.filter(task => typeof task.output?.aa_request_id === "string").map(task => <AARequestCard key={task.task_id} requestId={String(task.output!.aa_request_id)} />)}
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
-          {accounts.length > 0 && <AccountResults results={accounts} />}
+          {accounts.length > 0 && <AccountAnswer results={accounts} />}
           {needsHistoricalCorrection && <p className="text-slate-600">这条历史回复误用了异常交易分析，未按你指定的消费范围执行。现在可按最近任意天数分析消费。</p>}
 
           {turn.reports.map((report) => {
@@ -93,18 +99,13 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
                 : <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
             </div>;
           })}
-          {(accounts.length > 0 && !anomalyAnswer) ? <details className="rounded-lg border border-slate-200 p-3"><summary className="cursor-pointer text-xs font-semibold text-slate-600">助理说明</summary><div className="mt-3 space-y-3">
-          {replies.map((message) => <div key={message.message_id}>
-            {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
-            <MarkdownMessage content={replyContent(message.content)} />
-          </div>)}
-          </div></details> : <div className="space-y-3">
+          <div className="space-y-3">
           {historicalYearMismatch && !unrequestedAnomalies && <p className="text-slate-600">这条历史结果只覆盖下面标明的区间，未覆盖你要求的近一年。现在已支持近一年分析，需重新查询才能取得完整区间的结果。</p>}
           {anomalyAnswer ? <MarkdownMessage content={anomalyAnswer} /> : replies.map((message) => <div key={message.message_id}>
             {message.role === "SYSTEM_NOTICE" && <p className="mb-1 text-xs text-slate-400">系统通知</p>}
             <MarkdownMessage content={replyContent(message.content)} />
           </div>)}
-          </div>}
+          </div>
         </div>
       </div>
     </article>

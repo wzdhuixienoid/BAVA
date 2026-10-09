@@ -33,7 +33,9 @@ from banking_api.workflows.transfer.models import (
     SelectPayeeAction,
     SelectSourceAccountAction,
     SetAmountAction,
+    SetExecutionTimeAction,
     SetRecipientQueryAction,
+    SetRemarkAction,
     StartReauthenticationAction,
     VerifyReauthenticationAction,
 )
@@ -55,9 +57,7 @@ def _raise_action_error(exc: Exception) -> NoReturn:
                 "locked_until": exc.status.locked_until.isoformat()
                 if exc.status.locked_until
                 else None,
-                "reason_code": exc.status.reason_code.value
-                if exc.status.reason_code
-                else None,
+                "reason_code": exc.status.reason_code.value if exc.status.reason_code else None,
             },
         ) from exc
     if isinstance(exc, (WorkflowNotFoundError, OperationNotFoundError)):
@@ -191,6 +191,26 @@ async def set_amount(
             workflow_id,
             user_id=principal.user_id,
             amount=body.amount,
+            expected_version=body.expected_version,
+        )
+    except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/set-remark", response_model=Workflow)
+async def set_remark(
+    workflow_id: UUID,
+    body: SetRemarkAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+) -> Workflow:
+    try:
+        return await _service(session, bus, engine).set_remark(
+            workflow_id,
+            user_id=principal.user_id,
+            remark=body.remark,
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
@@ -336,4 +356,24 @@ async def select_subscription(
             expected_version=body.expected_version,
         )
     except (WorkflowNotFoundError, WorkflowVersionConflictError, WorkflowActionError) as exc:
+        _raise_action_error(exc)
+
+
+@router.post("/{workflow_id}/actions/set-execution-time", response_model=Workflow)
+async def set_execution_time(
+    workflow_id: UUID,
+    body: SetExecutionTimeAction,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+):
+    try:
+        return await _service(session, bus, engine).set_execution_time(
+            workflow_id,
+            user_id=principal.user_id,
+            expected_version=body.expected_version,
+            execution_time_text=body.execution_time_text,
+        )
+    except (WorkflowActionError, WorkflowNotFoundError, WorkflowVersionConflictError) as exc:
         _raise_action_error(exc)

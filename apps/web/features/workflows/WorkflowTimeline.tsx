@@ -2,15 +2,17 @@ import type { components } from "@banking/api-client";
 import { StatusBadge } from "@/components/agent-ui/StatusBadge";
 
 type Workflow = components["schemas"]["Workflow"];
-export function WorkflowTimeline({ workflow }: { workflow: Workflow }) {
+export function WorkflowTimeline({ workflow, scheduleStatus }: { workflow: Workflow; scheduleStatus?: string }) {
   const presentation = workflow.presentation;
   if (!presentation) return null;
   return <section aria-label="业务执行时间线" className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
     <h3 className="text-xs font-semibold text-slate-700">业务执行进度</h3>
     <ol className="mt-3 grid gap-2 sm:grid-cols-2">
-      {presentation.stages.map((stage, index) => <li key={stage.key} className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-slate-50 p-2">
+      {presentation.stages.map((original, index) => {
+        const stage = scheduleStatus === "SCHEDULED" && original.key === "submit" ? {...original,label:original.label === "提交执行" ? "到时自动执行" : original.label,status:"SCHEDULED"} : original;
+        return <li key={stage.key} className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-slate-50 p-2">
         <span className="text-xs text-slate-700">{index + 1}. {stage.label}</span><StatusBadge status={stage.status} />
-      </li>)}
+      </li>;})}
     </ol>
     <div className="mt-3 flex flex-wrap gap-2 text-xs">
       {workflow.approval_summary && <span>用户确认：<StatusBadge status={workflow.approval_summary.status} /></span>}

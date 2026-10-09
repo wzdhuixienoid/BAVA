@@ -48,6 +48,28 @@ class AuthenticationService:
 
     async def authenticate(self, *, bearer_token: str | None, session: AsyncSession) -> Principal:
         if self._settings.auth_mode == "development":
+            if bearer_token and self._settings.mock_participant_login_enabled:
+                try:
+                    claims = jwt.decode(
+                        bearer_token,
+                        self._settings.mock_participant_signing_key,
+                        algorithms=["HS256"],
+                        issuer="urn:banking:mock-session",
+                        audience="banking-mock",
+                        options={"require": ["exp", "iss", "aud", "sub"]},
+                    )
+                    from banking_api.application.aa_service import MOCK_PARTICIPANTS
+
+                    if claims["sub"] not in {
+                        *MOCK_PARTICIPANTS.values(),
+                        self._settings.development_user_id,
+                    }:
+                        raise AuthenticationError()
+                    return Principal(
+                        user_id=claims["sub"], issuer=claims["iss"], subject=claims["sub"]
+                    )
+                except jwt.PyJWTError as exc:
+                    raise AuthenticationError() from exc
             return Principal(
                 user_id=self._settings.development_user_id,
                 issuer="urn:ai-banking:development",

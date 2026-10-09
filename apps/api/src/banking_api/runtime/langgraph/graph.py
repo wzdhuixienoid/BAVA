@@ -45,7 +45,7 @@ class LangGraphAgentRuntime:
         agent: AgentDefinition | None = None,
         checkpointer: BaseCheckpointSaver,
         max_steps: int = 6,
-        max_tool_calls: int = 4,
+        max_tool_calls: int = 8,
     ) -> None:
         self.provider = provider
         self.registry = registry

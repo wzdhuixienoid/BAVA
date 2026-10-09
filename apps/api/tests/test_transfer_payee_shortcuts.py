@@ -85,7 +85,7 @@ async def test_new_payee_can_be_selected_after_no_match(app, client):
             json={
                 "display_name": "新朋友",
                 "bank_name": "森林银行（虚构）",
-                "account_suffix": "8686",
+                "account_number": "6222021234568686",
                 "confirmed": True,
             },
         )

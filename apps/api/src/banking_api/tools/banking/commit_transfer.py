@@ -46,6 +46,10 @@ def build_commit_transfer_tool(
             payee_id=payload["payee_id"],
             amount=payload["amount"],
             currency=payload["currency"],
+            remark=payload.get("remark", ""),
+            destination_user_id=payload.get("destination_user_id"),
+            destination_account_id=payload.get("destination_account_id"),
+            aa_share_id=payload.get("aa_share_id"),
         )
         try:
             result = await provider.submit_transfer(request)

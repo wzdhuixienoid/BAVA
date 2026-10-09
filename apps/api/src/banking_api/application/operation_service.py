@@ -20,7 +20,14 @@ from banking_api.domain.operation import OperationResource, OperationType
 from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
 from banking_api.domain.workflow import WorkflowType
-from banking_api.persistence.models import OperationModel, WorkflowModel
+from banking_api.persistence.models import (
+    AARequestModel,
+    AAShareModel,
+    OperationModel,
+    ScheduledAuthorizationModel,
+    ScheduledTransferModel,
+    WorkflowModel,
+)
 from banking_api.persistence.repositories.approvals import ApprovalRepository
 from banking_api.persistence.repositories.operations import OperationRepository
 from banking_api.persistence.repositories.reauthentications import (
@@ -159,7 +166,13 @@ class OperationService:
         )
 
     async def prepare_transfer(
-        self, workflow_id: UUID, *, user_id: str, expected_version: int
+        self,
+        workflow_id: UUID,
+        *,
+        user_id: str,
+        expected_version: int,
+        schedule_id: UUID | None = None,
+        lease_owner: str | None = None,
     ) -> OperationResource:
         # Global lock order for transfer creation: Security Guard, then Transfer Risk.
         # Both transaction-scoped locks remain held through Operation creation and commit.
@@ -183,6 +196,55 @@ class OperationService:
             raise OperationActionError("TRANSFER_OPERATION_ALREADY_EXISTS")
 
         state = TransferWorkflowState.model_validate(workflow.state_json)
+        scheduled = None
+        grant = None
+        if state.draft.schedule_requested:
+            if schedule_id is None:
+                raise OperationActionError("SCHEDULE_REQUIRES_SCOPED_AUTHORIZATION")
+            from banking_api.application.schedule_service import require_mock_scheduling
+
+            require_mock_scheduling(self.engine)
+            scheduled = await self.session.get(
+                ScheduledTransferModel, schedule_id, with_for_update=True
+            )
+            now = _as_utc(self.clock())
+            if (
+                scheduled is None
+                or scheduled.user_id != user_id
+                or scheduled.workflow_id != workflow_id
+                or scheduled.status != "EXECUTING"
+                or scheduled.lease_owner != lease_owner
+                or scheduled.lease_expires_at is None
+                or _as_utc(scheduled.lease_expires_at) <= now
+            ):
+                raise OperationActionError("SCHEDULE_LEASE_LOST")
+            grant = await self.session.get(
+                ScheduledAuthorizationModel,
+                scheduled.authorization_id,
+                with_for_update=True,
+            )
+            if (
+                grant is None
+                or grant.user_id != user_id
+                or grant.workflow_id != workflow_id
+                or grant.schedule_id != schedule_id
+                or grant.used_at is not None
+                or grant.revoked_at is not None
+            ):
+                raise OperationActionError("SCHEDULE_AUTHORIZATION_INVALID")
+            if scheduled.series_id:
+                from banking_api.application.schedule_service import validate_recurring_scope
+                await validate_recurring_scope(self.session, scheduled, grant, user_id)
+            if not _as_utc(scheduled.scheduled_for) <= now <= _as_utc(scheduled.execute_deadline):
+                raise OperationActionError("SCHEDULE_OUTSIDE_EXECUTION_WINDOW")
+            if (
+                state.review_payload is None
+                or transfer_payload_hash(state.review_payload) != grant.payload_hash
+                or canonicalize_transfer_payload(state.review_payload) != grant.payload_json
+            ):
+                raise OperationActionError("SCHEDULE_AUTHORIZATION_SCOPE_MISMATCH")
+        elif schedule_id is not None:
+            raise OperationActionError("SCHEDULE_AUTHORIZATION_SCOPE_MISMATCH")
         authorization = state.authorization
         if authorization is None or state.review_payload is None:
             raise OperationActionError("TRANSFER_AUTHORIZATION_MISSING")
@@ -196,9 +258,11 @@ class OperationService:
         if approval is None:
             raise OperationActionError("APPROVAL_NOT_FOUND")
         now = _as_utc(self.clock())
-        if approval.status is not ApprovalStatus.APPROVED or approval.consumed_at is not None:
+        if grant is None and (
+            approval.status is not ApprovalStatus.APPROVED or approval.consumed_at is not None
+        ):
             raise OperationActionError("APPROVAL_NOT_CONSUMABLE")
-        if _as_utc(approval.expires_at) <= now:
+        if grant is None and _as_utc(approval.expires_at) <= now:
             await self._expire_approval(workflow, state, approval)
             raise OperationActionError("APPROVAL_EXPIRED")
         initial_hash = transfer_payload_hash(state.review_payload)
@@ -214,7 +278,7 @@ class OperationService:
 
         try:
             validation_status, state = await self.engine.advance(
-                state, principal=ExecutionPrincipal.for_workflow(user_id)
+                state, principal=ExecutionPrincipal.for_workflow(user_id), session=self.session
             )
         except TransferWorkflowEngineError as exc:
             raise OperationActionError("FINAL_VALIDATION_UNAVAILABLE") from exc
@@ -249,7 +313,7 @@ class OperationService:
         escalated = (
             previous_level is BusinessRiskLevel.YELLOW and risk.level is BusinessRiskLevel.RED
         )
-        if risk.required_reauthentication:
+        if risk.required_reauthentication and grant is None:
             if authorization.reauth_id is None:
                 await self._require_reauthentication_for_risk(
                     workflow, state, risk, escalated=escalated
@@ -266,6 +330,22 @@ class OperationService:
                 await self._expire_reauthentication(workflow, state, reauth)
                 raise OperationActionError("REAUTH_EXPIRED")
 
+        aa_share = None
+        if state.draft.aa_share_id:
+            aa_share = await self.session.get(
+                AAShareModel, state.draft.aa_share_id, with_for_update=True, populate_existing=True
+            )
+            if (
+                aa_share is None
+                or aa_share.user_id != user_id
+                or aa_share.workflow_id != workflow_id
+                or aa_share.status != "PENDING"
+                or aa_share.operation_id
+            ):
+                raise OperationActionError("AA_SHARE_NOT_PAYABLE")
+            aa_request = await self.session.get(AARequestModel, aa_share.request_id)
+            if _as_utc(aa_request.deadline) <= now:
+                raise OperationActionError("AA_EXPIRED")
         operation = await self.operations.create_transfer(
             user_id=user_id,
             workflow_id=workflow_id,
@@ -276,6 +356,26 @@ class OperationService:
             next_reconcile_at=now,
             risk_business_date=state.risk_decision.business_date,
         )
+        if aa_share is not None:
+            aa_share.operation_id = operation.operation_id
+            aa_share.status = "PROCESSING"
+            await self.publisher.persist(
+                event_type="aa.payment.operation.created",
+                conversation_id=workflow.conversation_id,
+                task_id=workflow.source_task_id,
+                data={
+                    "aa_request_id": str(aa_share.request_id),
+                    "aa_share_id": str(aa_share.share_id),
+                    "workflow_id": str(workflow_id),
+                    "operation_id": str(operation.operation_id),
+                },
+            )
+        if grant is not None:
+            grant.used_at = now
+            scheduled.operation_id = operation.operation_id
+            scheduled.version += 1
+            scheduled.lease_owner = None
+            scheduled.lease_expires_at = None
         approval.status = ApprovalStatus.CONSUMED
         approval.consumed_at = now
         approval.consumed_by_operation_id = operation.operation_id
@@ -872,6 +972,24 @@ class OperationService:
             if (operation.lease_owner or "").startswith("manual:")
             else "RECOVERY_WORKER",
         }
+        if operation.payload_json.get("aa_share_id"):
+            data["aa_request_id"] = operation.payload_json["aa_request_id"]
+            data["aa_share_id"] = operation.payload_json["aa_share_id"]
+            if event_type in {
+                "operation.created",
+                "operation.succeeded",
+                "operation.failed",
+                "operation.unknown",
+            }:
+                group = await self.session.get(
+                    AARequestModel, UUID(operation.payload_json["aa_request_id"])
+                )
+                await self.publisher.persist(
+                    event_type="aa.payment." + event_type.removeprefix("operation."),
+                    conversation_id=group.conversation_id,
+                    task_id=group.source_task_id,
+                    data=data,
+                )
         if operation.provider_reference is not None:
             data["provider_reference"] = operation.provider_reference
         if operation.error_code is not None:

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from banking_api.api.routes import (
+    aa,
     conversations,
     dashboard,
     demo,
@@ -9,6 +10,7 @@ from banking_api.api.routes import (
     payees,
     plans,
     reports,
+    schedules,
     security,
     subscriptions,
     tasks,
@@ -29,3 +31,7 @@ api_router.include_router(security.router)
 api_router.include_router(plans.router)
 
 api_router.include_router(payees.router)
+
+api_router.include_router(schedules.router)
+
+api_router.include_router(aa.router)

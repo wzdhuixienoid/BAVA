@@ -118,6 +118,8 @@ class InProcessTaskRunner:
         agent_registry: AgentRegistry | None = None,
         skill_registry: SkillRegistry | None = None,
         skill_executor: SkillExecutor | None = None,
+        aa_intent_extractor=None,
+        aa_bank=None,
         transfer_intent_extractor: TransferIntentExtractor | None = None,
         transfer_workflow_engine: TransferWorkflowEngine | None = None,
         subscription_intent_extractor: SubscriptionCancelIntentExtractor | None = None,
@@ -133,6 +135,7 @@ class InProcessTaskRunner:
         self.agent_registry = agent_registry
         self.skill_registry = skill_registry
         self.skill_executor = skill_executor
+        self.aa_intent_extractor, self.aa_bank = aa_intent_extractor, aa_bank
         self.transfer_intent_extractor = transfer_intent_extractor
         self.transfer_workflow_engine = transfer_workflow_engine
         self.subscription_intent_extractor = subscription_intent_extractor
@@ -236,6 +239,8 @@ class InProcessTaskRunner:
             executor_id = (
                 "planner:constrained"
                 if decision.route is RequestRoute.COMPLEX_PLAN
+                else "workflow:aa"
+                if decision.route is RequestRoute.AA_COLLECTION
                 else TRANSFER_WORKFLOW_ID
                 if decision.route is RequestRoute.TRANSFER_WORKFLOW
                 else SUBSCRIPTION_RESUME_WORKFLOW_ID
@@ -262,6 +267,9 @@ class InProcessTaskRunner:
                     answer=UNSUPPORTED_MESSAGE,
                     route=decision.route,
                 )
+                return
+            if decision.route is RequestRoute.AA_COLLECTION:
+                await self._run_aa(claim, conversation_id, user_id, current_task)
                 return
             if decision.route is RequestRoute.TRANSFER_WORKFLOW:
                 await self._run_transfer_workflow(
@@ -494,12 +502,15 @@ class InProcessTaskRunner:
         if executor_id == "planner:constrained":
             route = RequestRoute.COMPLEX_PLAN
         elif executor_type is ExecutorType.WORKFLOW and executor_id in {
+            "workflow:aa",
             TRANSFER_WORKFLOW_ID,
             SUBSCRIPTION_WORKFLOW_ID,
             SUBSCRIPTION_RESUME_WORKFLOW_ID,
         }:
             route = (
-                RequestRoute.TRANSFER_WORKFLOW
+                RequestRoute.AA_COLLECTION
+                if executor_id == "workflow:aa"
+                else RequestRoute.TRANSFER_WORKFLOW
                 if executor_id == TRANSFER_WORKFLOW_ID
                 else RequestRoute.SUBSCRIPTION_RESUME
                 if executor_id == SUBSCRIPTION_RESUME_WORKFLOW_ID
@@ -548,6 +559,7 @@ class InProcessTaskRunner:
             executor_type = None
             if route in {
                 RequestRoute.TRANSFER_WORKFLOW,
+                RequestRoute.AA_COLLECTION,
                 RequestRoute.SUBSCRIPTION_CANCEL,
                 RequestRoute.SUBSCRIPTION_RESUME,
             }:
@@ -1178,3 +1190,62 @@ class InProcessTaskRunner:
         if task is None:
             raise TaskLeaseLostError
         return task
+
+    async def _run_aa(self, claim, conversation_id, user_id, user_request):
+        from banking_api.application.aa_service import AAService
+
+        if self.aa_intent_extractor is None or self.aa_bank is None:
+            raise AgentRuntimeError("AA_NOT_CONFIGURED", "AA collection is not configured")
+        async with self.session_factory() as session:
+            task = await self._get_owned(TaskRepository(session), claim)
+            from sqlalchemy import select
+
+            from banking_api.persistence.models import AARequestModel
+
+            existing = await session.scalar(
+                select(AARequestModel).where(
+                    AARequestModel.source_task_id == claim.task_id,
+                    AARequestModel.user_id == user_id,
+                )
+            )
+        intent = None if existing else await self.aa_intent_extractor.extract(user_request)
+        async with self.session_factory() as session:
+            tasks = TaskRepository(session)
+            task = await self._get_owned(tasks, claim, for_update=True)
+            service = AAService(session, self.bus, self.transfer_workflow_engine, self.aa_bank)
+            request = (
+                await service.get(existing.request_id, user_id)
+                if existing
+                else await service.create(
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    source_task_id=claim.task_id,
+                    intent=intent,
+                )
+            )
+            await self._get_owned(tasks, claim, for_update=True)
+            message = await MessageRepository(session).create(
+                conversation_id=conversation_id,
+                role=MessageRole.ASSISTANT,
+                content=(
+                    "AA 收款草稿已建立。请核对参与者、分摊金额与收款账户，再确认发布；"
+                    "每位参与者需要以自己的身份独立授权付款。"
+                ),
+            )
+            await tasks.transition(
+                task,
+                TaskStatus.COMPLETED,
+                output={
+                    "route": "AA_COLLECTION",
+                    "requested_output": "WORKFLOW",
+                    "aa_request_id": request["request_id"],
+                    "assistant_message_id": str(message.message_id),
+                },
+            )
+            await EventPublisher(session).persist(
+                event_type="task.completed",
+                conversation_id=conversation_id,
+                task_id=claim.task_id,
+                data={"aa_request_id": request["request_id"]},
+            )
+            await session.commit()

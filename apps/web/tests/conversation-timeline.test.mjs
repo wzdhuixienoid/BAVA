@@ -74,3 +74,11 @@ test("a success receipt requires both workflow and operation confirmation", () =
   assert.equal(responseState(turn).active, true);
   assert.equal(responseState(turn).label, "正在等待银行确认结果");
 });
+
+test("future cycle occurrences stay in the cycle review, UNKNOWN occurrence stays visible",()=>{
+ const child={...task("child",null,null),task_type:"recurring_transfer_occurrence"};
+ const workflow={workflow_id:"future",source_task_id:"child",status:"READY_FOR_COMMIT",operation_summary:null};
+ assert.equal(build({tasks:[child],workflows:[workflow]}).length,0);
+ const started=build({tasks:[child],workflows:[{...workflow,status:"COMMITTING",operation_summary:{status:"UNKNOWN"}}]});
+ assert.equal(started.length,1);assert.equal(started[0].workflows[0].operation_summary.status,"UNKNOWN");
+});

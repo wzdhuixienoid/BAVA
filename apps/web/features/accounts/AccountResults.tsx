@@ -1,5 +1,6 @@
 import type { components } from "@banking/api-client";
 import { accountTypeLabel } from "@/lib/presentation/status";
+import { queryTime } from "@/lib/presentation/time";
 
 type AccountResult = components["schemas"]["AccountListResult"] | components["schemas"]["AccountBalanceResult"];
 
@@ -12,7 +13,7 @@ export function AccountResults({ results }: { results: AccountResult[] }) {
         <p className="mt-1 text-xs text-slate-500">{result.masked_number} · {accountTypeLabel(result.account_type)} · {result.currency}</p>
         <p className="mt-3 text-xs text-slate-500">余额</p>
         <p className="text-xl font-semibold tabular-nums">{result.balance_display}</p>
-        <p className="mt-2 text-xs text-slate-500">查询时间：<time dateTime={result.as_of}>{result.as_of}</time></p>
+        <p className="mt-2 text-xs text-slate-500">查询时间：<time dateTime={result.as_of}>{queryTime(result.as_of)}</time></p>
       </section>
     ) : (
       <section key={index} aria-label="账户列表" className="min-w-0 rounded-xl border border-slate-200 p-4">

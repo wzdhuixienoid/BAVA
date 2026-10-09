@@ -173,8 +173,28 @@ class WorkflowService:
         source_task_id: UUID,
         intent: TransferIntent,
         execution_check=None,
+        aa_share_id: UUID | None = None,
+        commit: bool = True,
     ) -> Workflow:
-        initial = TransferWorkflowState(draft=intent.model_dump())
+        initial = TransferWorkflowState(
+            draft=intent.model_dump(exclude={"execution_time_text", "time_intent"})
+        )
+        initial.draft.aa_share_id = aa_share_id
+        if intent.execution_time_text is not None:
+            from banking_api.persistence.models import TaskModel
+
+            task = await self.session.get(TaskModel, source_task_id)
+            received_at = (
+                task.created_at.replace(tzinfo=UTC)
+                if task.created_at.tzinfo is None
+                else task.created_at
+            )
+            await self.engine.resolve_time(
+                initial.draft,
+                intent.execution_time_text,
+                received_at=received_at,
+                intent=intent.time_intent,
+            )
         model = await self.workflows.create(
             user_id=user_id,
             conversation_id=conversation_id,
@@ -189,8 +209,21 @@ class WorkflowService:
             task_id=source_task_id,
             data=self._event_data(model),
         )
+        if initial.draft.schedule_requested:
+            from banking_api.persistence.models import ScheduledTransferModel
+
+            scheduled = ScheduledTransferModel(
+                user_id=user_id,
+                workflow_id=model.workflow_id,
+                scheduled_for=initial.draft.scheduled_for,
+                execute_deadline=initial.draft.execute_deadline,
+                business_timezone=initial.draft.business_timezone,
+            )
+            self.session.add(scheduled)
+            await self.session.flush()
+            initial.draft.schedule_id = scheduled.schedule_id
         status, state = await self.engine.advance(
-            initial, principal=ExecutionPrincipal.for_workflow(user_id)
+            initial, principal=ExecutionPrincipal.for_workflow(user_id), session=self.session
         )
         if status is WorkflowStatus.READY_FOR_REVIEW:
             await self._evaluate_transfer_risk(state, user_id=user_id)
@@ -213,7 +246,8 @@ class WorkflowService:
             await self._persist_risk_event(updated, state.risk_decision, escalated=False)
         if execution_check is not None:
             await execution_check()
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
         return await self._to_workflow(updated)
 
     async def create_subscription_cancel(
@@ -325,8 +359,42 @@ class WorkflowService:
         model, state = await self._load_action(
             workflow_id, user_id, expected_version, allow_payee_recovery=True
         )
+        if state.draft.aa_share_id:
+            raise WorkflowActionError("AA_PUBLISHED_SNAPSHOT_IMMUTABLE")
         state.draft.recipient_query = recipient_query.strip()
         state.draft.payee_id = None
+        return await self._mutate_and_advance(model, state, expected_version)
+
+    async def set_remark(
+        self, workflow_id: UUID, *, user_id: str, remark: str, expected_version: int
+    ) -> Workflow:
+        from banking_api.workflows.transfer.models import normalize_remark
+
+        model, state = await self._load_action(workflow_id, user_id, expected_version)
+        if state.draft.aa_share_id:
+            raise WorkflowActionError("AA_PUBLISHED_SNAPSHOT_IMMUTABLE")
+        state.draft.remark = normalize_remark(remark)
+        return await self._mutate_and_advance(model, state, expected_version)
+
+    async def set_execution_time(
+        self, workflow_id: UUID, *, user_id: str, execution_time_text: str, expected_version: int
+    ) -> Workflow:
+        time_intent = None
+        if self.engine.time_extractor:
+            if await self.get(workflow_id, user_id=user_id) is None:
+                raise WorkflowNotFoundError
+            try:
+                time_intent = await self.engine.time_extractor.extract(execution_time_text)
+            except ValueError:
+                from banking_api.workflows.transfer.models import ExecutionTimeIntent
+
+                time_intent = ExecutionTimeIntent(ambiguous=True)
+        model, state = await self._load_action(workflow_id, user_id, expected_version)
+        if not state.draft.schedule_requested:
+            raise WorkflowActionError("NOT_A_SCHEDULED_TRANSFER")
+        await self.engine.resolve_time(
+            state.draft, execution_time_text, received_at=_as_utc(self.clock()), intent=time_intent
+        )
         return await self._mutate_and_advance(model, state, expected_version)
 
     async def select_payee(
@@ -341,6 +409,8 @@ class WorkflowService:
         model, state = await self._load_action(
             workflow_id, user_id, expected_version, allow_payee_recovery=True
         )
+        if state.draft.aa_share_id:
+            raise WorkflowActionError("AA_PUBLISHED_SNAPSHOT_IMMUTABLE")
         if recipient_query is not None:
             state.draft.recipient_query = recipient_query.strip()
             state.draft.payee_id = None
@@ -387,6 +457,8 @@ class WorkflowService:
         expected_version: int,
     ) -> Workflow:
         model, state = await self._load_action(workflow_id, user_id, expected_version)
+        if state.draft.aa_share_id:
+            raise WorkflowActionError("AA_PUBLISHED_SNAPSHOT_IMMUTABLE")
         state.draft.amount = amount
         return await self._mutate_and_advance(model, state, expected_version)
 
@@ -404,7 +476,7 @@ class WorkflowService:
             raise WorkflowActionError("WORKFLOW_NOT_READY_FOR_APPROVAL")
 
         validation_status, state = await self.engine.advance(
-            state, principal=ExecutionPrincipal.for_workflow(user_id)
+            state, principal=ExecutionPrincipal.for_workflow(user_id), session=self.session
         )
         if validation_status is not WorkflowStatus.READY_FOR_REVIEW or state.review_payload is None:
             updated = await self.workflows.update_if_version(
@@ -671,6 +743,17 @@ class WorkflowService:
             WorkflowStatus.READY_FOR_COMMIT,
         }:
             raise WorkflowActionError("WORKFLOW_CANNOT_BE_CANCELLED")
+        if state.draft.aa_share_id:
+            raise WorkflowActionError("AA_CANCEL_OR_REJECT_SHARE_REQUIRED")
+        if state.draft.schedule_id:
+            from banking_api.application.schedule_service import ScheduleService
+            from banking_api.persistence.models import ScheduledTransferModel
+
+            row = await self.session.get(ScheduledTransferModel, state.draft.schedule_id)
+            await ScheduleService(self.session, self.engine, clock=self.clock).cancel(
+                row.schedule_id, user_id, row.version
+            )
+            return await self.get(workflow_id, user_id=user_id)
         now = _as_utc(self.clock())
         await self._invalidate_authorization(model, now)
         state.authorization = None
@@ -699,11 +782,36 @@ class WorkflowService:
         state: TransferWorkflowState,
         expected_version: int,
     ) -> Workflow:
+        await self.workflows.get_for_user_for_update(model.workflow_id, model.user_id)
         await self._invalidate_authorization(model, _as_utc(self.clock()))
+        if state.draft.schedule_id:
+            from banking_api.persistence.models import (
+                ScheduledAuthorizationModel,
+                ScheduledTransferModel,
+            )
+
+            scheduled = await self.session.get(
+                ScheduledTransferModel, state.draft.schedule_id, with_for_update=True
+            )
+            if scheduled.series_id is not None:
+                raise WorkflowActionError("RECURRING_SERIES_IMMUTABLE_CANCEL_AND_RECREATE")
+            if scheduled.operation_id is not None:
+                raise WorkflowActionError("SCHEDULE_ALREADY_SUBMITTING")
+            if scheduled.authorization_id:
+                grant = await self.session.get(
+                    ScheduledAuthorizationModel, scheduled.authorization_id
+                )
+                grant.revoked_at = _as_utc(self.clock())
+            scheduled.status, scheduled.authorization_id = "PENDING_AUTHORIZATION", None
+            scheduled.scheduled_for, scheduled.execute_deadline = (
+                state.draft.scheduled_for,
+                state.draft.execute_deadline,
+            )
+            scheduled.version += 1
         state.authorization = None
         state.risk_decision = None
         status, advanced = await self.engine.advance(
-            state, principal=ExecutionPrincipal.for_workflow(model.user_id)
+            state, principal=ExecutionPrincipal.for_workflow(model.user_id), session=self.session
         )
         if status is WorkflowStatus.READY_FOR_REVIEW:
             await self._evaluate_transfer_risk(advanced, user_id=model.user_id)
@@ -755,7 +863,7 @@ class WorkflowService:
                 model.status is WorkflowStatus.FAILED
                 and state.validation is not None
                 and bool(state.validation.issues)
-                and all(issue.code == "PAYEE_NOT_FOUND" for issue in state.validation.issues)
+                and all(issue.code in {"PAYEE_NOT_FOUND"} for issue in state.validation.issues)
                 and await self.operations.get_for_workflow(workflow_id, user_id) is None
             )
         if (

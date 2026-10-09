@@ -15,12 +15,47 @@ def canonicalize_transfer_payload(
         else TransferReviewPayload.model_validate(payload)
     )
     amount = Decimal(review.amount).quantize(Decimal("0.01"))
-    return {
+    canonical = {
         "amount": format(amount, ".2f"),
         "currency": review.currency.upper(),
         "payee_id": review.payee_id,
         "source_account_id": review.source_account_id,
     }
+    # Unchanged empty-remark payloads retain their historical approval hashes.
+    if review.remark:
+        canonical.update({"payload_version": "2", "remark": review.remark})
+    if review.scheduled_for:
+        from datetime import UTC
+
+        canonical.update(
+            {
+                "payload_version": "3",
+                "scheduled_for": review.scheduled_for.astimezone(UTC).isoformat(),
+                "execute_deadline": review.execute_deadline.astimezone(UTC).isoformat(),
+                "business_timezone": review.business_timezone,
+                "payee_target_version": review.payee_target_version or "",
+            }
+        )
+    if review.recurrence:
+        canonical.update(
+            {
+                "payload_version": "5",
+                "recurrence": json.dumps(
+                    review.recurrence.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+                ),
+            }
+        )
+    if review.aa_share_id:
+        canonical.update(
+            {
+                "payload_version": "4",
+                "aa_request_id": str(review.aa_request_id),
+                "aa_share_id": str(review.aa_share_id),
+                "destination_user_id": review.destination_user_id,
+                "destination_account_id": review.destination_account_id,
+            }
+        )
+    return canonical
 
 
 def canonical_transfer_json(

@@ -3,6 +3,10 @@ from collections.abc import AsyncIterator
 
 os.environ.setdefault("APP_ENVIRONMENT", "test")
 os.environ.setdefault("AUTH_MODE", "development")
+# Tests must not inherit optional demo modes from the developer's local .env.
+# Dedicated Mock and scheduling tests enable these flags explicitly.
+os.environ.setdefault("MOCK_PARTICIPANT_LOGIN_ENABLED", "false")
+os.environ.setdefault("MOCK_SCHEDULED_TRANSFERS_ENABLED", "false")
 
 import pytest
 from httpx import ASGITransport, AsyncClient

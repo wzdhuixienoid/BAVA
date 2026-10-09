@@ -1,4 +1,5 @@
 "use client";
+import { queryTime } from "@/lib/presentation/time";
 
 import { useEffect, useState } from "react";
 import type { components } from "@banking/api-client";
@@ -104,7 +105,7 @@ export function TaskActivity({ entries, loading, error }: ReturnType<typeof useT
       {error && <p className="text-amber-700">{error}</p>}
       {!loading && !error && entries.length === 0 && <p>暂无过程记录。</p>}
       <ol className="space-y-2 border-l-2 border-slate-200 pl-4">
-        {entries.map(({ event, text }) => <li key={event.event_id} title={new Date(event.timestamp).toLocaleString("zh-CN")}>
+        {entries.map(({ event, text }) => <li key={event.event_id} title={queryTime(event.timestamp)}>
           {text}
         </li>)}
       </ol>

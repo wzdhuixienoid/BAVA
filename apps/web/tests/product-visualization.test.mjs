@@ -129,9 +129,10 @@ test("saved spending tables localize categories, accounts, timestamps and decima
   assert.match(output, /67\.18%/);
   assert.match(output, /0\.00%/);
   assert.match(output, /100\.00%/);
-  assert.match(output, /2026年09月03日 20:20 住房 工资卡 人民币/);
-  assert.equal(localizeFinancialAnswer("2026年08月03日 12:14:00（协调世界时）", []), "2026年08月03日 20:14");
-  assert.equal(localizeFinancialAnswer("2026-08-03T20:14:00+08:00", []), "2026年08月03日 20:14");
+  assert.match(output, /2026-09-03 20:20:00 住房 工资卡 人民币/);
+  assert.equal(localizeFinancialAnswer("2026年08月03日 12:14:00（协调世界时）", []), "2026-08-03 20:14:00");
+  assert.equal(localizeFinancialAnswer("2026-08-03T20:14:00+08:00", []), "2026-08-03 20:14:00");
+  assert.equal(localizeFinancialAnswer("2026年08月03日 12:14:32（UTC）", []), "2026-08-03 20:14:32");
   assert.doesNotMatch(output, /share|HOUSING|acc_salary|T12|CNY/);
   assert.match(localizeFinancialAnswer("| 分类 | 占比 |\n| --- | --- |\n| FOOD | 0.99995 |", []), /100\.00%/);
 });
@@ -157,7 +158,7 @@ test("report check section is brief, grounded and omits currency and severity ta
     notes: ["部分消费缺少足够历史。"], answer: "", items: [{ transaction_id: "t", occurred_at: "2026-10-06T12:06:00Z",
       merchant: "数码商户", amount_display: "999.00", reason: "短时重复扣款" }] };
   const html = render(SpendingReview, { review });
-  assert.match(html, /值得核对的交易|短时重复扣款|999\.00 元|2026年10月06日 20:06/);
+  assert.match(html, /值得核对的交易|短时重复扣款|999\.00 元|2026-10-06 20:06:00/);
   assert.match(html, /部分消费缺少足够历史|不代表已确认欺诈/);
   assert.doesNotMatch(html, /<table|HIGH|币种|人民币|¥/);
   assert.equal(render(SpendingReview, {}), "");
@@ -200,7 +201,7 @@ test("deleted report task outputs do not recreate a report card in the conversat
 
 test("anomaly analysis is a single visible assistant answer without a separate card or folded copy", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
-  const content = "## 异常交易分析\n\n| 日期 | 金额 | 严重度 | 金额倍数 |\n| --- | --- | --- | --- |\n| 2026年10月07日 20:00 | 8600.00 | 高 | 190.90 |";
+  const content = "## 异常交易分析\n\n| 日期 | 金额 | 严重度 | 金额倍数 |\n| --- | --- | --- | --- |\n| 2026-10-07 20:00:00 | 8600.00 | 高 | 190.90 |";
   const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "近一年有什么异常交易吗" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { transaction_anomaly_snapshot: { analysis_period_started_at: "2025-10-07T15:05:00Z", analysis_period_ended_at: "2026-10-07T15:05:00Z" }, transaction_anomaly_answer: content } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "旧的重复回答。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
   assert.equal((html.match(/异常交易分析/g) ?? []).length, 1);
   assert.match(html, /8600\.00/); assert.match(html, /190\.90/);

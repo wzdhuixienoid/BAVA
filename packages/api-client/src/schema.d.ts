@@ -351,6 +351,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/{workflow_id}/actions/set-remark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Remark */
+        post: operations["set_remark_api_v1_workflows__workflow_id__actions_set_remark_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workflows/{workflow_id}/actions/cancel": {
         parameters: {
             query?: never;
@@ -447,6 +464,23 @@ export interface paths {
         put?: never;
         /** Select Subscription */
         post: operations["select_subscription_api_v1_workflows__workflow_id__actions_select_subscription_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows/{workflow_id}/actions/set-execution-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Execution Time */
+        post: operations["set_execution_time_api_v1_workflows__workflow_id__actions_set_execution_time_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -641,10 +675,244 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payees/{payee_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Payee */
+        delete: operations["delete_payee_api_v1_payees__payee_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Payee */
+        patch: operations["update_payee_api_v1_payees__payee_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/scheduled-transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Schedules */
+        get: operations["list_schedules_api_v1_scheduled_transfers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-transfers/{schedule_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schedule */
+        get: operations["get_schedule_api_v1_scheduled_transfers__schedule_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-transfers/{schedule_id}/actions/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule Action */
+        post: operations["schedule_action_api_v1_scheduled_transfers__schedule_id__actions__action__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aa-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Aa */
+        get: operations["list_aa_api_v1_aa_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aa-requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Aa */
+        get: operations["get_aa_api_v1_aa_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Aa */
+        patch: operations["update_aa_api_v1_aa_requests__request_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/aa-requests/{request_id}/actions/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish Aa */
+        post: operations["publish_aa_api_v1_aa_requests__request_id__actions_publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aa-shares/{share_id}/actions/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pay Aa */
+        post: operations["pay_aa_api_v1_aa_shares__share_id__actions_pay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aa-shares/{share_id}/actions/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close Aa */
+        post: operations["close_aa_api_v1_aa_shares__share_id__actions__action__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mock-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mock Sessions */
+        get: operations["mock_sessions_api_v1_mock_sessions_get"];
+        put?: never;
+        /** Mock Login */
+        post: operations["mock_login_api_v1_mock_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/aa-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aa Accounts */
+        get: operations["aa_accounts_api_v1_aa_accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AAAction */
+        AAAction: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** AAIntent */
+        AAIntent: {
+            /** Total */
+            total?: number | string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Participants */
+            participants?: string[];
+            /** Initiator Participates */
+            initiator_participates?: boolean | null;
+            /** Source Account Hint */
+            source_account_hint?: string | null;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+            /** Manual Amounts */
+            manual_amounts?: {
+                [key: string]: number | string;
+            } | null;
+        };
+        /** AAPaymentAction */
+        AAPaymentAction: {
+            /** Expected Version */
+            expected_version: number;
+            /** Source Account Id */
+            source_account_id: string;
+        };
+        /** AAUpdate */
+        AAUpdate: {
+            /** Expected Version */
+            expected_version: number;
+            intent: components["schemas"]["AAIntent"];
+            /** Collection Account Id */
+            collection_account_id?: string | null;
+            /** Deadline */
+            deadline?: string | null;
+        };
         /** AccountBalanceResult */
         AccountBalanceResult: {
             /**
@@ -1136,6 +1404,35 @@ export interface components {
          * @enum {string}
          */
         MessageRole: "USER" | "ASSISTANT" | "SYSTEM_NOTICE";
+        /** MockLogin */
+        MockLogin: {
+            /** Identity */
+            identity: string;
+        };
+        /** MonthlyRecurrence */
+        MonthlyRecurrence: {
+            /**
+             * Frequency
+             * @default MONTHLY
+             * @constant
+             */
+            frequency: "MONTHLY";
+            /** Day */
+            day: number;
+            /** Hour */
+            hour: number;
+            /** Minute */
+            minute: number;
+            /**
+             * Second
+             * @default 0
+             */
+            second: number;
+            /** Count */
+            count: number;
+            /** Occurrences */
+            occurrences: string[];
+        };
         /** MonthlySpendingReport */
         MonthlySpendingReport: {
             /**
@@ -1260,8 +1557,8 @@ export interface components {
             display_name: string;
             /** Bank Name */
             bank_name: string;
-            /** Account Suffix */
-            account_suffix: string;
+            /** Account Number */
+            account_number: string;
             /**
              * Phone Alias
              * @default
@@ -1282,6 +1579,22 @@ export interface components {
             masked_account: string;
             /** Phone Alias */
             phone_alias: string;
+        };
+        /** PayeeUpdate */
+        PayeeUpdate: {
+            /** Display Name */
+            display_name: string;
+            /** Bank Name */
+            bank_name: string;
+            /** Account Number */
+            account_number?: string | null;
+            /**
+             * Phone Alias
+             * @default
+             */
+            phone_alias: string;
+            /** Confirmed */
+            confirmed: boolean;
         };
         /** Plan */
         Plan: {
@@ -1610,6 +1923,67 @@ export interface components {
          * @enum {string}
          */
         RuntimeBackend: "manual" | "langgraph";
+        /** ScheduleAction */
+        ScheduleAction: {
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** ScheduledTransfer */
+        ScheduledTransfer: {
+            /**
+             * Schedule Id
+             * Format: uuid
+             */
+            schedule_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             */
+            workflow_id: string;
+            /** Version */
+            version: number;
+            /** Status */
+            status: string;
+            /** Scheduled For */
+            scheduled_for: string | null;
+            /** Execute Deadline */
+            execute_deadline: string | null;
+            /** Business Timezone */
+            business_timezone: string;
+            /** Operation Id */
+            operation_id: string | null;
+            /** Error Code */
+            error_code: string | null;
+            /** Series Id */
+            series_id?: string | null;
+            /** Occurrence Index */
+            occurrence_index?: number | null;
+            /** Series Version */
+            series_version?: number | null;
+            /**
+             * Series Revoked
+             * @default false
+             */
+            series_revoked: boolean;
+            recurrence?: components["schemas"]["MonthlyRecurrence"] | null;
+            /**
+             * Task Title
+             * @default 转账任务
+             */
+            task_title: string;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+            /** Created At */
+            created_at?: string | null;
+            /**
+             * Mock
+             * @default true
+             */
+            mock: boolean;
+        };
         /**
          * SecurityGuardStatus
          * @enum {string}
@@ -1657,10 +2031,24 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** SetExecutionTimeAction */
+        SetExecutionTimeAction: {
+            /** Execution Time Text */
+            execution_time_text: string;
+            /** Expected Version */
+            expected_version: number;
+        };
         /** SetRecipientQueryAction */
         SetRecipientQueryAction: {
             /** Recipient Query */
             recipient_query: string;
+            /** Expected Version */
+            expected_version: number;
+        };
+        /** SetRemarkAction */
+        SetRemarkAction: {
+            /** Remark */
+            remark: string;
             /** Expected Version */
             expected_version: number;
         };
@@ -2154,6 +2542,34 @@ export interface components {
             source_account_hint?: string | null;
             /** Source Account Id */
             source_account_id?: string | null;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+            recurrence?: components["schemas"]["MonthlyRecurrence"] | null;
+            /** Recurrence Text */
+            recurrence_text?: string | null;
+            /**
+             * Schedule Requested
+             * @default false
+             */
+            schedule_requested: boolean;
+            /** Schedule Time Error */
+            schedule_time_error?: string | null;
+            /** Scheduled For */
+            scheduled_for?: string | null;
+            /** Execute Deadline */
+            execute_deadline?: string | null;
+            /**
+             * Business Timezone
+             * @default Asia/Shanghai
+             */
+            business_timezone: string;
+            /** Schedule Id */
+            schedule_id?: string | null;
+            /** Aa Share Id */
+            aa_share_id?: string | null;
         };
         /** TransferRequiredInput */
         TransferRequiredInput: {
@@ -2169,9 +2585,34 @@ export interface components {
          * TransferRequiredInputType
          * @enum {string}
          */
-        TransferRequiredInputType: "PAYEE_SELECTION" | "SOURCE_ACCOUNT_SELECTION" | "AMOUNT" | "RECIPIENT_QUERY";
+        TransferRequiredInputType: "EXECUTION_TIME" | "PAYEE_SELECTION" | "SOURCE_ACCOUNT_SELECTION" | "AMOUNT" | "RECIPIENT_QUERY";
         /** TransferReviewPayload */
         TransferReviewPayload: {
+            recurrence?: components["schemas"]["MonthlyRecurrence"] | null;
+            /** Payee Target Version */
+            payee_target_version?: string | null;
+            /** Aa Request Id */
+            aa_request_id?: string | null;
+            /** Aa Share Id */
+            aa_share_id?: string | null;
+            /** Destination User Id */
+            destination_user_id?: string | null;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+            /** Scheduled For */
+            scheduled_for?: string | null;
+            /** Execute Deadline */
+            execute_deadline?: string | null;
+            /**
+             * Business Timezone
+             * @default Asia/Shanghai
+             */
+            business_timezone: string;
             /** Source Account Id */
             source_account_id: string;
             /** Source Account Display Name */
@@ -3151,6 +3592,41 @@ export interface operations {
             };
         };
     };
+    set_remark_api_v1_workflows__workflow_id__actions_set_remark_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRemarkAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cancel_workflow_api_v1_workflows__workflow_id__actions_cancel_post: {
         parameters: {
             query?: never;
@@ -3338,6 +3814,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SelectSubscriptionAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_execution_time_api_v1_workflows__workflow_id__actions_set_execution_time_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetExecutionTimeAction"];
             };
         };
         responses: {
@@ -3730,6 +4241,422 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_payee_api_v1_payees__payee_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payee_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_payee_api_v1_payees__payee_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payee_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayeeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayeeSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_schedules_api_v1_scheduled_transfers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTransfer"][];
+                };
+            };
+        };
+    };
+    get_schedule_api_v1_scheduled_transfers__schedule_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTransfer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_action_api_v1_scheduled_transfers__schedule_id__actions__action__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schedule_id: string;
+                action: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduledTransfer"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_aa_api_v1_aa_requests_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_aa_api_v1_aa_requests__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_aa_api_v1_aa_requests__request_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AAUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_aa_api_v1_aa_requests__request_id__actions_publish_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AAAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pay_aa_api_v1_aa_shares__share_id__actions_pay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AAPaymentAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    close_aa_api_v1_aa_shares__share_id__actions__action__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                share_id: string;
+                action: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AAAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mock_sessions_api_v1_mock_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    mock_login_api_v1_mock_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MockLogin"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    aa_accounts_api_v1_aa_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

@@ -10,7 +10,7 @@ from banking_api.planning.constraints import has_conditional_control
 from banking_api.routing.models import RequestRoute, RouteDecision
 
 ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对象，格式为：
-{"route":"MINIMAL_BANKING|FINANCIAL_ANALYSIS|TRANSFER_WORKFLOW|SUBSCRIPTION_ANALYSIS|SUBSCRIPTION_CANCEL|SUBSCRIPTION_RESUME|COMPLEX_PLAN|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT|WORKFLOW","confidence":0.0}
+{"route":"MINIMAL_BANKING|FINANCIAL_ANALYSIS|AA_COLLECTION|TRANSFER_WORKFLOW|SUBSCRIPTION_ANALYSIS|SUBSCRIPTION_CANCEL|SUBSCRIPTION_RESUME|COMPLEX_PLAN|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT|WORKFLOW","confidence":0.0}
 
 路由规则：
 - 账户列表、余额查询、可转账收款人列表、查询收款人、新增收款人页面指引 -> MINIMAL_BANKING / ANSWER
@@ -20,6 +20,8 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 生成、制作、给我一份月度或年度消费/账单报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
   兼容报告输出类型，期间可为 YYYY 或 YYYY-MM。
 - 同时要求消费分析和生成报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
+- 拆分 AA、聚餐平摊收款请求 -> AA_COLLECTION / WORKFLOW；创建收款请求不等于付款
+- 即时、单次预约和按月周期转账请求均属于独立转账；按月转账不是条件循环计划
 - 独立转账请求 -> TRANSFER_WORKFLOW / WORKFLOW
 - 订阅列表、成本、涨价、即将续费 -> SUBSCRIPTION_ANALYSIS / ANSWER
 - 取消某项订阅或代扣 -> SUBSCRIPTION_CANCEL / WORKFLOW
@@ -35,7 +37,7 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 投资、理财购买、卡片写操作或当前系统不支持的业务 -> UNSUPPORTED / ANSWER
 
 MINIMAL_BANKING 和 UNSUPPORTED 的 requested_output 必须是 ANSWER。
-TRANSFER_WORKFLOW、SUBSCRIPTION_CANCEL 和 SUBSCRIPTION_RESUME 必须是 WORKFLOW。
+AA_COLLECTION、TRANSFER_WORKFLOW、SUBSCRIPTION_CANCEL 和 SUBSCRIPTION_RESUME 必须是 WORKFLOW。
 
 不要输出解释、Markdown 或推理过程。
 """.strip()
@@ -60,6 +62,17 @@ class RequestRouter:
             return RouteDecision(
                 route=RequestRoute.MINIMAL_BANKING,
                 requested_output=RequestedOutput.ANSWER,
+                confidence=1.0,
+            )
+        if (
+            re.search(r"每(?:个)?月\d{1,2}(?:号|日)", normalized)
+            and any(word in normalized for word in ("转账", "转帐", "汇款", "打款"))
+            and not has_conditional_control(user_request)
+            and not self._is_multi_capability_intent(user_request)
+        ):
+            return RouteDecision(
+                route=RequestRoute.TRANSFER_WORKFLOW,
+                requested_output=RequestedOutput.WORKFLOW,
                 confidence=1.0,
             )
         request = LLMRequest(

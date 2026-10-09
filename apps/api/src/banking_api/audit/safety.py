@@ -19,6 +19,9 @@ def safe_text(value: object) -> str:
         secret and secret in text for secret in (settings.llm_api_key, settings.mock_reauth_code)
     ):
         return "[敏感内容已省略]"
+    text = re.sub(
+        r"(?<![0-9])(?:\+86\s*)?(1[3-9][0-9])[0-9]{4}([0-9]{4})(?![0-9])", r"\1****\2", text
+    )
     return text[:500]
 
 
@@ -48,6 +51,7 @@ def workflow_evidence(state: dict) -> dict:
                 "source_account_masked_number",
                 "payee_display_name",
                 "payee_masked_account",
+                "scheduled_for",
                 "merchant",
             )
             if review.get(key) is not None

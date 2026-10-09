@@ -110,6 +110,8 @@ export default function HomePage() {
           订阅与代扣总览
         </Link>
         {!auth.development && <button className="mb-5 text-sm text-cyan-300 hover:text-cyan-200" onClick={() => void auth.logout()}>登出</button>}
+        <Link href="/scheduled-transfers" className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">预约与周期转账</Link>
+        <Link href="/aa" className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">AA 收款与付款</Link>
         <Link href="/payees" className="mb-5 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">收款人管理</Link>
         {deleteError && <p role="alert" className="mb-3 text-xs text-red-300">{deleteError}</p>}
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">最近对话</p>
@@ -127,9 +129,9 @@ export default function HomePage() {
             >
               <span className="block truncate font-medium">{conversation.title}</span>
             </button>
-            <button aria-label={`重命名对话：${conversation.title}`} onClick={() => {
+            <button aria-label={`编辑对话：${conversation.title}`} onClick={() => {
               setRenameTarget(conversation); setRenameTitle(conversation.title); setRenameError(null);
-            }} className="shrink-0 rounded px-1.5 py-3 text-xs text-slate-400 hover:bg-slate-800 hover:text-cyan-300">改名</button>
+            }} className="shrink-0 rounded px-1.5 py-3 text-xs text-slate-400 hover:bg-slate-800 hover:text-cyan-300">编辑</button>
             <button aria-label={`删除对话：${conversation.title}`} disabled={deleting !== null} onClick={() => { setDeleteError(null); setDeleteTarget(conversation); }} className="shrink-0 rounded px-2 py-3 text-xs text-slate-400 hover:bg-slate-800 hover:text-red-300">{deleting === conversation.conversation_id ? "…" : "删除"}</button>
             </div>
           ))}
@@ -149,7 +151,7 @@ export default function HomePage() {
       </div>}
       {deleteTarget && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-5">
         <div role="dialog" aria-modal="true" aria-labelledby="delete-title" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-          <h2 id="delete-title" className="text-lg font-semibold">删除对话</h2><p className="mt-3 text-sm text-slate-600">确认删除“{deleteTarget.title}”？业务及审计记录会保留。</p>
+          <h2 id="delete-title" className="text-lg font-semibold">删除对话</h2><p className="mt-3 text-sm text-slate-600">确认删除“{deleteTarget.title}”？已授权预约继续按计划执行，可在预约列表管理；业务及审计记录会保留。</p>
           {deleteError && <p role="alert" className="mt-3 text-sm text-red-700">{deleteError}</p>}
           <div className="mt-5 flex justify-end gap-3"><button autoFocus disabled={deleting !== null} onClick={() => setDeleteTarget(null)} className="rounded-lg border px-4 py-2">返回</button><button disabled={deleting !== null} onClick={() => void deleteConversation(deleteTarget)} className="rounded-lg bg-red-700 px-4 py-2 text-white">{deleting ? "删除中…" : "确认删除"}</button></div>
         </div>

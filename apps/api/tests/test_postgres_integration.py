@@ -329,7 +329,9 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        assert revision == "0019"
+        from alembic.script import ScriptDirectory
+        from pathlib import Path
+        assert revision == ScriptDirectory(str(Path(__file__).parents[1] / "migrations")).get_current_head()
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"

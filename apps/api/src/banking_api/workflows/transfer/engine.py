@@ -48,29 +48,78 @@ class TransferWorkflowEngine:
 
     def __init__(self, executor: ToolExecutor) -> None:
         self._executor = executor
+        self.aa_resolver = None
+        self.time_extractor = None
 
     async def start(
         self, intent: TransferIntent, *, principal: ExecutionPrincipal
     ) -> tuple[WorkflowStatus, TransferWorkflowState]:
-        draft = TransferDraft(**intent.model_dump())
+        draft = TransferDraft(**intent.model_dump(exclude={"execution_time_text", "time_intent"}))
+        if intent.execution_time_text is not None:
+            await self.resolve_time(
+                draft,
+                intent.execution_time_text,
+                received_at=datetime.now(UTC),
+                intent=intent.time_intent,
+            )
         return await self.advance(TransferWorkflowState(draft=draft), principal=principal)
 
     async def advance(
-        self, state: TransferWorkflowState, *, principal: ExecutionPrincipal
+        self, state: TransferWorkflowState, *, principal: ExecutionPrincipal, session=None
     ) -> tuple[WorkflowStatus, TransferWorkflowState]:
         state.required_input = None
         state.validation = None
         state.review_payload = None
         draft = state.draft
+        if draft.schedule_requested and draft.scheduled_for is None:
+            return self._waiting(
+                state,
+                TransferRequiredInputType.EXECUTION_TIME,
+                (
+                    "周期转账需明确每月日期、执行时刻和总次数（2 至 12 次，最长 366 天）。"
+                    if draft.recurrence_text
+                    else "执行时间已过去或未满足最小提前量。"
+                    if draft.schedule_time_error == "SCHEDULE_TIME_TOO_SOON"
+                    else "执行时间超出允许的预约期限。"
+                    if draft.schedule_time_error == "SCHEDULE_TIME_TOO_FAR"
+                    else "时间表达无法唯一确定。"
+                )
+                + (
+                    "例如每月1号上午9点，共3次。"
+                    if draft.recurrence_text
+                    else "请提供明确日期和时间，例如明天早上9点或2026-10-09 09:00。"
+                ),
+            )
 
-        if not draft.recipient_query:
+        if not draft.recipient_query and not draft.aa_share_id:
             return self._waiting(
                 state,
                 TransferRequiredInputType.RECIPIENT_QUERY,
-                "请提供收款人姓名或手机别名。",
+                "请提供收款人姓名或别名。",
             )
 
-        payees = await self._search_payees(draft.recipient_query, principal=principal)
+        aa_target = None
+        if draft.aa_share_id:
+            if self.aa_resolver is None:
+                return self._failed(state, "AA_UNAVAILABLE", "AA 收款服务不可用。")
+            aa_target = await self.aa_resolver(
+                share_id=draft.aa_share_id, user_id=principal.user_id
+            )
+            if aa_target is None:
+                return self._failed(
+                    state, "AA_SHARE_NOT_PAYABLE", "AA 份额已取消、过期或不属于当前身份。"
+                )
+            if (
+                draft.amount != Decimal(aa_target["amount"])
+                or draft.remark != aa_target["remark"]
+                or draft.currency != "CNY"
+            ):
+                return self._failed(
+                    state, "AA_SNAPSHOT_IMMUTABLE", "AA 收款金额、备注与目标不能修改。"
+                )
+            payees = [aa_target["payee"]]
+        else:
+            payees = await self._search_payees(draft.recipient_query, principal=principal)
         state.payee_options = payees
         if not payees:
             return self._waiting(
@@ -82,14 +131,19 @@ class TransferWorkflowEngine:
         if draft.payee_id and selected_payee is None:
             return self._failed(state, "PAYEE_NOT_FOUND", "所选收款人不再可用。")
         if draft.payee_id is None:
-            if len(payees) == 1:
+            query = "".join((draft.recipient_query or "").casefold().split())
+            exact = len(payees) == 1 and query in {
+                "".join(str(payees[0].get(key, "")).casefold().split())
+                for key in ("display_name", "phone_alias")
+            }
+            if len(payees) == 1 and (exact or draft.aa_share_id):
                 selected_payee = payees[0]
                 draft.payee_id = selected_payee["payee_id"]
             else:
                 state.required_input = TransferRequiredInput(
                     type=TransferRequiredInputType.PAYEE_SELECTION,
                     options=payees,
-                    message="找到多个同名收款人，请选择具体收款人。",
+                    message="找到可能匹配的收款人，请核对并选择具体收款人。",
                 )
                 return WorkflowStatus.WAITING_FOR_INPUT, state
 
@@ -179,7 +233,38 @@ class TransferWorkflowEngine:
             available_balance=available,
             issues=[],
         )
+        target_version = None
+        if draft.schedule_requested:
+            import hashlib
+            import json
+
+            from sqlalchemy import or_, select
+
+            from banking_api.persistence.models import PayeeModel
+
+            identity = {
+                key: selected_payee[key] for key in ("payee_id", "bank_name", "masked_account")
+            }
+            identity["account_fingerprint"] = None
+            if session is not None:
+                registered = await session.scalar(
+                    select(PayeeModel).where(
+                        PayeeModel.user_id == principal.user_id,
+                        or_(
+                            PayeeModel.payee_id == draft.payee_id,
+                            PayeeModel.source_payee_id == draft.payee_id,
+                        ),
+                    )
+                )
+                identity["account_fingerprint"] = (
+                    registered.account_fingerprint if registered else None
+                )
+            target_version = hashlib.sha256(
+                json.dumps(identity, sort_keys=True).encode()
+            ).hexdigest()
         state.review_payload = TransferReviewPayload(
+            recurrence=draft.recurrence,
+            payee_target_version=target_version,
             source_account_id=selected_account["account_id"],
             source_account_display_name=selected_account["display_name"],
             source_account_masked_number=selected_account["masked_number"],
@@ -189,6 +274,14 @@ class TransferWorkflowEngine:
             payee_masked_account=selected_payee["masked_account"],
             amount=draft.amount,
             currency=draft.currency,
+            aa_share_id=draft.aa_share_id,
+            aa_request_id=aa_target["request_id"] if aa_target else None,
+            destination_user_id=aa_target["destination_user_id"] if aa_target else None,
+            destination_account_id=aa_target["destination_account_id"] if aa_target else None,
+            remark=draft.remark,
+            scheduled_for=draft.scheduled_for,
+            execute_deadline=draft.execute_deadline,
+            business_timezone=draft.business_timezone,
         )
         return WorkflowStatus.READY_FOR_REVIEW, state
 
@@ -229,6 +322,64 @@ class TransferWorkflowEngine:
         accounts = await self._list_accounts(principal=principal)
         if account_id not in {str(item["account_id"]) for item in accounts}:
             raise InvalidWorkflowActionError("Account does not exist")
+
+    async def resolve_time(
+        self, draft: TransferDraft, value: str, *, received_at: datetime, intent=None
+    ):
+        if self.time_extractor is None and intent is None:
+            # Legacy programmatic clients/tests only. The app always binds the LLM extractor.
+            self.set_time(draft, value, received_at=received_at)
+            return
+        from banking_api.config.settings import get_settings
+        from banking_api.workflows.transfer.time_intent import resolve_time_intent
+
+        draft.schedule_requested = True
+        draft.business_timezone = get_settings().banking_business_timezone
+        draft.schedule_time_error = None
+        draft.recurrence = None
+        draft.recurrence_text = None
+        try:
+            if intent is None:
+                intent = await self.time_extractor.extract(value)
+            if intent.kind == "MONTHLY":
+                draft.recurrence_text = value
+            draft.scheduled_for, draft.execute_deadline, draft.recurrence = resolve_time_intent(
+                intent, received_at
+            )
+        except (ValueError, OverflowError) as exc:
+            draft.schedule_time_error = str(exc)
+            draft.scheduled_for = draft.execute_deadline = None
+
+    @staticmethod
+    def set_time(draft: TransferDraft, value: str, *, received_at: datetime) -> None:
+        from banking_api.config.settings import get_settings
+        from banking_api.transfers.schedule_time import (
+            is_monthly_expression,
+            parse_execution_time,
+            parse_monthly_recurrence,
+        )
+
+        draft.schedule_requested = True
+        draft.schedule_time_error = None
+        draft.recurrence = None
+        draft.recurrence_text = value if is_monthly_expression(value) else None
+        draft.business_timezone = get_settings().banking_business_timezone
+        try:
+            if draft.recurrence_text:
+                from datetime import timedelta
+
+                draft.recurrence = parse_monthly_recurrence(value, received_at)
+                draft.scheduled_for = draft.recurrence.occurrences[0]
+                draft.execute_deadline = draft.scheduled_for + timedelta(
+                    seconds=get_settings().scheduled_transfer_late_window_seconds
+                )
+            else:
+                draft.scheduled_for, draft.execute_deadline = parse_execution_time(
+                    value, received_at
+                )
+        except (ValueError, OverflowError) as exc:
+            draft.schedule_time_error = str(exc)
+            draft.scheduled_for = draft.execute_deadline = None
 
     def ensure_commit_allowed(self) -> None:
         spec = self._executor.registry.get("transfer.commit")

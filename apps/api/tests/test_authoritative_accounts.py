@@ -12,6 +12,7 @@ from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.operation_service import OperationService
 from banking_api.application.workflow_service import WorkflowService
+from banking_api.config.settings import Settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.account import AccountBalanceResult
 from banking_api.domain.enums import OperationStatus, RuntimeBackend
@@ -128,6 +129,46 @@ async def test_standalone_account_list_is_typed_and_bounded(app, client):
     assert schema["AccountBalanceResult"]["properties"]["balance"]["type"] == "string"
     assert "account_results" in schema["TaskOutput"]["properties"]
     assert schema["TaskOutput"]["properties"]["account_results"]["maxItems"] == 100
+
+
+@pytest.mark.parametrize("backend", [RuntimeBackend.MANUAL, RuntimeBackend.LANGGRAPH])
+@pytest.mark.parametrize("batched", [False, True])
+async def test_all_account_balances_complete_with_default_budget(app, client, backend, batched):
+    _, _, registry, _ = operation_runtime(app)
+    account_ids = ["acc_salary", "acc_savings", "acc_credit", "acc_travel"]
+    calls = [
+        LLMToolCall(id=account_id, name="get_balance", arguments={"account_id": account_id})
+        for account_id in account_ids
+    ]
+    responses = [
+        LLMResponse(tool_calls=[LLMToolCall(id="list", name="list_accounts", arguments={})]),
+        *(
+            [LLMResponse(tool_calls=calls)]
+            if batched
+            else [LLMResponse(tool_calls=[call]) for call in calls]
+        ),
+        LLMResponse(content="已查到各账户余额，请查看账户卡片。"),
+    ]
+    runner = account_runner(app, registry, responses, backend)
+    task_id = await query(app, runner, "我账户里有多少钱")
+    task = (await client.get(f"/api/v1/tasks/{task_id}")).json()
+    assert task["status"] == "COMPLETED"
+    assert task["output"]["tool_calls"] == 5
+    results = task["output"]["account_results"]
+    assert results[0]["kind"] == "ACCOUNT_LIST"
+    assert [item["account_id"] for item in results[1:]] == account_ids
+    assert [item["balance"] for item in results[1:]] == [
+        "23864.52",
+        "78620.00",
+        "-4860.35",
+        "12680.40",
+    ]
+
+
+def test_default_settings_allow_full_account_balance_query(monkeypatch):
+    monkeypatch.delenv("AGENT_MAX_TOOL_CALLS", raising=False)
+    settings = Settings(_env_file=None, auth_mode="development")
+    assert settings.agent_max_tool_calls == 8
 
 
 async def test_balance_after_successful_transfer_uses_provider_ledger(app, client):

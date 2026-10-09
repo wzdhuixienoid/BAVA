@@ -9,6 +9,7 @@ class RequestRoute(StrEnum):
     MINIMAL_BANKING = "MINIMAL_BANKING"
     FINANCIAL_ANALYSIS = "FINANCIAL_ANALYSIS"
     TRANSFER_WORKFLOW = "TRANSFER_WORKFLOW"
+    AA_COLLECTION = "AA_COLLECTION"
     SUBSCRIPTION_ANALYSIS = "SUBSCRIPTION_ANALYSIS"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
     SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
@@ -27,6 +28,7 @@ class RouteDecision(BaseModel):
     def validate_output_for_route(self) -> "RouteDecision":
         if self.route in {
             RequestRoute.TRANSFER_WORKFLOW,
+            RequestRoute.AA_COLLECTION,
             RequestRoute.SUBSCRIPTION_CANCEL,
             RequestRoute.SUBSCRIPTION_RESUME,
         }:
