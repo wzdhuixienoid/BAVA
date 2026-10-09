@@ -84,11 +84,11 @@ export default function HomePage() {
       <aside aria-label="对话导航" className="min-h-0 overflow-y-auto overscroll-contain border-b border-slate-200 bg-slate-950 p-5 text-white md:border-b-0 md:border-r">
         <div className="mb-6 relative">
           <div className="absolute right-0 top-0"><NotificationBell /></div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-            智能银行服务
-          </p>
+          <div className="flex items-center gap-2 pr-8">
+            <p className="text-xs font-semibold tracking-[0.2em] text-cyan-300">智能银行服务</p>
+            <span className="text-[10px] text-slate-400">v{APP_VERSION}</span>
+          </div>
           <h1 className="mt-2 pr-8 text-xl font-semibold">银行助理工作台</h1>
-          <p className="mt-1 text-xs text-slate-400">v{APP_VERSION} · 转账、预约与 AA 收款</p>
         </div>
         <button
           className="mb-5 w-full rounded-lg bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 hover:bg-cyan-300"
