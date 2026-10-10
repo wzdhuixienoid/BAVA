@@ -30,6 +30,7 @@ export function AuditTimeline({ trace }: { trace: Trace }) {
       {trace.entries.map((entry) => <li key={entry.event_id} className="min-w-0 rounded border border-slate-100 p-3">
         <div className="flex flex-wrap items-center gap-2"><span className="text-slate-400">#{entry.sequence}</span><time dateTime={entry.timestamp}>{dateTime(entry.timestamp)}</time><span className="text-slate-500">{actorLabels[entry.actor_type]}</span>{entry.status && <StatusBadge status={entry.status} />}</div>
         <p className="mt-2 font-semibold">{entry.decision_summary}</p>
+        {entry.wealth_risk_decision && <p className="mt-2">模拟理财：需确认及强验证 · 客户 {entry.wealth_risk_decision.customer_grade ?? "赎回无需重新测评"} · 产品 {entry.wealth_risk_decision.product_risk ?? "待选择"}</p>}
         {entry.risk_decision && <RiskDetails risk={entry.risk_decision} />}
         {entry.condition_decision && <ConditionCard decision={entry.condition_decision} sourceLabel={entry.condition_decision.source_step_id} />}
         <details className="mt-2"><summary className="cursor-pointer text-cyan-800">技术证据</summary>

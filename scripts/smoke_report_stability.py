@@ -6,10 +6,9 @@ import contextlib
 import io
 import json
 
+from banking_api.config.settings import Settings
 from smoke_report_product import main as report_product
 from sqlalchemy.engine import make_url
-
-from banking_api.config.settings import Settings
 
 
 async def main():
@@ -23,15 +22,21 @@ async def main():
         settings.app_environment not in {"development", "test"}
         or "test" not in (make_url(settings.database_url).database or "").lower()
     ):
-        raise SystemExit("Report stability requires a development/test isolated test database")
-    totals = dict(
-        runs=args.runs, successes=0, validation_failures=0, golden_mismatches=0, other_failures=0
-    )
+        raise SystemExit(
+            "Report stability requires a development/test isolated test database"
+        )
+    totals = {
+        "runs": args.runs,
+        "successes": 0,
+        "validation_failures": 0,
+        "golden_mismatches": 0,
+        "other_failures": 0,
+    }
     for index in range(args.runs):
         try:
             with contextlib.redirect_stdout(io.StringIO()):
                 await report_product()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - report each isolated run failure
             # Record transport/schema failures too, without printing credential-bearing
             # exception text. Every requested run contributes to the final totals.
             text = str(exc)

@@ -1,19 +1,19 @@
 # 系统架构
 
-本页描述 v0.10.3 的实现。长期设计约束见 [设计原则](design-principles.md)。
+本页描述 v0.11.1 的实现。长期设计约束见 [设计原则](design-principles.md)。
 
 ## 执行概念
 
 | 概念 | 职责 | 当前实现 |
 | --- | --- | --- |
-| Agent | 选择下一步只读查询并解释结果 | MinimalBanking、FinancialAnalysis、SubscriptionAnalysis |
+| Agent | 选择下一步只读查询并解释结果 | MinimalBanking、FinancialAnalysis、SubscriptionAnalysis、WealthAdvisor |
 | Skill | 稳定组织专业结果 | 消费报告、异常分析说明；消费可信快照 |
-| Workflow | 按明确状态推进业务 | 转账、取消订阅、恢复续费授权 |
+| Workflow | 按明确状态推进业务 | 转账、取消订阅、恢复续费授权、理财申购/赎回 |
 | Tool | 提供受权限控制的具体能力 | 账户、收款人、金融汇总、订阅分析与受控提交 |
 | Plan | 组合已有高层能力 | 固定持久化 DAG、确定性条件与等待用户步骤 |
 | Domain API | 向前端提供资源和业务动作 | 报告、订阅、收款人、预约、AA、消息与审计 |
 
-三类 Agent 均为只读。`RequestRouter` 选择执行路径；单个 Agent 或 Workflow 能完成的请求走原路径，跨能力请求才进入 `ConstrainedPlanner` 和 `PlanValidator`。Planner 不能直接提交金融操作。
+四类 Agent 均为只读。`RequestRouter` 选择执行路径；单个 Agent 或 Workflow 能完成的请求走原路径，跨能力请求才进入 `ConstrainedPlanner` 和 `PlanValidator`。Planner 不能直接提交金融操作。
 
 ## 从消息到执行
 
@@ -62,3 +62,17 @@ Worker 由 API 进程托管，不是通用队列平台。EventBus 为进程内�
 | 前端工作台 | [page.tsx](../../apps/web/app/page.tsx) |
 
 完整 HTTP 契约通过运行环境的 `/docs` 查看；客户端类型位于 `packages/api-client`，使用 `pnpm api:generate` 更新。
+
+## 理财边界
+
+`wealth/` 保存结构化目录、净值、测评、订单、持仓、占用和账本。`knowledge/wealth.py` 提供可替换关键词检索接口，无Embedding或新向量库。资料版本先过滤再检索；资料内容永远不能授予工具权限。产品风险类型与Tool权限RiskLevel分离，交易规则与推荐排序由确定性服务计算。
+
+余额服务复用旧advisory key，所有账户写路径共享可用余额。理财锁顺序为Security用户锁 → Workflow → 账户 → 持仓 → 订单/占用，调用Provider前结束应用快照事务。受理与结算各为短事务；不持锁等待模型或网络。申购成交与结算同事务，赎回成交和到账分阶段；独立账本不进入消费fixture。
+
+复用Approval、Reauthentication、Operation、Event/Outbox、消息、审计和OperationRecoveryWorker。正常等待直接设置下一业务阶段，不增加故障次数；未知结果退避查询原操作，保持占用和最后订单阶段。只有SETTLED才投影资金成功。页面创建交易同时保存本人Conversation、Message、Task和唯一source_task_id，刷新可恢复。
+
+不可变产品版本内保存关联资料hash清单；当前资料的正文hash、结构化条款、资料版本及可访问来源必须一致，否则停止新申购。检索也过滤hash不匹配资料，不把被改动的文本作为有效证据。已受理订单结算仍使用原订单条款快照。
+
+新业务开关与执行能力注册分开。development/test始终注册理财只读和受控Operation查询/提交工具；关闭开关只阻止新的测评、草稿、授权和首次受理，已有订单幂等重放及恢复继续按原快照结算。production不注册Mock工具，Provider也校验执行环境。`GET /api/v1/wealth/status`返回开关及目录/问卷版本；页面静态资料按版本加载，动态资源统一刷新、禁止重叠并在隐藏时暂停。
+
+自然语言数量保留元/份单位并严格校验方向，歧义进入补全草稿；全部赎回在后端唯一确定持仓并绑定明确可用份额，提交不静默缩减数量。推荐通过共用的结构化需求约束解析器识别保本、否定偏好和流动性硬约束，HTTP和Agent使用同一服务与用户测评标记。订单说明投影由后端统一提供错误码、中文原因、下一步、最后阶段和预计处理时间。

@@ -933,6 +933,279 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wealth/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_v1_wealth_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Products */
+        get: operations["products_api_v1_wealth_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Product */
+        get: operations["product_api_v1_wealth_products__product_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare */
+        post: operations["compare_api_v1_wealth_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recommendations */
+        post: operations["recommendations_api_v1_wealth_recommendations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/questionnaire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Questionnaire */
+        get: operations["questionnaire_api_v1_wealth_questionnaire_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/risk-assessments/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Assessment */
+        get: operations["current_assessment_api_v1_wealth_risk_assessments_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/risk-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Assessment */
+        post: operations["save_assessment_api_v1_wealth_risk_assessments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/knowledge/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Knowledge */
+        get: operations["knowledge_api_v1_wealth_knowledge_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Document */
+        get: operations["document_api_v1_wealth_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Positions */
+        get: operations["positions_api_v1_wealth_positions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Orders */
+        get: operations["orders_api_v1_wealth_orders_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Order */
+        get: operations["order_api_v1_wealth_orders__order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Wealth Workflows */
+        get: operations["list_wealth_workflows_api_v1_wealth_workflows_get"];
+        put?: never;
+        /** Create Workflow */
+        post: operations["create_workflow_api_v1_wealth_workflows_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/workflows/{workflow_id}/actions/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Edit Workflow */
+        post: operations["edit_workflow_api_v1_wealth_workflows__workflow_id__actions_edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Wealth Accounts */
+        get: operations["wealth_accounts_api_v1_wealth_accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1065,6 +1338,16 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** AssessmentInput */
+        AssessmentInput: {
+            /**
+             * Questionnaire Version
+             * @constant
+             */
+            questionnaire_version: "mock-v1";
+            /** Answers */
+            answers: number[];
+        };
         /**
          * AuditActor
          * @enum {string}
@@ -1107,6 +1390,7 @@ export interface components {
             /** Facts */
             facts?: components["schemas"]["AuditFact"][];
             risk_decision?: components["schemas"]["TransferRiskDecision"] | null;
+            wealth_risk_decision?: components["schemas"]["WealthRiskDecision"] | null;
             condition_decision?: components["schemas"]["ConditionDecision"] | null;
         };
         /** AuditFact */
@@ -1203,6 +1487,11 @@ export interface components {
         CommitTransferAction: {
             /** Expected Version */
             expected_version: number;
+        };
+        /** CompareInput */
+        CompareInput: {
+            /** Product Ids */
+            product_ids: string[];
         };
         /** ConditionDecision */
         ConditionDecision: {
@@ -1364,6 +1653,16 @@ export interface components {
         DataQualityStatus: "COMPLETE" | "PARTIAL";
         /** DemoReadiness */
         DemoReadiness: {
+            /**
+             * Wealth Enabled
+             * @default false
+             */
+            wealth_enabled: boolean;
+            /**
+             * Wealth Catalog Ready
+             * @default false
+             */
+            wealth_catalog_ready: boolean;
             /** Version */
             version: string;
             /** Database Revision */
@@ -1665,7 +1964,7 @@ export interface components {
          * OperationType
          * @enum {string}
          */
-        OperationType: "TRANSFER" | "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
+        OperationType: "WEALTH_PURCHASE" | "WEALTH_REDEEM" | "TRANSFER" | "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
         /** PayeeCreate */
         PayeeCreate: {
             /** Display Name */
@@ -1802,6 +2101,11 @@ export interface components {
          */
         PlanStepStatus: "PENDING" | "RUNNING" | "WAITING_USER" | "WAITING_EXTERNAL" | "COMPLETED" | "FAILED" | "CANCELLED" | "SKIPPED";
         /**
+         * ProductRiskGrade
+         * @enum {string}
+         */
+        ProductRiskGrade: "R1" | "R2" | "R3" | "R4" | "R5";
+        /**
          * ReauthenticationMethod
          * @enum {string}
          */
@@ -1825,6 +2129,57 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+        };
+        /** RecommendationConstraints */
+        RecommendationConstraints: {
+            /**
+             * Principal Guarantee
+             * @default false
+             */
+            principal_guarantee: boolean;
+            /**
+             * No Principal Loss
+             * @default false
+             */
+            no_principal_loss: boolean;
+            /** Preferred Risk */
+            preferred_risk?: number | null;
+            /** Excluded Risks */
+            excluded_risks?: number[];
+            /**
+             * Maximum Risk
+             * @default 5
+             */
+            maximum_risk: number;
+            /**
+             * Immediate Cash
+             * @default false
+             */
+            immediate_cash: boolean;
+            /**
+             * Within Week
+             * @default false
+             */
+            within_week: boolean;
+            /**
+             * Ambiguous
+             * @default false
+             */
+            ambiguous: boolean;
+            /** Reasons */
+            reasons?: string[];
+        };
+        /** RecommendationInput */
+        RecommendationInput: {
+            /**
+             * Needs
+             * @default
+             */
+            needs: string;
+            /** Amount */
+            amount?: string | null;
+            /** Account Id */
+            account_id?: string | null;
         };
         /** ReconcileOperationAction */
         ReconcileOperationAction: {
@@ -2480,6 +2835,8 @@ export interface components {
         };
         /** TaskOutput */
         TaskOutput: {
+            /** Wealth Results */
+            wealth_results?: components["schemas"]["WealthReadResult"][];
             /** Account Results */
             account_results?: (components["schemas"]["AccountListResult"] | components["schemas"]["AccountBalanceResult"])[];
             financial_display?: components["schemas"]["MonthlySpendingReportCore"];
@@ -2867,6 +3224,400 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** WealthAssessmentResult */
+        WealthAssessmentResult: {
+            /**
+             * Assessment Id
+             * Format: uuid
+             */
+            assessment_id: string;
+            /** Grade Display */
+            grade_display: string;
+            /** Score */
+            score: number;
+            /** Reasons */
+            reasons: string[];
+            /** Suitable */
+            suitable: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Expired */
+            expired: boolean;
+            /** Questionnaire Version */
+            questionnaire_version: string;
+            /** Rules Version */
+            rules_version: string;
+        };
+        /** WealthDraftInput */
+        WealthDraftInput: {
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Creation Key */
+            creation_key?: string | null;
+            /**
+             * Redeem All
+             * @default false
+             */
+            redeem_all: boolean;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "PURCHASE" | "REDEEM";
+            /** Product Id */
+            product_id?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+        };
+        /** WealthDraftResult */
+        WealthDraftResult: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "PURCHASE" | "REDEEM";
+            /** Product Id */
+            product_id?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+            /** Quantity Unit */
+            quantity_unit?: string | null;
+            /**
+             * Redeem All
+             * @default false
+             */
+            redeem_all: boolean;
+        };
+        /** WealthEditInput */
+        WealthEditInput: {
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Redeem All
+             * @default false
+             */
+            redeem_all: boolean;
+            /** Product Id */
+            product_id?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+        };
+        /** WealthFeatureStatus */
+        WealthFeatureStatus: {
+            /** Catalog Version */
+            catalog_version?: string | null;
+            /** Pricing Version */
+            pricing_version?: string | null;
+            /**
+             * Questionnaire Version
+             * @default mock-v1
+             */
+            questionnaire_version: string;
+            /** New Business Allowed */
+            new_business_allowed: boolean;
+            /** Reason */
+            reason: string;
+        };
+        /** WealthKnowledgeResult */
+        WealthKnowledgeResult: {
+            /** Document Id */
+            document_id: string;
+            /** Version */
+            version: string;
+            /** Section */
+            section: string;
+            /** Source */
+            source: string;
+            /** Content */
+            content: string;
+        };
+        /** WealthOrderResult */
+        WealthOrderResult: {
+            /** Source Task Id */
+            source_task_id?: string | null;
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /**
+             * Order Id
+             * Format: uuid
+             */
+            order_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             */
+            workflow_id: string;
+            /**
+             * Operation Id
+             * Format: uuid
+             */
+            operation_id: string;
+            /** Direction Display */
+            direction_display: string;
+            /** Status Display */
+            status_display: string;
+            /** Name */
+            name: string;
+            /** Quantity Display */
+            quantity_display: string;
+            /** Trade Date */
+            trade_date: string;
+            /**
+             * Confirm At
+             * Format: date-time
+             */
+            confirm_at: string;
+            /**
+             * Settle At
+             * Format: date-time
+             */
+            settle_at: string;
+            /** Actual */
+            actual: {
+                [key: string]: string;
+            } | null;
+            /** Cash Result Label */
+            cash_result_label?: string | null;
+            /** Sources */
+            sources: string[];
+            /** Unknown */
+            unknown: boolean;
+            /** Error Code */
+            error_code?: string | null;
+            /** User Reason */
+            user_reason?: string | null;
+            /** Next Step */
+            next_step?: string | null;
+            /** Last Known Stage */
+            last_known_stage?: string | null;
+            /** Next Processing At */
+            next_processing_at?: string | null;
+            /**
+             * Hold Retained
+             * @default false
+             */
+            hold_retained: boolean;
+        };
+        /** WealthPositionResult */
+        WealthPositionResult: {
+            /**
+             * Position Id
+             * Format: uuid
+             */
+            position_id: string;
+            /** Product Id */
+            product_id: string;
+            /** Name */
+            name: string;
+            /** Account Id */
+            account_id: string;
+            /** Shares Display */
+            shares_display: string;
+            /** Frozen Display */
+            frozen_display: string;
+            /** Available Display */
+            available_display: string;
+            /**
+             * Available Quantity
+             * @default 0.000000
+             */
+            available_quantity: string;
+            /** Value Display */
+            value_display: string | null;
+            /** Valued At */
+            valued_at: string | null;
+            /** Pending Display */
+            pending_display: string;
+        };
+        /** WealthProductResult */
+        WealthProductResult: {
+            /** Product Id */
+            product_id: string;
+            /** Version Id */
+            version_id: string;
+            /** Name */
+            name: string;
+            risk: components["schemas"]["ProductRiskGrade"];
+            /** Minimum Display */
+            minimum_display: string;
+            /** Open Display */
+            open_display: string;
+            /** Fees Display */
+            fees_display: string;
+            /** Nav Display */
+            nav_display: string | null;
+            /** Nav Date */
+            nav_date: string | null;
+            /** Change Display */
+            change_display: string | null;
+            /** Drawdown Display */
+            drawdown_display: string | null;
+            /** Missing Reason */
+            missing_reason: string | null;
+            /** Sources */
+            sources: string[];
+            /**
+             * Purchase Allowed
+             * @default false
+             */
+            purchase_allowed: boolean;
+            /** Purchase Block Reason */
+            purchase_block_reason?: string | null;
+            /** Tradable */
+            tradable: boolean;
+            /** Terms */
+            terms: {
+                [key: string]: unknown;
+            };
+        };
+        /** WealthReadResult */
+        WealthReadResult: {
+            constraints?: components["schemas"]["RecommendationConstraints"] | null;
+            /**
+             * Selected Reasons
+             * @default {}
+             */
+            selected_reasons: {
+                [key: string]: string[];
+            };
+            /**
+             * Products
+             * @default []
+             */
+            products: components["schemas"]["WealthProductResult"][];
+            /**
+             * Positions
+             * @default []
+             */
+            positions: components["schemas"]["WealthPositionResult"][];
+            /**
+             * Orders
+             * @default []
+             */
+            orders: components["schemas"]["WealthOrderResult"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["WealthKnowledgeResult"][];
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+            /**
+             * Excluded
+             * @default {}
+             */
+            excluded: {
+                [key: string]: string[];
+            };
+        };
+        /** WealthRecommendationResult */
+        WealthRecommendationResult: {
+            constraints?: components["schemas"]["RecommendationConstraints"] | null;
+            /**
+             * Selected Reasons
+             * @default {}
+             */
+            selected_reasons: {
+                [key: string]: string[];
+            };
+            /** Products */
+            products: components["schemas"]["WealthProductResult"][];
+            /** Reasons */
+            reasons: string[];
+            /** Excluded */
+            excluded: {
+                [key: string]: string[];
+            };
+        };
+        /** WealthReviewResult */
+        WealthReviewResult: {
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "PURCHASE" | "REDEEM";
+            /** Product Id */
+            product_id?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Quantity */
+            quantity?: string | null;
+            /** Quantity Unit */
+            quantity_unit?: string | null;
+            /**
+             * Redeem All
+             * @default false
+             */
+            redeem_all: boolean;
+            /** Account Display */
+            account_display: string;
+            /** Account Masked */
+            account_masked: string;
+            /** Name */
+            name: string;
+            /** Version Id */
+            version_id: string;
+            /** Trade Date */
+            trade_date: string;
+            /** Confirm At */
+            confirm_at: string;
+            /** Settle At */
+            settle_at: string;
+            /** Quantity Display */
+            quantity_display: string;
+            /** Fee Display */
+            fee_display: string;
+            /** Net Display */
+            net_display: string;
+            /** Shares Display */
+            shares_display: string;
+            /** Notice */
+            notice: string;
+            /** Sources */
+            sources: string[];
+        };
+        /** WealthRiskDecision */
+        WealthRiskDecision: {
+            /**
+             * Requires Confirmation
+             * @default true
+             */
+            requires_confirmation: boolean;
+            /**
+             * Requires Reauthentication
+             * @default true
+             */
+            requires_reauthentication: boolean;
+            /** Assessment Id */
+            assessment_id?: string | null;
+            /** Customer Grade */
+            customer_grade?: string | null;
+            product_risk?: components["schemas"]["ProductRiskGrade"] | null;
+            /**
+             * Reasons
+             * @default []
+             */
+            reasons: string[];
+        };
+        /** WealthWorkflowState */
+        WealthWorkflowState: {
+            /** Validation Message */
+            validation_message?: string | null;
+            draft: components["schemas"]["WealthDraftResult"];
+            review?: components["schemas"]["WealthReviewResult"] | null;
+        };
         /**
          * Workflow
          * @description Authoritative, user-owned persistent workflow resource.
@@ -2899,6 +3650,7 @@ export interface components {
             };
             risk_level?: components["schemas"]["BusinessRiskLevel"] | null;
             risk_decision?: components["schemas"]["TransferRiskDecision"] | null;
+            wealth_risk_decision?: components["schemas"]["WealthRiskDecision"] | null;
             approval_summary?: components["schemas"]["ApprovalSummary"] | null;
             reauth_summary?: components["schemas"]["ReauthenticationSummary"] | null;
             operation_summary?: components["schemas"]["OperationSummary"] | null;
@@ -2916,6 +3668,7 @@ export interface components {
         };
         /** WorkflowPresentation */
         WorkflowPresentation: {
+            wealth_state?: components["schemas"]["WealthWorkflowState"] | null;
             /** Business Success */
             business_success: boolean;
             /** Approval Required */
@@ -2961,7 +3714,7 @@ export interface components {
          * WorkflowType
          * @enum {string}
          */
-        WorkflowType: "TRANSFER" | "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
+        WorkflowType: "WEALTH_PURCHASE" | "WEALTH_REDEEM" | "TRANSFER" | "SUBSCRIPTION_CANCEL" | "SUBSCRIPTION_RESUME";
     };
     responses: never;
     parameters: never;
@@ -4898,6 +5651,459 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    status_api_v1_wealth_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthFeatureStatus"];
+                };
+            };
+        };
+    };
+    products_api_v1_wealth_products_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthProductResult"][];
+                };
+            };
+        };
+    };
+    product_api_v1_wealth_products__product_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthProductResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_api_v1_wealth_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompareInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthProductResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recommendations_api_v1_wealth_recommendations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecommendationInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthRecommendationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    questionnaire_api_v1_wealth_questionnaire_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    current_assessment_api_v1_wealth_risk_assessments_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthAssessmentResult"] | null;
+                };
+            };
+        };
+    };
+    save_assessment_api_v1_wealth_risk_assessments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssessmentInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthAssessmentResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    knowledge_api_v1_wealth_knowledge_search_get: {
+        parameters: {
+            query: {
+                product_id: string;
+                query: string;
+                order_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthKnowledgeResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    document_api_v1_wealth_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthKnowledgeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    positions_api_v1_wealth_positions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthPositionResult"][];
+                };
+            };
+        };
+    };
+    orders_api_v1_wealth_orders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthOrderResult"][];
+                };
+            };
+        };
+    };
+    order_api_v1_wealth_orders__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthOrderResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_wealth_workflows_api_v1_wealth_workflows_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"][];
+                };
+            };
+        };
+    };
+    create_workflow_api_v1_wealth_workflows_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WealthDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_workflow_api_v1_wealth_workflows__workflow_id__actions_edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WealthEditInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Workflow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wealth_accounts_api_v1_wealth_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountBalanceResult"][];
                 };
             };
         };

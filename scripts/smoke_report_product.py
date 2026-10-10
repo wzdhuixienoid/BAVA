@@ -6,10 +6,6 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from urllib.parse import urlparse
 
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.api.dependencies import get_session
@@ -46,6 +42,9 @@ from banking_api.tools.banking import (
     build_list_accounts_tool,
 )
 from banking_api.tools.executor import ToolExecutor
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 DATA_DIR = (
     Path(__file__).parents[1]

@@ -1,3 +1,5 @@
+import { wealthAnswer, isWealthOnlyAnswer } from "@/features/wealth/answer";
+import { WealthWorkflowCard, WealthResultCard } from "@/features/wealth/WealthCards";
 import type { components } from "@banking/api-client";
 import { subscriptionReport } from "@/features/subscriptions/answer";
 import { AARequestCard } from "@/features/aa/AARequestCard";
@@ -62,7 +64,9 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
   const accountOnlyAnswer = accounts.length > 0 && !isFinancialAnalysis && !anomalyAnswer
     && !outputs.some((output) => output.payee_results)
     && !turn.plans.length && !turn.workflows.length && !turn.reports.length;
-  const replies = needsHistoricalCorrection || accountOnlyAnswer
+  const wealth = wealthAnswer(outputs);
+  const wealthOnlyAnswer = Boolean(wealth && isWealthOnlyAnswer(outputs) && !turn.plans.length && !turn.workflows.length && !turn.reports.length);
+  const replies = needsHistoricalCorrection || accountOnlyAnswer || wealthOnlyAnswer
     ? turn.replies.filter((message) => message.role === "SYSTEM_NOTICE") : turn.replies;
   const subscriptionSnapshot = outputs.find(output => output.subscription_analysis_snapshot)?.subscription_analysis_snapshot as components["schemas"]["SubscriptionAnalysisSnapshot"] | undefined;
   const replyContent = (content: string) => isFinancialAnalysis ? localizeFinancialAnswer(content, outputs) : content;
@@ -78,11 +82,12 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           <ResponseProcess turn={turn} activityRevision={activityRevision} onRefresh={onRefresh} />
         )}
         <div className="space-y-4">
-          {!subscriptionSnapshot && turn.tasks.map((task) => <AuditPanel key={task.task_id} taskId={task.task_id} revision={activityRevision} />)}
+          {!subscriptionSnapshot && !wealthOnlyAnswer && turn.tasks.map((task) => <AuditPanel key={task.task_id} taskId={task.task_id} revision={activityRevision} />)}
           {turn.tasks.map((task) => typeof task.error?.message === "string" ? <p key={task.task_id} role="alert" className="text-red-700">{task.error.code === "REPORT_NARRATIVE_VALIDATION_FAILED" ? "报告说明未通过安全校验，请重新生成。" : task.error.message}</p> : null)}
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}
           {turn.tasks.filter(task => typeof task.output?.aa_request_id === "string").map(task => <AARequestCard key={task.task_id} requestId={String(task.output!.aa_request_id)} />)}
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
+          {wealth && <WealthResultCard result={wealth}/>}
           {accounts.length > 0 && <AccountAnswer results={accounts} />}
           {needsHistoricalCorrection && <p className="text-slate-600">这条历史回复误用了异常交易分析，未按你指定的消费范围执行。现在可按最近任意天数分析消费。</p>}
 
@@ -98,6 +103,7 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
             const id = `workflow-${workflow.workflow_id}`;
             return <div key={id} id={resultElementId(id)} tabIndex={-1} className={highlight(id)}>
               {isConfirmedWorkflow(workflow) ? <WorkflowReceipt workflow={workflow} />
+                : workflow.workflow_type.startsWith("WEALTH_") ? <WealthWorkflowCard workflow={workflow} onRefresh={onRefresh} />
                 : workflow.workflow_type === "TRANSFER" ? <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />
                 : <SubscriptionCancellationCard workflow={workflow} onRefresh={onRefresh} />}
             </div>;

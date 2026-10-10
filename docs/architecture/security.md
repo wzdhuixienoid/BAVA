@@ -6,7 +6,7 @@
 
 资源与工具查询按 Principal.user_id 限定；跨用户资源访问表现为 404。模型参数和浏览器请求不能切换 authority。HTTP credential 不进入 Message、Task、Event、Prompt 或 checkpoint；Task worker 从持久化用户归属重建服务端执行身份。
 
-ToolRegistry 与 PolicyService 限定调用者能力。三个 Agent 都只读；写 Tool 由确定性 Workflow 调用，接受持久化 operation_id。Recovery 只能处理既有操作，不扩大调用权限。
+ToolRegistry 与 PolicyService 限定调用者能力。四个 Agent 都只读；写 Tool 由确定性 Workflow 调用，接受持久化 operation_id。Recovery 只能处理既有操作，不扩大调用权限。
 
 ## 用户控制
 
@@ -15,6 +15,7 @@ ToolRegistry 与 PolicyService 限定调用者能力。三个 Agent 都只读；
 | 账户、消费、订阅查询 | GREEN，自动执行 |
 | 取消可管理订阅 | YELLOW，明确确认 |
 | 保存收款人 | 页面核对并明确确认 |
+| 所有理财申购及赎回 | 确认 + Mock强验证，绑定具体交易日、条款和测评证据 |
 | 所有即时转账、预约与周期授权 | RED，确认 + Mock 强验证 |
 | 恢复订阅续费授权 | RED，确认 + Mock 强验证；本次不立即扣费 |
 
@@ -41,3 +42,7 @@ Task COMPLETED 只说明处理完成，不能作为资金成功凭据；确认�
 真实 IdP、真实银行、真实 MFA、独立 Worker 部署、跨进程 SSE broker、事件回放与完整监控仍未完成。演示 reset 只用于显式 development/test 用户，不能替代业务撤销。
 
 源码入口：[认证](../../apps/api/src/banking_api/security/authentication/service.py)、[Policy](../../apps/api/src/banking_api/policy/service.py)、[Security Guard](../../apps/api/src/banking_api/security/guard.py)、[审计](../../apps/api/src/banking_api/audit/README.md)。
+
+理财Agent只允许7项只读工具。申购/赎回提交工具各只接收operation_id并只允许对应Workflowcaller，Provider重新校验持久授权、归属和原快照。条件自动投资和多笔写业务整体拒绝。未测评可查询，但不能个性化推荐或申购；客户风险下降/测评失效不阻止赎回。资料冲突禁止新申购，受理后按原条款结算。后来触发的安全写锁不阻塞已受理订单兑付。
+
+关闭`MOCK_WEALTH_ENABLED`不是撤销受理订单的权限。已受理订单及UNKNOWN原操作继续恢复；新测评、交易草稿、授权和首次受理均拒绝，未受理Operation明确失败且不占用资金/份额。查询保持Principal归属，Agent写权限不变，production继续禁止Mock理财执行。元与份不可互换；全部赎回绑定后端实际份额并在提交时重查，不能借刷新静默扩大或缩小授权。测评只给出风险上限，本次保本/不接受损失和流动性要求是额外硬约束；否定表达不得被关键词命中覆盖。

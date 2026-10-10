@@ -76,9 +76,9 @@ uv run --env-file ../../.env python -m banking_api.security.authentication.provi
 
 这些实现提供 OIDC-ready 边界，当前未验收真实生产 IdP 与真实 MFA 的完整闭环。
 
-## 升级到 v0.10.3
+## 升级到 v0.11.0
 
-当前迁移 head 为 `0033`。已有环境先备份数据库、暂停新业务写入并安排未收敛操作，再同步代码与迁移。不要为升级清库或执行 Demo reset。
+当前迁移 head 为 `0034`。已有环境先备份数据库、暂停新业务写入并安排未收敛操作，再同步代码与迁移。不要为升级清库或执行 Demo reset。
 
 Docker API 启动自动迁移；手动迁移需显式配置目标 DATABASE_URL，在 `apps/api` 执行：
 
@@ -88,4 +88,6 @@ uv run --env-file ../../.env alembic upgrade head
 
 `0031` 新增消息中心，`0032` 新增订阅提醒游标与模拟扣费账本，`0033` 更新已有提醒文案。页面内确认取消复用已有合同与动作账本。更早备注、预约、AA、移除手机号转账、周期授权和列表软删除迁移随链执行，历史编号保留。
 
-迁移后重启 API/Web，检查 `/health` 和 [preflight](testing.md)。版本及迁移依据：[API 版本](../../apps/api/src/banking_api/__init__.py)、[迁移 0033](../../apps/api/migrations/versions/0033_renewal_reminder_copy.py)。
+迁移后重启 API/Web，检查 `/health` 和 [preflight](testing.md)。版本及迁移依据：[API 版本](../../apps/api/src/banking_api/__init__.py)、[迁移 0034](../../apps/api/migrations/versions/0034_mock_wealth.py)。
+
+理财开关`MOCK_WEALTH_ENABLED`默认false，Composedevelopment示例true，production禁止。0034新增业务enum时使用PostgreSQLautocommitblock，历史迁移不改写。无理财业务记录时允许降级删除新表，保留共享enum新增值；有理财工作流、订单、持仓或测评记录时拒绝破坏性降级。禁止清空旧账本获得升级或测试通过。

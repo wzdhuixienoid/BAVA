@@ -2,19 +2,18 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import select
 from banking_test_helpers import authenticate_workflow
 from test_transfer_operations import operation_runtime
+
 from banking_api.application.conversation_service import ConversationService
-from banking_api.application.workflow_service import WorkflowService
+from banking_api.application.operation_service import OperationActionError, OperationService
 from banking_api.application.schedule_service import ScheduleService
-from banking_api.application.operation_service import OperationService, OperationActionError
+from banking_api.application.workflow_service import WorkflowService
 from banking_api.config.settings import get_settings
 from banking_api.persistence.models import (
-    ScheduledTransferModel,
-    ScheduledAuthorizationModel,
-    ApprovalModel,
     ReauthenticationModel,
+    ScheduledAuthorizationModel,
+    ScheduledTransferModel,
     WorkflowModel,
 )
 from banking_api.runtime.schedule_worker import ScheduleWorker
@@ -126,8 +125,9 @@ async def test_cancel_expired_balance_no_debit(app, schedule_enabled, outcome):
     )
     if outcome == "insufficient":
         # Another transfer spent the unreserved balance before the due appointment.
-        from banking_api.transfers.provider import TransferProviderRequest
         from uuid import uuid4
+
+        from banking_api.transfers.provider import TransferProviderRequest
 
         await provider.submit_transfer(
             TransferProviderRequest(
@@ -154,19 +154,38 @@ async def test_cancel_expired_balance_no_debit(app, schedule_enabled, outcome):
 
 async def test_schedule_target_rebinding_same_suffix_invalidates_authority(app, schedule_enabled):
     from banking_api.persistence.models import PayeeModel
-    _,provider,_,engine = operation_runtime(app)
+
+    _, provider, _, engine = operation_runtime(app)
     engine.mock_scheduling_supported = True
-    ready = await create_schedule(app,engine)
+    ready = await create_schedule(app, engine)
     from uuid import UUID
+
     schedule_id = UUID(ready.state["draft"]["schedule_id"])
     async with app.state.test_session_factory() as session:
-        resource = await ScheduleService(session,engine).authorize(schedule_id,ready.user_id,ready.version)
-        session.add(PayeeModel(payee_id="managed-lixiaoyu",source_payee_id="payee_003",user_id=ready.user_id,
-            display_name="李小雨",bank_name="星河银行（虚构）",account_suffix="4815",account_fingerprint="changed-full-account-same-suffix",phone_alias="1003"))
+        resource = await ScheduleService(session, engine).authorize(
+            schedule_id, ready.user_id, ready.version
+        )
+        session.add(
+            PayeeModel(
+                payee_id="managed-lixiaoyu",
+                source_payee_id="payee_003",
+                user_id=ready.user_id,
+                display_name="李小雨",
+                bank_name="星河银行（虚构）",
+                account_suffix="4815",
+                account_fingerprint="changed-full-account-same-suffix",
+                phone_alias="1003",
+            )
+        )
         await session.commit()
-    await ScheduleWorker(app.state.test_session_factory,app.state.event_bus,engine,clock=lambda:resource.scheduled_for.replace(tzinfo=UTC)+timedelta(seconds=1)).run_once()
+    await ScheduleWorker(
+        app.state.test_session_factory,
+        app.state.event_bus,
+        engine,
+        clock=lambda: resource.scheduled_for.replace(tzinfo=UTC) + timedelta(seconds=1),
+    ).run_once()
     async with app.state.test_session_factory() as session:
-        result=await ScheduleService(session,engine).get(schedule_id,ready.user_id)
+        result = await ScheduleService(session, engine).get(schedule_id, ready.user_id)
         assert result.status == "FAILED" and result.operation_id is None
     assert await provider.transfer_count() == 0
 
@@ -210,6 +229,7 @@ async def test_delete_cancelled_schedule_preserves_evidence_and_owner(app, sched
 
 async def test_delete_chat_keeps_authorized_schedule_executable(app, schedule_enabled):
     from uuid import UUID
+
     from banking_api.application.conversation_service import ConversationActiveError
     from banking_api.persistence.models import ConversationModel
 
@@ -230,7 +250,9 @@ async def test_delete_chat_keeps_authorized_schedule_executable(app, schedule_en
         assert (await session.get(ConversationModel, ready.conversation_id)).deleted_at is not None
         assert (await service.get(schedule_id, ready.user_id)).status == "SCHEDULED"
     due = scheduled.scheduled_for.replace(tzinfo=UTC) + timedelta(seconds=1)
-    worker = ScheduleWorker(app.state.test_session_factory, app.state.event_bus, engine, clock=lambda:due)
+    worker = ScheduleWorker(
+        app.state.test_session_factory, app.state.event_bus, engine, clock=lambda: due
+    )
     assert await worker.run_once() == 1
     assert await provider.transfer_count() == 1
 
@@ -249,5 +271,9 @@ async def test_schedule_creation_requires_current_strong_verification(app, sched
         evidence.expires_at = datetime.now(UTC) - timedelta(seconds=1)
         await session.commit()
         with pytest.raises(OperationActionError, match="STRONG_VERIFICATION_REQUIRED"):
-            await ScheduleService(session, engine).authorize(schedule_id, ready.user_id, ready.version)
-        assert (await session.get(ScheduledTransferModel, schedule_id)).status == "PENDING_AUTHORIZATION"
+            await ScheduleService(session, engine).authorize(
+                schedule_id, ready.user_id, ready.version
+            )
+        assert (
+            await session.get(ScheduledTransferModel, schedule_id)
+        ).status == "PENDING_AUTHORIZATION"

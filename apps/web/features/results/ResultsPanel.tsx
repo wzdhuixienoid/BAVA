@@ -24,6 +24,12 @@ export function ResultsPanel({ reports, workflows, aaRequests = [], onLocateResu
       search: `${report.period} ${report.headline} ${report.total_spending_display}`,
     })),
     ...workflows.filter(isConfirmedWorkflow).map((workflow) => {
+      if (workflow.workflow_type.startsWith("WEALTH_")) return {
+        id: `workflow-${workflow.workflow_id}`, time: workflow.operation_summary?.completed_at ?? workflow.updated_at,
+        type: workflow.workflow_type === "WEALTH_PURCHASE" ? "模拟理财申购" : "模拟理财赎回",
+        title: `${workflow.presentation?.wealth_state?.review?.name ?? "模拟产品"} · 最终完成`,
+        summary: "查看实际成交与到账结果", search: workflow.presentation?.amount_display ?? "",
+      };
       const resume = workflow.workflow_type === "SUBSCRIPTION_RESUME";
       const transfer = workflow.workflow_type === "TRANSFER";
       const name = reviewField(workflow, transfer ? "payee_display_name" : "merchant");

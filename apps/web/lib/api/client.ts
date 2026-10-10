@@ -39,10 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       detail?: string | { code?: string; message?: string };
     } | null;
     const rawDetail = payload?.detail;
-    const detail =
-      typeof rawDetail === "string"
-        ? rawDetail
-        : rawDetail?.code ?? rawDetail?.message ?? "请求失败";
+    const detail = typeof rawDetail === "string" ? rawDetail : rawDetail?.message ?? rawDetail?.code ?? "请求失败";
     throw new Error(`请求失败（${response.status}）：${errorDisplay(detail)}`);
   }
   if (response.status === 204) return undefined as T;
@@ -50,6 +47,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  wealthStatus: () => request<components["schemas"]["WealthFeatureStatus"]>("/api/v1/wealth/status"),
+  wealthWorkflows: () => request<Workflow[]>("/api/v1/wealth/workflows"),
+  wealthProducts: () => request<components["schemas"]["WealthProductResult"][]>("/api/v1/wealth/products"),
+  wealthAccounts: () => request<components["schemas"]["AccountBalanceResult"][]>("/api/v1/wealth/accounts"),
+  wealthPositions: () => request<components["schemas"]["WealthPositionResult"][]>("/api/v1/wealth/positions"),
+  wealthOrders: () => request<components["schemas"]["WealthOrderResult"][]>("/api/v1/wealth/orders"),
+  wealthAssessment: () => request<components["schemas"]["WealthAssessmentResult"] | null>("/api/v1/wealth/risk-assessments/current"),
+  wealthQuestionnaire: () => request<{version: "mock-v1"; notice: string; questions: {label: string; options: string[]}[]}>("/api/v1/wealth/questionnaire"),
+  wealthAssess: (body: components["schemas"]["AssessmentInput"]) => request<components["schemas"]["WealthAssessmentResult"]>("/api/v1/wealth/risk-assessments", {method:"POST", body:JSON.stringify(body)}),
+  wealthCompare: (product_ids: string[]) => request<components["schemas"]["WealthProductResult"][]>("/api/v1/wealth/compare", {method:"POST", body:JSON.stringify({product_ids})}),
+  wealthRecommend: (body: components["schemas"]["RecommendationInput"]) => request<components["schemas"]["WealthRecommendationResult"]>("/api/v1/wealth/recommendations", {method:"POST", body:JSON.stringify(body)}),
+  wealthCreate: (body: components["schemas"]["WealthDraftInput"]) => request<Workflow>("/api/v1/wealth/workflows", {method:"POST", body:JSON.stringify(body)}),
+  wealthEdit: (id: string, body: components["schemas"]["WealthEditInput"]) => request<Workflow>(`/api/v1/wealth/workflows/${encodeURIComponent(id)}/actions/edit`, {method:"POST", body:JSON.stringify(body)}),
+  wealthDocument: (id: string) => request<components["schemas"]["WealthKnowledgeResult"]>(`/api/v1/wealth/documents/${encodeURIComponent(id)}`),
+
   listNotifications: (offset = 0) => request<components["schemas"]["NotificationInbox"]>(`/api/v1/notifications?offset=${offset}`),
   readNotification: (id: string) => request<components["schemas"]["Notification"]>(`/api/v1/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }),
   deleteNotification: (id: string) => request<void>(`/api/v1/notifications/${encodeURIComponent(id)}`, { method: "DELETE" }),
@@ -115,9 +127,9 @@ export const api = {
   getTask: (taskId: string) => request<Task>(`/api/v1/tasks/${taskId}`),
   listTaskEvents: (taskId: string) =>
     request<components["schemas"]["Event"][]>(`/api/v1/tasks/${encodeURIComponent(taskId)}/events`),
-  listWorkflows: (conversationId: string) =>
+  listWorkflows: (conversationId?: string) =>
     request<Workflow[]>(
-      `/api/v1/workflows?conversation_id=${encodeURIComponent(conversationId)}`,
+      `/api/v1/workflows${conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : ""}`,
     ),
   getWorkflow: (workflowId: string) =>
     request<Workflow>(`/api/v1/workflows/${encodeURIComponent(workflowId)}`),

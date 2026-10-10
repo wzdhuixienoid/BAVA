@@ -108,6 +108,12 @@ def create_app() -> FastAPI:
             )
         if settings.agent_runtime is RuntimeBackend.LANGGRAPH:
             runtime_factory.get(RuntimeBackend.LANGGRAPH)
+        if settings.mock_wealth_enabled:
+            from banking_api.wealth.catalog import seed_catalog
+
+            async with session_factory() as seed_session:
+                await seed_catalog(seed_session)
+                await seed_session.commit()
         await TaskReconciliationService(session_factory, bus).reconcile()
         if settings.task_worker_enabled:
             task_execution_worker = TaskExecutionWorker(
@@ -221,8 +227,18 @@ def create_app() -> FastAPI:
         build_subscription_cancel_tool(session_factory, subscription_provider, resume=True)
     )
     registry.register(build_subscription_status_tool(session_factory, subscription_provider))
+    from banking_api.wealth.provider import MockWealthProvider
+    from banking_api.wealth.tools import WealthExecutionEngine, build_wealth_tools
+
+    wealth_provider = MockWealthProvider(session_factory, transfer_provider.balances)
+    if settings.app_environment in {"development", "test"}:
+        for spec in build_wealth_tools(
+            session_factory, transfer_provider.balances, wealth_provider
+        ):
+            registry.register(spec)
     executor = ToolExecutor(registry, PolicyService())
     transfer_engine = TransferWorkflowEngine(executor)
+    transfer_engine.wealth_engine = WealthExecutionEngine(executor, transfer_provider.balances)
     from banking_api.workflows.transfer.time_intent import ExecutionTimeExtractor
 
     transfer_engine.time_extractor = ExecutionTimeExtractor(provider)
@@ -237,6 +253,10 @@ def create_app() -> FastAPI:
     agent_registry.register(MINIMAL_BANKING_AGENT)
     agent_registry.register(FINANCIAL_ANALYSIS_AGENT)
     agent_registry.register(SUBSCRIPTION_ANALYSIS_AGENT)
+    from banking_api.agents.wealth_advisor_agent import WEALTH_ADVISOR_AGENT
+
+    if settings.app_environment in {"development", "test"}:
+        agent_registry.register(WEALTH_ADVISOR_AGENT)
     skill_registry = SkillRegistry()
     skill_registry.register(MonthlySpendingReportSkill.definition)
     router = RequestRouter(provider)
@@ -261,6 +281,7 @@ def create_app() -> FastAPI:
     application.state.subscription_workflow_engine = subscription_engine
     transfer_engine.mock_scheduling_supported = isinstance(transfer_provider, MockTransferProvider)
     application.state.transfer_provider = transfer_provider
+    application.state.wealth_provider = wealth_provider
     application.state.subscription_provider = subscription_provider
     application.state.mock_bank = bank
     task_runner = InProcessTaskRunner(
@@ -283,6 +304,32 @@ def create_app() -> FastAPI:
         planner=ConstrainedPlanner(provider),
     )
     application.state.task_runner = task_runner
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    from banking_api.wealth.calculation import WealthError
+
+    @application.exception_handler(WealthError)
+    async def wealth_error_handler(request: Request, exc: WealthError):
+        return JSONResponse(
+            status_code=404 if exc.code == "NOT_FOUND" else 422,
+            content={"detail": {"code": exc.code, "message": str(exc)}},
+        )
+
+    from banking_api.security.guard import SecurityWriteLockedError
+
+    @application.exception_handler(SecurityWriteLockedError)
+    async def wealth_locked_handler(request: Request, exc: SecurityWriteLockedError):
+        return JSONResponse(
+            status_code=423,
+            content={
+                "detail": {
+                    "code": "SECURITY_WRITE_LOCKED",
+                    "message": "安全保护已启动，新的业务写操作已暂停",
+                }
+            },
+        )
+
     application.include_router(health_router)
     application.include_router(api_router)
     return application

@@ -79,6 +79,7 @@ from banking_api.workflows.transfer.intent_extractor import (
 UNSUPPORTED_MESSAGE = "当前无法安全处理该请求。暂不支持条件自动执行或当前能力之外的业务。"
 
 ROUTE_AGENT_IDS = {
+    RequestRoute.WEALTH_ANALYSIS: "agent:wealth-advisor",
     RequestRoute.MINIMAL_BANKING: MINIMAL_BANKING_AGENT.agent_id,
     RequestRoute.FINANCIAL_ANALYSIS: FINANCIAL_ANALYSIS_AGENT_ID,
     RequestRoute.SUBSCRIPTION_ANALYSIS: SUBSCRIPTION_ANALYSIS_AGENT_ID,
@@ -241,6 +242,8 @@ class InProcessTaskRunner:
                 if decision.route is RequestRoute.COMPLEX_PLAN
                 else "workflow:aa"
                 if decision.route is RequestRoute.AA_COLLECTION
+                else f"workflow:wealth-{decision.route.value.removeprefix('WEALTH_').lower()}"
+                if decision.route in {RequestRoute.WEALTH_PURCHASE, RequestRoute.WEALTH_REDEEM}
                 else TRANSFER_WORKFLOW_ID
                 if decision.route is RequestRoute.TRANSFER_WORKFLOW
                 else SUBSCRIPTION_RESUME_WORKFLOW_ID
@@ -266,6 +269,11 @@ class InProcessTaskRunner:
                     conversation_id=conversation_id,
                     answer=UNSUPPORTED_MESSAGE,
                     route=decision.route,
+                )
+                return
+            if decision.route in {RequestRoute.WEALTH_PURCHASE, RequestRoute.WEALTH_REDEEM}:
+                await self._run_wealth(
+                    claim, conversation_id, user_id, current_task, decision.route
                 )
                 return
             if decision.route is RequestRoute.AA_COLLECTION:
@@ -300,7 +308,7 @@ class InProcessTaskRunner:
             ):
                 raise RoutingError("Monthly report requires FinancialAnalysisAgent")
             if (
-                agent.agent_id == FINANCIAL_ANALYSIS_AGENT_ID
+                agent.agent_id in {FINANCIAL_ANALYSIS_AGENT_ID, "agent:wealth-advisor"}
                 and runtime_backend is not RuntimeBackend.LANGGRAPH
             ):
                 raise AgentRuntimeError(
@@ -501,6 +509,12 @@ class InProcessTaskRunner:
             return None
         if executor_id == "planner:constrained":
             route = RequestRoute.COMPLEX_PLAN
+        elif executor_id in {"workflow:wealth-purchase", "workflow:wealth-redeem"}:
+            route = (
+                RequestRoute.WEALTH_PURCHASE
+                if executor_id.endswith("purchase")
+                else RequestRoute.WEALTH_REDEEM
+            )
         elif executor_type is ExecutorType.WORKFLOW and executor_id in {
             "workflow:aa",
             TRANSFER_WORKFLOW_ID,
@@ -559,6 +573,8 @@ class InProcessTaskRunner:
             executor_type = None
             if route in {
                 RequestRoute.TRANSFER_WORKFLOW,
+                RequestRoute.WEALTH_PURCHASE,
+                RequestRoute.WEALTH_REDEEM,
                 RequestRoute.AA_COLLECTION,
                 RequestRoute.SUBSCRIPTION_CANCEL,
                 RequestRoute.SUBSCRIPTION_RESUME,
@@ -581,6 +597,54 @@ class InProcessTaskRunner:
                     "requested_output": requested_output.value,
                     "executor_id": executor_id,
                 },
+            )
+            await session.commit()
+
+    async def _run_wealth(self, claim, conversation_id, user_id, request, route):
+        from banking_api.wealth.catalog import PRODUCTS
+        from banking_api.wealth.intent import extract_quantity
+        from banking_api.wealth.workflow import wealth_workflow
+
+        async with self.session_factory() as session:
+            tasks = TaskRepository(session)
+            task = await self._get_owned(tasks, claim, for_update=True)
+            direction = route.value.removeprefix("WEALTH_")
+            matches = [
+                f"mock-wealth-{i:02}"
+                for i, p in enumerate(PRODUCTS, 1)
+                if p[0] in request or p[0].removeprefix("演示") in request
+            ]
+            accounts = self.transfer_workflow_engine.wealth_engine.balances._bank.list_accounts(
+                user_id=user_id
+            )
+            selected = [a["account_id"] for a in accounts if a["display_name"] in request]
+            numeric = extract_quantity(request, direction)
+            draft = {
+                "direction": direction,
+                "product_id": matches[0] if len(matches) == 1 else None,
+                "account_id": selected[0] if len(selected) == 1 else None,
+                "quantity": numeric.quantity,
+                "quantity_unit": numeric.unit,
+                "redeem_all": numeric.redeem_all,
+                "quantity_message": numeric.message,
+            }
+            workflow = await wealth_workflow(
+                direction, session, self.transfer_workflow_engine.wealth_engine.balances
+            ).create(user_id, conversation_id, claim.task_id, draft, allow_invalid_draft=True)
+            await tasks.transition(
+                task,
+                TaskStatus.WAITING_USER,
+                output={
+                    "route": route.value,
+                    "workflow_id": str(workflow.workflow_id),
+                    "requested_output": "WORKFLOW",
+                },
+            )
+            await EventPublisher(session).persist(
+                event_type="task.waiting_user",
+                conversation_id=conversation_id,
+                task_id=claim.task_id,
+                data={"status": task.status.value, "version": task.version},
             )
             await session.commit()
 
@@ -864,6 +928,14 @@ class InProcessTaskRunner:
             )
             if result is not None and "snapshot" in result.output:
                 output["subscription_analysis_snapshot"] = result.output["snapshot"]
+        if agent_id == "agent:wealth-advisor":
+            from banking_api.wealth.schemas import WealthReadResult
+
+            output["wealth_results"] = [
+                WealthReadResult.model_validate(item.output).model_dump(mode="json")
+                for item in successful_tool_results
+                if item.capability_id.startswith("wealth.")
+            ]
         return output
 
     @staticmethod

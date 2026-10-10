@@ -72,7 +72,24 @@ def test_application_registry_adds_financial_tools_with_read_only_payee_access()
         "subscription.get_status",
         "transaction.detect_anomalies",
         *FINANCIAL_CAPABILITIES,
+        "wealth.list_products",
+        "wealth.get_product",
+        "wealth.compare_products",
+        "wealth.recommend",
+        "wealth.search_knowledge",
+        "wealth.list_positions",
+        "wealth.get_orders",
+        "wealth.purchase.submit",
+        "wealth.purchase.status",
+        "wealth.redeem.submit",
+        "wealth.redeem.status",
     }
+    for direction in ("purchase", "redeem"):
+        for action in ("submit", "status"):
+            spec = registry.get(f"wealth.{direction}.{action}")
+            assert spec.allowed_callers == frozenset({f"workflow:wealth-{direction}"})
+            assert spec.side_effect is (action == "submit")
+            assert set(spec.input_schema["properties"]) == {"operation_id"}
     assert [
         spec.capability_id for spec in registry.resolve(MINIMAL_BANKING_AGENT.allowed_capabilities)
     ] == ["account.list", "account.get_balance", "payee.search", "payee.list"]

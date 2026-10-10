@@ -29,6 +29,13 @@ from banking_api.persistence.models import (
     TaskModel,
     WorkflowModel,
 )
+from banking_api.wealth.models import (
+    WealthAssessment,
+    WealthHold,
+    WealthLedger,
+    WealthOrder,
+    WealthPosition,
+)
 from sqlalchemy import bindparam, delete, func, or_, select, text, update
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -138,6 +145,11 @@ async def reset_demo_state(
                 "Active outbox lease detected; wait for expiry after stopping workers"
             )
         scopes = [
+            (WealthLedger, WealthLedger.user_id == user_id),
+            (WealthHold, WealthHold.user_id == user_id),
+            (WealthOrder, WealthOrder.user_id == user_id),
+            (WealthPosition, WealthPosition.user_id == user_id),
+            (WealthAssessment, WealthAssessment.user_id == user_id),
             (
                 MockSubscriptionChargeModel,
                 MockSubscriptionChargeModel.user_id == user_id,

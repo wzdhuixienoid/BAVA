@@ -6,6 +6,9 @@ from banking_api.domain.enums import RequestedOutput
 
 
 class RequestRoute(StrEnum):
+    WEALTH_ANALYSIS = "WEALTH_ANALYSIS"
+    WEALTH_PURCHASE = "WEALTH_PURCHASE"
+    WEALTH_REDEEM = "WEALTH_REDEEM"
     MINIMAL_BANKING = "MINIMAL_BANKING"
     FINANCIAL_ANALYSIS = "FINANCIAL_ANALYSIS"
     TRANSFER_WORKFLOW = "TRANSFER_WORKFLOW"
@@ -28,6 +31,8 @@ class RouteDecision(BaseModel):
     def validate_output_for_route(self) -> "RouteDecision":
         if self.route in {
             RequestRoute.TRANSFER_WORKFLOW,
+            RequestRoute.WEALTH_PURCHASE,
+            RequestRoute.WEALTH_REDEEM,
             RequestRoute.AA_COLLECTION,
             RequestRoute.SUBSCRIPTION_CANCEL,
             RequestRoute.SUBSCRIPTION_RESUME,

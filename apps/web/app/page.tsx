@@ -107,7 +107,10 @@ export default function HomePage() {
           查看历史报告
         </Link>
         <Link
-          href="/subscriptions"
+          href="/wealth"
+          className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
+          >理财中心</Link>
+          <Link href="/subscriptions"
           className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm"
         >
           订阅管理

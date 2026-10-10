@@ -11,9 +11,12 @@ from banking_api.domain.operation import OperationSummary
 from banking_api.domain.reauthentication import ReauthenticationSummary
 from banking_api.domain.risk import BusinessRiskLevel, TransferRiskDecision
 from banking_api.domain.workflow_presentation import WorkflowPresentation
+from banking_api.wealth.schemas import WealthRiskDecision
 
 
 class WorkflowType(StrEnum):
+    WEALTH_PURCHASE = "WEALTH_PURCHASE"
+    WEALTH_REDEEM = "WEALTH_REDEEM"
     TRANSFER = "TRANSFER"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
     SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
@@ -34,6 +37,7 @@ class Workflow(BaseModel):
     state: dict[str, Any]
     risk_level: BusinessRiskLevel | None = None
     risk_decision: TransferRiskDecision | None = None
+    wealth_risk_decision: WealthRiskDecision | None = None
     approval_summary: ApprovalSummary | None = None
     reauth_summary: ReauthenticationSummary | None = None
     operation_summary: OperationSummary | None = None

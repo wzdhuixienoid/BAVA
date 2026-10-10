@@ -149,6 +149,17 @@ class WorkflowService:
         )
         self.risk_policy = TransferRiskPolicy()
 
+    def _wealth(self, model):
+        from banking_api.wealth.workflow import wealth_workflow
+
+        return wealth_workflow(
+            model.workflow_type.value.removeprefix("WEALTH_"),
+            self.session,
+            self.engine.wealth_engine.balances,
+            self.clock,
+            self.reauth_provider,
+        )
+
     async def get(self, workflow_id: UUID, *, user_id: str) -> Workflow:
         model = await self.workflows.get_for_user(workflow_id, user_id)
         if model is None:
@@ -463,6 +474,15 @@ class WorkflowService:
         return await self._mutate_and_advance(model, state, expected_version)
 
     async def approve(self, workflow_id: UUID, *, user_id: str, expected_version: int) -> Workflow:
+        from banking_api.wealth.workflow import TYPES
+
+        wealth_model = await self.workflows.get_for_user(workflow_id, user_id)
+        if wealth_model and wealth_model.workflow_type in TYPES:
+            model = await self._wealth(wealth_model).action(
+                workflow_id, user_id, expected_version, "approve"
+            )
+            return await self._to_workflow(model)
+
         workflow = await self.workflows.get_for_user(workflow_id, user_id)
         if workflow is None:
             raise WorkflowNotFoundError
@@ -567,6 +587,15 @@ class WorkflowService:
     async def start_reauthentication(
         self, workflow_id: UUID, *, user_id: str, expected_version: int
     ) -> Workflow:
+        from banking_api.wealth.workflow import TYPES
+
+        wealth_model = await self.workflows.get_for_user(workflow_id, user_id)
+        if wealth_model and wealth_model.workflow_type in TYPES:
+            model = await self._wealth(wealth_model).action(
+                workflow_id, user_id, expected_version, "start-reauth"
+            )
+            return await self._to_workflow(model)
+
         await self._write_gate(workflow_id, user_id)
         model, state = await self._load_authorization_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.REAUTH_REQUIRED:
@@ -632,6 +661,20 @@ class WorkflowService:
         verification_code: str,
         expected_version: int,
     ) -> Workflow:
+        from banking_api.wealth.workflow import TYPES
+
+        wealth_model = await self.workflows.get_for_user(workflow_id, user_id)
+        if wealth_model and wealth_model.workflow_type in TYPES:
+            model = await self._wealth(wealth_model).action(
+                workflow_id,
+                user_id,
+                expected_version,
+                "verify-reauth",
+                reauth_id,
+                verification_code,
+            )
+            return await self._to_workflow(model)
+
         await self._write_gate(workflow_id, user_id)
         model, state = await self._load_authorization_action(workflow_id, user_id, expected_version)
         if model.status is not WorkflowStatus.REAUTH_REQUIRED:
@@ -700,6 +743,15 @@ class WorkflowService:
         return await self._to_workflow(updated)
 
     async def cancel(self, workflow_id: UUID, *, user_id: str, expected_version: int) -> Workflow:
+        from banking_api.wealth.workflow import TYPES
+
+        wealth_model = await self.workflows.get_for_user(workflow_id, user_id)
+        if wealth_model and wealth_model.workflow_type in TYPES:
+            model = await self._wealth(wealth_model).action(
+                workflow_id, user_id, expected_version, "cancel"
+            )
+            return await self._to_workflow(model)
+
         workflow = await self.workflows.get_for_user(workflow_id, user_id)
         if workflow is None:
             raise WorkflowNotFoundError
@@ -1171,6 +1223,13 @@ class WorkflowService:
         await self.session.commit()
 
     async def _to_workflow(self, model: WorkflowModel) -> Workflow:
+        from banking_api.wealth.workflow import TYPES
+
+        if model.workflow_type in TYPES:
+            from banking_api.wealth.presentation import wealth_workflow_resource
+
+            return await wealth_workflow_resource(self, model)
+
         transfer_state = (
             TransferWorkflowState.model_validate(model.state_json)
             if model.workflow_type is WorkflowType.TRANSFER

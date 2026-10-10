@@ -9,6 +9,12 @@ import { api } from "@/lib/api/client";
 type Event = components["schemas"]["Event"];
 
 const labels: Record<string, string> = {
+  "wealth.order.accepted": "模拟理财已受理，资金或份额占用中",
+  "wealth.order.confirmed": "模拟理财已成交，等待最终结算",
+  "wealth.order.settled": "模拟理财最终完成",
+  "wealth.order.rejected": "模拟理财明确拒绝，未占用资金",
+  "wealth.order.failed": "模拟理财明确失败",
+
   "task.created": "已收到你的请求",
   "task.started": "开始理解你的需求",
   "task.completed": "结果已整理完成",
@@ -40,6 +46,12 @@ const toolLabels: Record<string, string> = {
   get_category_breakdown: "消费分类", compare_spending_periods: "不同月份的消费",
   get_top_transactions: "主要交易", detect_transaction_anomalies: "异常交易",
   search_payees: "收款人", get_transfer_status: "转账结果",
+  wealth_list_products: "模拟产品目录", wealth_get_product: "模拟产品资料",
+  wealth_compare_products: "理财产品对比", wealth_recommend: "适当性匹配与推荐",
+  wealth_search_knowledge: "说明书检索", wealth_list_positions: "本人理财持仓",
+  wealth_get_orders: "本人理财订单", wealth_purchase_submit: "理财申购提交",
+  wealth_redeem_submit: "理财赎回提交", wealth_purchase_status: "申购状态查询",
+  wealth_redeem_status: "赎回状态查询",
   analyze_subscriptions: "订阅与周期扣费", get_subscription_cancellation_status: "订阅取消结果",
 };
 

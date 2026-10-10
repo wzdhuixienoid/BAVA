@@ -172,7 +172,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE notifications, subscription_notification_cursors, mock_subscription_charges, "
+                "TRUNCATE notifications, subscription_notification_cursors, "
+                "mock_subscription_charges, "
                 "security_guard_states, identity_mappings, mock_bank_transfers, "
                 "mock_subscription_cancellations, mock_subscription_actions, "
                 "mock_subscription_states, payees, "
@@ -185,7 +186,8 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE notifications, subscription_notification_cursors, mock_subscription_charges, "
+                "TRUNCATE notifications, subscription_notification_cursors, "
+                "mock_subscription_charges, "
                 "security_guard_states, identity_mappings, mock_bank_transfers, "
                 "mock_subscription_cancellations, mock_subscription_actions, "
                 "mock_subscription_states, payees, "
@@ -331,9 +333,14 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
                 )
             ).scalars()
         )
-        from alembic.script import ScriptDirectory
         from pathlib import Path
-        assert revision == ScriptDirectory(str(Path(__file__).parents[1] / "migrations")).get_current_head()
+
+        from alembic.script import ScriptDirectory
+
+        assert (
+            revision
+            == ScriptDirectory(str(Path(__file__).parents[1] / "migrations")).get_current_head()
+        )
         assert progress_column == "progress_message"
         assert executor_columns == {"executor_type", "executor_id"}
         assert requested_output_column == "requested_output"

@@ -4,8 +4,6 @@ import asyncio
 from decimal import Decimal
 from urllib.parse import urlparse
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.operation_service import OperationService
 from banking_api.application.workflow_service import WorkflowService
@@ -33,6 +31,7 @@ from banking_api.tools.executor import ToolExecutor
 from banking_api.transfers.mock_provider import MockTransferProvider
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.intent_extractor import TransferIntentExtractor
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 async def main() -> None:
@@ -58,7 +57,7 @@ async def main() -> None:
     intent = await TransferIntentExtractor(llm).extract(prompt)
     if decision.route is not RequestRoute.TRANSFER_WORKFLOW:
         raise AssertionError(f"unexpected route: {decision.route.value}")
-    if intent.recipient_query != "张三" or intent.amount != Decimal("2000"):
+    if intent.recipient_query != "张三" or intent.amount != Decimal(2000):
         raise AssertionError("intent extraction did not preserve recipient and amount")
 
     database = create_async_engine("sqlite+aiosqlite:///:memory:")

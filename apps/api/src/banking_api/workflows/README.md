@@ -15,3 +15,6 @@ High-risk financial operations must eventually execute through workflows, not di
 > 只有 Provider 确认的 `Operation SUCCEEDED` 表示资金已转出。`SUBMITTED` 和 `UNKNOWN` 都必须保持 `COMMITTING`。
 
 Workflow 可以以 `workflow:transfer` 调用三项 R1 读能力、`transfer.get_status` (R1) 和唯一写能力 `transfer.commit` (`R4_FINANCIAL_COMMIT`, `side_effect=true`)。Commit Tool 只接受 `operation_id`，并从持久化 Operation 加载 authoritative payload 和 idempotency key。任何 Agent/Skill 都无该权限，LLM 不参与 Approval、Reauthentication、Commit 或 Verification。
+
+
+v0.11.0理财申购和赎回使用独立方向Workflow，共享确认、强验证、SecurityGuard和Operation机制。交易日、费用规则和测评证据绑定核对快照；修改、过期或跨截止点重新授权。Provider持久资金/份额占用及独立结算账本，OperationRecoveryWorker推进成交与到账。只有SETTLED才成功；普通资源GET不推进状态。

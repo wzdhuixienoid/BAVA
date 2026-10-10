@@ -7,6 +7,8 @@ os.environ.setdefault("AUTH_MODE", "development")
 # Dedicated Mock and scheduling tests enable these flags explicitly.
 os.environ.setdefault("MOCK_PARTICIPANT_LOGIN_ENABLED", "false")
 os.environ.setdefault("MOCK_SCHEDULED_TRANSFERS_ENABLED", "false")
+os.environ["MOCK_WEALTH_ENABLED"] = "false"
+os.environ.setdefault("MOCK_SUBSCRIPTION_BILLING_ENABLED", "false")
 
 import pytest
 from httpx import ASGITransport, AsyncClient

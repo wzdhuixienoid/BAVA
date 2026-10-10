@@ -15,6 +15,7 @@ from banking_api.api.routes import (
     security,
     subscriptions,
     tasks,
+    wealth,
     workflows,
 )
 
@@ -38,3 +39,5 @@ api_router.include_router(schedules.router)
 api_router.include_router(aa.router)
 
 api_router.include_router(notifications.router)
+
+api_router.include_router(wealth.router)

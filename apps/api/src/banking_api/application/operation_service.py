@@ -143,6 +143,15 @@ class OperationService:
         workflow = await self.workflows.get_for_user(workflow_id, user_id)
         if workflow is None:
             raise OperationNotFoundError
+        from banking_api.wealth.workflow import TYPES, WealthWorkflow
+
+        if workflow.workflow_type in TYPES:
+            op = await WealthWorkflow(
+                self.session, self.engine.wealth_engine.balances, self.clock
+            ).prepare(workflow_id, user_id, expected_version)
+            return await self.reconcile(
+                op.operation_id, user_id=user_id, expected_version=op.version
+            )
         await acquire_security_user_lock(self.session, user_id)
         existing = await self.operations.get_for_workflow(workflow_id, user_id)
         if existing is not None:
@@ -234,6 +243,7 @@ class OperationService:
                 raise OperationActionError("SCHEDULE_AUTHORIZATION_INVALID")
             if scheduled.series_id:
                 from banking_api.application.schedule_service import validate_recurring_scope
+
                 await validate_recurring_scope(self.session, scheduled, grant, user_id)
             if not _as_utc(scheduled.scheduled_for) <= now <= _as_utc(scheduled.execute_deadline):
                 raise OperationActionError("SCHEDULE_OUTSIDE_EXECUTION_WINDOW")
@@ -633,6 +643,10 @@ class OperationService:
             lease_owner,
         )
 
+        if operation.operation_type in {OperationType.WEALTH_PURCHASE, OperationType.WEALTH_REDEEM}:
+            from banking_api.wealth.recovery import reconcile_wealth
+
+            return await reconcile_wealth(self, operation, lease_owner)
         if operation.status is OperationStatus.CREATED:
             operation = await self._submit_created(operation, lease_owner=lease_owner)
             if operation.status is not OperationStatus.SUBMITTED:
@@ -819,9 +833,7 @@ class OperationService:
                 )
             )
             if scheduled is not None:
-                await notify_schedule_result(
-                    self.session, scheduled, workflow, status.value, now
-                )
+                await notify_schedule_result(self.session, scheduled, workflow, status.value, now)
         await self._operation_event(updated_operation, event_type)
         workflow_event_type = {
             WorkflowStatus.SUCCEEDED: "workflow.succeeded",

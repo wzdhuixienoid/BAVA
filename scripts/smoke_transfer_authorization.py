@@ -3,8 +3,6 @@
 import asyncio
 from urllib.parse import urlparse
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.workflow_service import WorkflowService
 from banking_api.config.settings import Settings
@@ -27,6 +25,7 @@ from banking_api.tools.banking import (
 from banking_api.tools.executor import ToolExecutor
 from banking_api.workflows.transfer.engine import TransferWorkflowEngine
 from banking_api.workflows.transfer.intent_extractor import TransferIntentExtractor
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 async def main() -> None:

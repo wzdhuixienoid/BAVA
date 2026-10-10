@@ -1,3 +1,4 @@
+import { WealthReceipt } from "@/features/wealth/WealthCards";
 import type { components } from "@banking/api-client";
 import { dateTimeLabel } from "@/features/reports/presentation";
 import { RiskDetails } from "@/features/workflows/RiskDetails";
@@ -13,6 +14,7 @@ export function reviewField(workflow: Workflow, key: string): string {
 
 export function WorkflowReceipt({ workflow }: { workflow: Workflow }) {
   if (!isConfirmedWorkflow(workflow)) return null;
+  if (workflow.workflow_type.startsWith("WEALTH_")) return <WealthReceipt workflow={workflow}/>;
   const resume = workflow.workflow_type === "SUBSCRIPTION_RESUME";
   const transfer = workflow.workflow_type === "TRANSFER";
   const operation = workflow.operation_summary;

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.domain.risk import TransferRiskDecision
 from banking_api.planning.models import ConditionDecision
+from banking_api.wealth.schemas import WealthRiskDecision
 
 
 class AuditActor(StrEnum):
@@ -42,6 +43,7 @@ class AuditEntry(BaseModel):
     related_resource_ids: dict[str, UUID] = Field(default_factory=dict)
     facts: list[AuditFact] = Field(default_factory=list, max_length=40)
     risk_decision: TransferRiskDecision | None = None
+    wealth_risk_decision: WealthRiskDecision | None = None
     condition_decision: ConditionDecision | None = None
 
 

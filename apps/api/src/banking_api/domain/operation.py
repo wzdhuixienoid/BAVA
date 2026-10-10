@@ -9,6 +9,8 @@ from banking_api.domain.enums import OperationStatus
 
 
 class OperationType(StrEnum):
+    WEALTH_PURCHASE = "WEALTH_PURCHASE"
+    WEALTH_REDEEM = "WEALTH_REDEEM"
     TRANSFER = "TRANSFER"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
     SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"

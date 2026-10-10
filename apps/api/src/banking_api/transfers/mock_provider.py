@@ -1,20 +1,24 @@
 import asyncio
-import hashlib
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from banking_api.application.balance_service import (
+    AccountBalanceService,
+)
+from banking_api.application.balance_service import (
+    provider_account_lock_key as provider_account_lock_key,
+)
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.models import (
     AARequestModel,
     AAShareModel,
     MockBankTransferModel,
-    MockSubscriptionChargeModel,
     OperationModel,
 )
 from banking_api.transfers.provider import (
@@ -30,15 +34,6 @@ from banking_api.transfers.provider import (
 logger = logging.getLogger(__name__)
 
 
-def provider_account_lock_key(source_account_id: str, user_id: str = "dev-user-001") -> int:
-    """Map one provider account to a stable signed PostgreSQL advisory-lock key."""
-
-    # Keep the v0.5.2 account-serialization key stable; user scoping is enforced
-    # by provider queries and balance calculations, not by changing lock identity.
-    digest = hashlib.sha256(
-        f"mock-transfer-provider:source-account:{source_account_id}".encode()
-    ).digest()
-    return int.from_bytes(digest[:8], byteorder="big", signed=True)
 
 
 class MockTransferProvider:
@@ -53,6 +48,7 @@ class MockTransferProvider:
     ) -> None:
         self._session_factory = session_factory
         self._bank = bank
+        self.balances = AccountBalanceService(session_factory, bank)
         self.fault_mode = fault_mode
         self._account_locks: dict[str, asyncio.Lock] = {}
 
@@ -193,16 +189,7 @@ class MockTransferProvider:
     async def _serialize_source_account(
         session: AsyncSession, source_account_id: str, user_id: str = "dev-user-001"
     ) -> None:
-        bind = session.get_bind()
-        if bind.dialect.name != "postgresql":
-            return
-        lock_key = provider_account_lock_key(source_account_id, user_id)
-        logger.info("mock provider waiting for account serialization lock_key=%s", lock_key)
-        await session.execute(
-            text("SELECT pg_advisory_xact_lock(:lock_key)"),
-            {"lock_key": lock_key},
-        )
-        logger.info("mock provider account serialization acquired lock_key=%s", lock_key)
+        await AccountBalanceService.serialize(session, source_account_id, user_id)
 
     async def get_transfer_status(
         self,
@@ -225,7 +212,6 @@ class MockTransferProvider:
                         await self._serialize_source_account(session, account_id)
                     confirmed = await session.get(
                         MockBankTransferModel,
-                        MockSubscriptionChargeModel,
                         transfer.provider_reference,
                         with_for_update=True,
                     )
@@ -272,37 +258,7 @@ class MockTransferProvider:
     async def _effective_balance_in_session(
         self, session: AsyncSession, user_id: str, account_id: str
     ) -> Decimal:
-        base = Decimal(str(self._bank.get_balance(account_id, user_id=user_id)["balance"]))
-        debited = (
-            await session.execute(
-                select(func.coalesce(func.sum(MockBankTransferModel.amount), 0)).where(
-                    MockBankTransferModel.source_account_id == account_id,
-                    MockBankTransferModel.user_id == user_id,
-                    MockBankTransferModel.status.in_(["SUCCEEDED", "PENDING"]),
-                )
-            )
-        ).scalar_one()
-        credited = await session.scalar(
-            select(func.coalesce(func.sum(MockBankTransferModel.amount), 0)).where(
-                MockBankTransferModel.destination_user_id == user_id,
-                MockBankTransferModel.destination_account_id == account_id,
-                MockBankTransferModel.status == "SUCCEEDED",
-                MockBankTransferModel.credited_at.is_not(None),
-            )
-        )
-        subscription_debits = await session.scalar(
-            select(func.coalesce(func.sum(MockSubscriptionChargeModel.amount), 0)).where(
-                MockSubscriptionChargeModel.user_id == user_id,
-                MockSubscriptionChargeModel.source_account_id == account_id,
-                MockSubscriptionChargeModel.status == "SUCCEEDED",
-            )
-        )
-        return (
-            base
-            - Decimal(str(debited))
-            + Decimal(str(credited))
-            - Decimal(str(subscription_debits))
-        )
+        return await self.balances.in_session(session, user_id, account_id)
 
     @staticmethod
     def _submission_from(transfer: MockBankTransferModel) -> TransferSubmissionResult:

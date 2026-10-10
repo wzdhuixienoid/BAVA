@@ -91,3 +91,25 @@ docker compose start api web
 ```
 
 reset 清理该用户的演示业务、对话、任务、报告、消息及相关审计与 checkpoint；保留其他用户、身份映射和 schema。它是数据清理，不是撤销付款或订阅扣费。生产环境在连接数据库前拒绝。重启后重新运行 preflight。
+
+## 理财隔离Smoke
+
+先准备库名含`test`的独立PostgreSQL库并迁移至0034，不允许连接保留演示状态的库，也不要与同库API/Worker并行。
+
+Smoke 与回归测试使用两个独立库：Smoke 保留其新建用户和金融结果，回归测试会清理自己的测试数据。不要将 Smoke 结果带入需要验证空库降级的迁移回归；有理财业务数据时拒绝降级是预期保护。
+
+```bash
+APP_ENVIRONMENT=test AUTH_MODE=development MOCK_WEALTH_ENABLED=true \
+TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_wealth_test \
+  uv run --project apps/api python scripts/smoke_wealth.py
+```
+
+脚本新建独立用户，不重置库，使用仅脚本内注入的时钟完成测评、推荐、对比、双重授权、申购受理/占用、受理后超时原订单恢复、成交、部分赎回成交和到账。金融结果通过确定性断言验证，不需要模型。产品没有推进时间接口，真实授权TTL、安全规则和其他业务时钟不被改动。
+
+新增单元/API测试`test_wealth.py`，PostgreSQL测试`test_wealth_postgres.py`。后者验证账户锁同时竞争申购/转账/订阅、并发申购和并发赎回、重复到账与资金守恒。SQLite可创建完整模型；不能代替PostgreSQL并发验证。owner-scopedreset按账本/占用/订单/持仓/测评先于旧业务资源顺序删除，仅清理所选用户，保留共享目录、净值、文档和其他用户。
+
+## v0.11.1 理财回归与浏览器验收
+
+`test_wealth_repairs.py`覆盖暂停后重新装配、未知恢复、首次受理关闭、数量单位、全部赎回快照、本次需求否定约束、HTTP/Agent一致性和订单说明。`wealth-interaction.test.mjs`使用真实React组件事件、状态与Effect测试交互，使用匹配React版本的react-test-renderer；它不是浏览器端到端验收。
+
+`scripts/smoke_wealth.py`另验证申购UNKNOWN和赎回受理后关闭开关、重装应用并完成原订单。浏览器验收可使用`scripts/wealth_browser_test_server.py`，必须指定文件名含test的独立SQLite库与测试控制文件，且在另一个端口使用指向该API的测试Web构建。私有控制文件内容为`{"now":"2026-10-09T09:00:00+08:00","enabled":true,"fault_mode":"SUCCESS"}`；更改文件注入业务时钟或重装测试应用，既不提供HTTP推进时间接口，也不修改产品授权TTL或安全保护规则。正式页面不得指向测试控制工具。测试端口关闭后保留验收库供核对，不重置演示库。

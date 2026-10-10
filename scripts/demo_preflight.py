@@ -50,6 +50,8 @@ def evaluate(readiness: dict, openapi: dict, head: str) -> dict[str, bool]:
             "business_timezone": readiness.get("business_timezone") == "Asia/Shanghai",
         }
     )
+    if readiness.get("wealth_enabled"):
+        checks["wealth_catalog_ready"] = readiness.get("wealth_catalog_ready") is True
     return checks
 
 

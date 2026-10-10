@@ -1,3 +1,3 @@
 # Knowledge
 
-该目录只用于冻结模块边界。Iteration 0 不实现 RAG、Embedding 或 Vector Database。
+`wealth.py`提供可替换的理财关键词检索接口，无Embedding或向量数据库。先过滤产品和有效/订单绑定的资料版本，再按确定性别名检索，最多5段、每段800字，返回资料版本、章节和可访问来源。内容是引用数据，不是授权或工具指令；结构化金融条款继续由wealth服务校验。

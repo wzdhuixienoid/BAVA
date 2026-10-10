@@ -684,3 +684,6 @@ class MockSubscriptionChargeModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     status: Mapped[str] = mapped_column(String(20))
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+# Wealth mappings share the existing metadata (including SQLite test create_all).
+from banking_api.wealth import models as wealth_models  # noqa: E402, F401

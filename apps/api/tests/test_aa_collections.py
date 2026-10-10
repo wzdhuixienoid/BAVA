@@ -1,11 +1,13 @@
 from decimal import Decimal
 from uuid import UUID
+
 import pytest
 from banking_test_helpers import authenticate_workflow
 from test_transfer_operations import operation_runtime
-from banking_api.application.aa_service import AAService, AAIntent, AAUpdate, split_cents
+
+from banking_api.application.aa_service import AAIntent, AAService, AAUpdate, split_cents
 from banking_api.application.conversation_service import ConversationService
-from banking_api.application.operation_service import OperationService, OperationActionError
+from banking_api.application.operation_service import OperationActionError, OperationService
 from banking_api.application.workflow_service import WorkflowService
 from banking_api.mock_bank.service import MockBankService
 from banking_api.transfers.provider import TransferProviderFaultMode
@@ -185,10 +187,11 @@ async def test_aa_failure_unknown_no_premature_credit(app, fault):
 
 
 async def test_aa_taskrunner_extracts_only_semantics_and_does_not_debit(app):
+    from test_transfer_workflow import build_transfer_runtime, create_transfer_task
+
     from banking_api.application.aa_intent_extractor import AAIntentExtractor
     from banking_api.llm.models import LLMResponse
     from banking_api.persistence.models import TaskModel
-    from test_transfer_workflow import build_transfer_runtime, create_transfer_task
 
     runner, bank, _, provider = build_transfer_runtime(
         app,

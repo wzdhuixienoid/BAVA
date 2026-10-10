@@ -22,6 +22,8 @@ router = APIRouter(prefix="/demo", tags=["demo"])
 
 class DemoReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    wealth_enabled: bool = False
+    wealth_catalog_ready: bool = False
     version: str
     database_revision: str
     owner_is_demo_user: bool
@@ -77,7 +79,15 @@ async def readiness(request: Request, session: SessionDependency, principal: Pri
     }
     expected = {s["subscription_id"]: s["status"] for s in bank.list_subscriptions(user_id=user_id)}
     revision = await session.scalar(text("SELECT version_num FROM alembic_version"))
+    from banking_api.wealth.service import WealthService
+
+    wealth_ready = False
+    if settings.mock_wealth_enabled:
+        products = await WealthService(session, transfer.balances).products()
+        wealth_ready = len(products) == 8 and all(p.tradable for p in products)
     return DemoReadiness(
+        wealth_enabled=settings.mock_wealth_enabled,
+        wealth_catalog_ready=wealth_ready,
         version=__version__,
         database_revision=revision or "",
         owner_is_demo_user=user_id == "dev-user-001",

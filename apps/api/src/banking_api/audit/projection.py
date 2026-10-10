@@ -36,9 +36,16 @@ from banking_api.persistence.models import (
 )
 from banking_api.persistence.repositories.plans import PlanRepository
 from banking_api.planning.models import ConditionDecision
+from banking_api.wealth.models import WealthOrder
+from banking_api.wealth.schemas import WealthRiskDecision
 
 # No runtime message, raw tool payload, model answer or credential enters this projection.
 LABELS = {
+    "wealth.order.accepted": "模拟理财订单已受理；资金或份额已占用，等待成交",
+    "wealth.order.confirmed": "模拟理财已成交；赎回份额已扣减，资金尚未到账",
+    "wealth.order.settled": "模拟理财最终结算；申购份额入账或赎回资金到账",
+    "wealth.order.rejected": "模拟理财受理前明确拒绝，无资金或份额占用",
+    "wealth.order.failed": "模拟理财明确失败，释放未结算占用",
     "schedule.authorized": "用户创建可撤销的 Mock 预约授权；尚未付款",
     "schedule.series.authorized": (
         "用户确认有限次周期范围并强验证，创建可撤销的 Mock 周期授权；尚未付款"
@@ -102,6 +109,18 @@ LABELS = {
     "plan.step_state_changed": "计划步骤状态变化",
 }
 FACT_LABELS = {
+    "order_id": "理财订单",
+    "trade_date": "绑定交易日期",
+    "stage": "订单阶段",
+    "actual_nav": "实际成交净值",
+    "actual_fee": "实际费用",
+    "actual_shares": "实际份额",
+    "actual_net": "实际到账或价款",
+    "wealth.order.accepted": "模拟理财订单已受理；资金或份额已占用，等待成交",
+    "wealth.order.confirmed": "模拟理财已成交；赎回份额已扣减，资金尚未到账",
+    "wealth.order.settled": "模拟理财最终结算；申购份额入账或赎回资金到账",
+    "wealth.order.rejected": "模拟理财受理前明确拒绝，无资金或份额占用",
+    "wealth.order.failed": "模拟理财明确失败，释放未结算占用",
     "aa_request_id": "关联 AA 主记录",
     "aa_share_id": "关联 AA 份额",
     "schedule_id": "关联预约",
@@ -484,6 +503,7 @@ class AuditProjection:
         ledger_count = 0
         for model in (
             MockBankTransferModel,
+            WealthOrder,
             MockSubscriptionCancellationModel,
             MockSubscriptionActionModel,
         ):
@@ -541,6 +561,7 @@ class AuditProjection:
         related = {
             key: identifier
             for key in (
+                "order_id",
                 "aa_request_id",
                 "aa_share_id",
                 "schedule_id",
@@ -599,7 +620,7 @@ class AuditProjection:
             else AuditActor.RECOVERY_WORKER
             if kind == "operation.reconcile_started"
             else AuditActor.PROVIDER
-            if kind.startswith("provider.")
+            if kind.startswith(("provider.", "wealth.order."))
             or kind
             in {
                 "operation.succeeded",
@@ -629,5 +650,6 @@ class AuditProjection:
             related_resource_ids=related,
             facts=facts(values),
             risk_decision=risk,
+            wealth_risk_decision=_typed(WealthRiskDecision, data.get("wealth_risk_decision")),
             condition_decision=condition,
         )

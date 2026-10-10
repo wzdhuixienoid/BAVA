@@ -40,6 +40,8 @@ class PolicyService:
             and (caller, spec.capability_id)
             in {
                 ("workflow:transfer", "transfer.commit"),
+                ("workflow:wealth-purchase", "wealth.purchase.submit"),
+                ("workflow:wealth-redeem", "wealth.redeem.submit"),
                 ("workflow:subscription-cancel", "subscription.cancel"),
                 ("workflow:subscription-cancel", "subscription.resume"),
             }

@@ -3,6 +3,7 @@ from enum import StrEnum
 from pydantic import BaseModel
 
 from banking_api.tools.models import PayeeSummary
+from banking_api.wealth.schemas import WealthWorkflowState
 from banking_api.workflows.subscription_cancel.models import SubscriptionCancelWorkflowState
 from banking_api.workflows.transfer.models import TransferWorkflowState
 
@@ -35,6 +36,7 @@ class TransferAccountOption(BaseModel):
 
 
 class WorkflowPresentation(BaseModel):
+    wealth_state: WealthWorkflowState | None = None
     business_success: bool
     approval_required: bool | None
     reauthentication_required: bool | None

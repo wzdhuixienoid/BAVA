@@ -16,9 +16,6 @@ BASE_URL = os.getenv("PLAN_SMOKE_BASE_URL", "http://127.0.0.1:8001")
 
 async def counts() -> dict:
     # Read the same isolated database used by the API, independently of its response.
-    from sqlalchemy import func, select
-    from sqlalchemy.ext.asyncio import create_async_engine
-
     from banking_api.persistence.models import (
         ApprovalModel,
         MockBankTransferModel,
@@ -26,6 +23,8 @@ async def counts() -> dict:
         ReauthenticationModel,
         WorkflowModel,
     )
+    from sqlalchemy import func, select
+    from sqlalchemy.ext.asyncio import create_async_engine
 
     url = os.environ["DATABASE_URL"]
     assert "smoke_test" in url, "Use an isolated synthetic smoke database"

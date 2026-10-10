@@ -60,7 +60,7 @@ test("FALSE branch shows persisted skipped guarded step and real dependency", ()
 });
 test("DETECTED_ONLY capability false never exposes executable cancellation", () => {
   const html = render(SubscriptionSummaryCard, { snapshot: { subscriptions: [{ merchant: "检测商户", management_type: "DETECTED_ONLY", status: "ACTIVE", billing_interval: "MONTHLY", last_charge_date: "2026-08-01", last_charge_display: "¥50.00", monthly_cost_display: "¥50.00", annual_projected_cost_display: "¥600.00", currency: "CNY", cancellable: false }], monthly_cost_by_currency: [], price_changes: [] } });
-  assert.match(html, /仅检测/); assert.match(html, /¥600\.00/); assert.doesNotMatch(html, /发起取消确认|取消按钮/);
+  assert.match(html, /到商户管理/); assert.match(html, /¥600\.00/); assert.doesNotMatch(html, /发起取消确认|取消按钮/);
   const cancellation = render(SubscriptionCancellationCard, { workflow: { ...workflow, workflow_type: "SUBSCRIPTION_CANCEL", risk_level: "YELLOW", status: "WAITING_FOR_INPUT", presentation: null, state: { required_input: { message: "请选择订阅", options: [{ merchant: "检测商户", management_type: "DETECTED_ONLY", subscription_id: "reference-only", cancellable: false, amount: "50.00", currency: "CNY" }] } } }, onRefresh: async () => {} });
   assert.doesNotMatch(cancellation, /<button[^>]*>选择<\/button>/);
 });
@@ -90,7 +90,7 @@ test("resume uses strong verification and never labels the result cancelled", ()
 test("historical subscription snapshots do not render an analysis card or fold the answer", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
   const html = render(AssistantTurn, { turn: { user: { message_id: "u1" }, tasks: [{ task_id: "snapshot-task", status: "COMPLETED", input: {}, output: { subscription_analysis_snapshot: { subscriptions: [], monthly_cost_by_currency: [], price_changes: [] } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a1", role: "ASSISTANT", content: "详细信息可在左侧「订阅与代扣总览」查看。" }], }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
-  assert.doesNotMatch(html, /订阅分析|助理说明/); assert.match(html, /订阅与代扣总览/);
+  assert.doesNotMatch(html, /订阅分析|助理说明/); assert.match(html, /以下是你的订阅情况/);
 });
 
 test("legacy confirmed draft never claims strong verification complete without evidence", () => {

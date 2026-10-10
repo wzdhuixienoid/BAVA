@@ -23,11 +23,11 @@ export function subscriptionReport(snapshot: Snapshot): string {
     }
     lines.push("", title === "可在这里管理的订阅" ? "如需取消订阅，请进入左侧「订阅管理」，选择对应订阅并确认取消。" : "这些订阅根据扣费记录识别，请前往对应商户确认续费安排或取消订阅。");
   }
-  lines.push("\n## 费用汇总", ...snapshot.monthly_cost_by_currency.map(item => `- 每月费用：${item.amount_display}`), ...snapshot.annual_projected_cost_by_currency.map(item => `- 预计每年费用：${item.amount_display}`));
-  if (snapshot.price_changes.length) {
+  lines.push("\n## 费用汇总", ...snapshot.monthly_cost_by_currency.map(item => `- 每月费用：${item.amount_display}`), ...(snapshot.annual_projected_cost_by_currency ?? []).map(item => `- 预计每年费用：${item.amount_display}`));
+  if (snapshot.price_changes?.length) {
     lines.push("\n## 费用变化", ...snapshot.price_changes.map(item => `- ${cell(item.merchant)}：最近一期费用变化 ${item.price_change_display}${item.price_change_percent_display ? `（${item.price_change_percent_display}）` : ""}。`));
   }
-  if (snapshot.upcoming_renewals.length) {
+  if (snapshot.upcoming_renewals?.length) {
     lines.push("\n## 即将续费", ...snapshot.upcoming_renewals.map(item => `- ${cell(item.merchant)}：${date(item.next_billing_at)}${item.next_billing_is_estimated ? "（预计）" : ""}，${item.contract_amount_display ?? item.last_charge_display}。`));
   }
   return lines.join("\n");
