@@ -32,6 +32,8 @@ from banking_api.wealth.schemas import (
     AssessmentInput,
     CompareInput,
     RecommendationInput,
+    WealthAnalysis,
+    WealthAnalysisInput,
     WealthAssessmentResult,
     WealthDraftInput,
     WealthEditInput,
@@ -111,7 +113,32 @@ async def product(
 async def compare(
     body: CompareInput, session: SessionDependency, principal: PrincipalDependency, request: Request
 ):
-    return await service(session, request).compare(body.product_ids)
+    return await service(session, request).compare(body.product_ids, principal.user_id)
+
+
+@router.post("/analysis", response_model=WealthAnalysis)
+async def analysis(
+    body: WealthAnalysisInput,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    request: Request,
+):
+    from banking_api.wealth.advisory import WealthAdvisoryService
+
+    try:
+        return await WealthAdvisoryService(service(session, request)).analyze(
+            principal.user_id, body
+        )
+    except AccountNotFoundError:
+        raise WealthError("NOT_FOUND", "未找到本人账户") from None
+
+
+@router.get("/snapshots/{task_id}", response_model=WealthAnalysis)
+async def snapshot(task_id: UUID, session: SessionDependency, principal: PrincipalDependency):
+    task = await TaskRepository(session).get_for_user(task_id, principal.user_id)
+    if not task or not task.output_json or not task.output_json.get("wealth_analysis"):
+        raise WealthError("NOT_FOUND", "未找到本人分析")
+    return WealthAnalysis.model_validate(task.output_json["wealth_analysis"])
 
 
 @router.post("/recommendations", response_model=WealthRecommendationResult)
@@ -122,7 +149,11 @@ async def recommendations(
     request: Request,
 ):
     try:
-        return await service(session, request).recommend(principal.user_id, body)
+        from banking_api.wealth.advisory import WealthAdvisoryService
+
+        return await WealthAdvisoryService(service(session, request)).recommendation(
+            principal.user_id, body
+        )
     except (KeyError, ValueError, AccountNotFoundError) as exc:
         if isinstance(exc, WealthError):
             raise
@@ -171,20 +202,25 @@ async def knowledge(
     session: SessionDependency,
     principal: PrincipalDependency,
     request: Request,
-    product_id: Annotated[str, Query(min_length=1, max_length=40)],
     query: Annotated[str, Query(min_length=1, max_length=300)],
+    product_id: Annotated[str | None, Query(min_length=1, max_length=40)] = None,
     order_id: UUID | None = None,
+    version_id: Annotated[str | None, Query(max_length=80)] = None,
 ):
-    version = None
+    version = version_id
     if order_id:
         order = await session.scalar(
             select(WealthOrder).where(
                 WealthOrder.order_id == order_id, WealthOrder.user_id == principal.user_id
             )
         )
-        if not order or order.product_id != product_id:
+        if not order or (product_id and order.product_id != product_id):
             raise WealthError("NOT_FOUND", "未找到本人订单")
-        version = order.version_id
+        if version_id and version_id != order.version_id:
+            raise WealthError("VERSION_MISMATCH", "指定版本与本人订单绑定资料不一致")
+        product_id, version = order.product_id, order.version_id
+    if version and not product_id:
+        raise WealthError("PRODUCT_REQUIRED", "指定资料版本时请提供产品")
     return await KeywordWealthKnowledge(service(session, request)).search(
         product_id, query, version
     )
@@ -195,6 +231,16 @@ async def document(document_id: str, session: SessionDependency, principal: Prin
     d = await session.get(WealthDocument, document_id)
     if not d:
         raise WealthError("NOT_FOUND", "未找到资料")
+    from banking_api.wealth.catalog import digest
+    from banking_api.wealth.models import WealthProductVersion
+
+    version = await session.get(WealthProductVersion, d.version_id)
+    if (
+        not version
+        or digest(d.content) != d.content_hash
+        or version.terms.get("document_hashes", {}).get(d.document_id) != d.content_hash
+    ):
+        raise WealthError("PRODUCT_DOCUMENT_CONFLICT", "产品资料异常，无法作为分析依据")
     return WealthKnowledgeResult(
         document_id=d.document_id,
         version=d.version,
@@ -255,6 +301,8 @@ async def create_workflow(
             return await WorkflowService(session, bus, engine)._to_workflow(existing)
     require_new_business()
     await SecurityGuardService(session).require_write_allowed(principal.user_id)
+    if body.direction == "PURCHASE":
+        await service(session, request).require_assessment(principal.user_id)
     if body.conversation_id:
         conversation = await ConversationRepository(session).get_for_user(
             body.conversation_id, principal.user_id

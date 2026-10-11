@@ -6,6 +6,7 @@ import { api } from "@/lib/api/client";
 import { ReauthenticationForm } from "@/features/workflows/ReauthenticationForm";
 import { WorkflowTimeline } from "@/features/workflows/WorkflowTimeline";
 import { wealthReason } from "./answer";
+import { WealthEvidencePanel } from "./WealthEvidencePanel";
 import { queryTime } from "@/lib/presentation/time";
 
 type Product = components["schemas"]["WealthProductResult"];
@@ -15,11 +16,11 @@ export function WealthSources({sources}: {sources: string[]}) {
   const [doc, setDoc] = useState<components["schemas"]["WealthKnowledgeResult"] | null>(null);
   const [error, setError] = useState("");
   return <div className="mt-2 flex flex-wrap gap-2 text-xs">
-    {sources.map((source) => <button key={source} className="text-cyan-700 underline" onClick={() => {
+    {sources.filter(source => /^\/api\/v1\/wealth\/documents\/[a-zA-Z0-9:_-]+$/.test(source)).map((source) => <button key={source} className="text-cyan-700 underline" onClick={() => {
       setError("");
       const id = source.split("/").pop()!;
       void api.wealthDocument(id).then(setDoc).catch(e => setError(e.message === "Failed to fetch" ? "暂时无法加载资料，请重试" : e.message));
-    }}>查看资料 · {({"1":"产品说明书", "2":"风险提示", "3":"交易说明"} as Record<string,string>)[source.split(":").at(-1)!] ?? "产品资料"}</button>)}
+    }}>{({"1":"产品说明书", "2":"风险提示", "3":"交易说明"} as Record<string,string>)[source.split(":").at(-1)!] ?? "产品资料"}</button>)}
     {error && <p role="alert">{error}</p>}
     {doc && <div role="dialog" aria-label="模拟产品资料" className="fixed inset-8 z-50 overflow-auto rounded-xl border bg-white p-6 shadow-xl sm:inset-x-1/4">
       <button onClick={() => setDoc(null)} className="float-right rounded border px-3 py-1">关闭资料</button>
@@ -45,7 +46,8 @@ export function WealthResultCard({result}: {result: components["schemas"]["Wealt
     {result.products?.map(p => <WealthProductCard key={p.product_id} product={p}/>)}
     {Object.entries(result.selected_reasons ?? {}).map(([id,reasons]) => <p key={id} className="text-xs text-slate-600">{result.products?.find(p => p.product_id===id)?.name}：{reasons.map(wealthReason).join("；")}</p>)}
     {result.reasons?.map(r => <p key={r} className="text-sm">{wealthReason(r)}</p>)}
-    {result.evidence?.map(e => <div key={e.document_id} className="rounded border p-3"><p className="text-sm">{e.content}</p><WealthSources sources={[e.source]}/></div>)}
+    {!result.evidence_sources?.length && result.evidence?.map(e => <div key={e.document_id} className="rounded border p-3"><p className="text-sm">{e.content}</p><WealthSources sources={[e.source]}/></div>)}
+    {Boolean(result.evidence_sources?.length) && <WealthEvidencePanel evidence={result.evidence_sources!}/>}
     {result.positions?.map(p => <p key={p.position_id}>{p.name} · 可赎回 {p.available_display} 份 · 估值 {p.value_display ?? "暂无数据"} · 待到账 {p.pending_display}</p>)}
     {result.orders?.map(o => <div key={o.order_id}><p>{o.name} · {o.direction_display} · {o.status_display}</p><WealthOrderExplanation order={o}/>{o.conversation_id && <Link href={`/?conversation=${o.conversation_id}`} className="text-xs underline">查看对话与处理过程</Link>}</div>)}
     <Link href="/wealth" className="text-xs text-cyan-700 underline">打开理财中心</Link>
@@ -97,6 +99,15 @@ export function WealthWorkflowCard({workflow, onRefresh, resources}: {workflow: 
   const editable = ["WAITING_FOR_INPUT", "READY_FOR_REVIEW", "REAUTH_REQUIRED", "READY_FOR_COMMIT"].includes(workflow.status);
   const status = {DRAFT:"草稿", WAITING_FOR_INPUT:"待补全", VALIDATING:"校验中", READY_FOR_REVIEW:"待核对确认", REAUTH_REQUIRED:"待强验证", READY_FOR_COMMIT:"待提交", COMMITTING:"已提交，等待成交或到账", SUCCEEDED:"最终完成", FAILED:"明确失败", CANCELLED:"已取消"}[workflow.status];
   const allowedAccounts = purchase ? accounts : accounts.filter(a => positions.some(p => p.product_id === product && p.account_id === a.account_id));
+  if (purchase && editable && state.purchase_entry_allowed === false) return <section className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50 p-4">
+    <p className="font-semibold">购买理财前，请先完成有效风险测评</p>
+    <p className="mt-2 text-sm">{state.purchase_entry_block_reason}</p>
+    <Link href="/wealth#risk-assessment" className="mt-2 block text-sm text-cyan-800 underline">前往理财中心查看并完成风险测评</Link>
+    <p className="mt-2 text-xs text-slate-600">这份旧草稿尚未提交，未扣款；测评完成后需重新核对和授权。</p>
+    <button disabled={busy} onClick={() => void act(() => api.cancelWorkflow(workflow.workflow_id, workflow.version))} className="mt-3 rounded border bg-white px-3 py-2 text-sm">取消草稿</button>
+    <Link href={`/?conversation=${workflow.conversation_id}`} className="ml-3 text-xs text-cyan-700 underline">查看办理记录</Link>
+    {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+  </section>;
   return <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
     <h3 className="font-semibold">模拟理财{purchase ? "申购" : "赎回"} · {status}</h3>
     {!canNew && <p className="mt-2 text-sm">已暂停新理财交易，已受理订单继续处理；未提交草稿可取消。</p>}
@@ -131,6 +142,7 @@ export function WealthReceipt({workflow}: {workflow: Workflow}) {
 export function WealthOrderExplanation({order}: {order: components["schemas"]["WealthOrderResult"]}) {
   const fallback = order.unknown ? "结果仍在确认，占用保留，继续查询原订单" : order.status_display;
   return <div className="mt-2 space-y-1 text-sm">
+    {order.conversation_deleted && <p className="text-slate-500">原对话已删除，订单与办理记录仍保留。</p>}
     <p>{order.user_reason ?? fallback}</p>
     {order.last_known_stage && <p>当前进度：{order.last_known_stage}</p>}
     {order.next_step && <p>下一步：{order.next_step}</p>}

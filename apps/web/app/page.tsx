@@ -157,7 +157,7 @@ export default function HomePage() {
       </div>}
       {deleteTarget && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-5">
         <div role="dialog" aria-modal="true" aria-labelledby="delete-title" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-          <h2 id="delete-title" className="text-lg font-semibold">删除对话</h2><p className="mt-3 text-sm text-slate-600">确认删除“{deleteTarget.title}”？已授权预约继续按计划执行，可在预约列表管理；业务及审计记录会保留。</p>
+          <h2 id="delete-title" className="text-lg font-semibold">删除对话</h2><p className="mt-3 text-sm text-slate-600">确认删除“{deleteTarget.title}”？已授权预约和已受理理财订单继续处理，可在对应业务页面查看；业务及审计记录会保留。</p>
           {deleteError && <p role="alert" className="mt-3 text-sm text-red-700">{deleteError}</p>}
           <div className="mt-5 flex justify-end gap-3"><button autoFocus disabled={deleting !== null} onClick={() => setDeleteTarget(null)} className="rounded-lg border px-4 py-2">返回</button><button disabled={deleting !== null} onClick={() => void deleteConversation(deleteTarget)} className="rounded-lg bg-red-700 px-4 py-2 text-white">{deleting ? "删除中…" : "确认删除"}</button></div>
         </div>

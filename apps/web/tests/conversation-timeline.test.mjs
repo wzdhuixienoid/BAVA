@@ -82,3 +82,16 @@ test("future cycle occurrences stay in the cycle review, UNKNOWN occurrence stay
  const started=build({tasks:[child],workflows:[{...workflow,status:"COMMITTING",operation_summary:{status:"UNKNOWN"}}]});
  assert.equal(started.length,1);assert.equal(started[0].workflows[0].operation_summary.status,"UNKNOWN");
 });
+
+for (const direction of ["PURCHASE", "REDEEM"]) {
+ test(`accepted wealth ${direction} finishes response without completing financial operation`,()=>{
+  const workflow={workflow_type:`WEALTH_${direction}`,source_task_id:"t",status:"COMMITTING",operation_summary:{status:"UNKNOWN"},presentation:{business_success:false,wealth_state:{order_received:true,order_stage:direction==="REDEEM"?"CONFIRMED":"ACCEPTED"}}};
+  const [turn]=build({tasks:[task("t",null,null,"WAITING_EXTERNAL")],workflows:[workflow]});
+  assert.deepEqual(responseState(turn),{active:false,label:"申请已提交，成交后会通知你",failed:false});
+  assert.equal(isConfirmedWorkflow(workflow),false);
+  assert.equal(workflow.status,"COMMITTING");assert.equal(turn.tasks[0].status,"WAITING_EXTERNAL");
+  assert.equal(responseState({...turn,tasks:[...turn.tasks,task("other",null,null,"RUNNING")]}).active,true);
+  assert.equal(responseState({...turn,workflows:[...turn.workflows,{workflow_type:"TRANSFER",status:"COMMITTING"}]}).active,true);
+  assert.equal(responseState({...turn,workflows:[{...workflow,presentation:{wealth_state:{order_received:false}}}]}).active,true);
+ });
+}

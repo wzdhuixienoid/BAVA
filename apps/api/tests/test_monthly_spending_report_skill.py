@@ -378,5 +378,11 @@ def test_skill_registry_contains_only_monthly_report_skill() -> None:
 def test_application_registers_monthly_report_skill() -> None:
     skills = create_app().state.skill_registry
 
-    assert [skill.skill_id for skill in skills.all()] == ["skill:monthly-spending-report"]
+    assert [skill.skill_id for skill in skills.all()] == [
+        "skill:monthly-spending-report",
+        "skill:wealth-recommendation",
+    ]
+    wealth = skills.get("skill:wealth-recommendation")
+    assert wealth.allowed_tools == ()
+    assert wealth.input_schema.__name__ == "WealthAnalysis"
     assert skills.all()[0].allowed_tools == ()

@@ -14,6 +14,17 @@ class WealthInput(BaseModel):
 
 
 class CompareInput(WealthInput):
+    needs: str = Field(default="", max_length=500)
+    amount: str | None = None
+    account_id: str | None = Field(default=None, max_length=100)
+
+    @field_validator("amount")
+    @classmethod
+    def valid_amount(cls, value):
+        if value is not None:
+            quantity(value)
+        return value
+
     product_ids: list[str] = Field(min_length=1, max_length=4)
 
 
@@ -133,6 +144,7 @@ class WealthPositionResult(BaseModel):
 
 
 class WealthOrderResult(BaseModel):
+    conversation_deleted: bool = False
     source_task_id: UUID | None = None
     conversation_id: UUID | None = None
     order_id: UUID
@@ -157,7 +169,164 @@ class WealthOrderResult(BaseModel):
     hold_retained: bool = False
 
 
+class WealthNeeds(BaseModel):
+    raw: str = ""
+    amount: str | None = None
+    account_id: str | None = None
+    liquidity_raw: str | None = None
+    return_goal: Literal["HIGHER_POTENTIAL"] | None = None
+    loss_tolerance_raw: str | None = None
+    use_date_from: str | None = None
+    use_date_to: str | None = None
+    liquidity_basis: str | None = None
+    priority: Literal["RISK", "LIQUIDITY", "FEES"] = "RISK"
+    constraints: RecommendationConstraints = Field(default_factory=RecommendationConstraints)
+    missing_fields: list[str] = []
+    assumptions: list[str] = []
+    clarification_questions: list[str] = []
+    changed_fields: list[str] = []
+
+
+class WealthEvidence(BaseModel):
+    evidence_id: str
+    title: str
+    section: str
+    scope: Literal["EDUCATION", "PRODUCT"]
+    source_type: str
+    source_name: str
+    url: str
+    version: str
+    verified_at: str | None = None
+    published_at: str | None = None
+    effective_from: str | None = None
+    effective_to: str | None = None
+    content_hash: str
+    content: str
+    product_id: str | None = None
+    version_id: str | None = None
+    document_id: str | None = None
+
+
+class WealthAnalysisBlock(BaseModel):
+    block_id: str
+    title: str
+    text: str
+    fact_ids: list[str] = []
+    evidence_ids: list[str] = []
+
+
+class WealthFeeScenario(BaseModel):
+    amount: str
+    budget_display: str
+    nav: str
+    nav_date: str
+    purchase_rate: str
+    redeem_rate: str
+    purchase_fee_display: str
+    redeem_fee_display: str
+    total_fee_display: str
+    estimated_cash_display: str
+    shares: str
+    assumption: str = (
+        "假设申购和赎回净值均等于最新已发布净值；仅作费用情景，实际金额按未来净值成交。"
+    )
+
+
+class WealthTimingScenario(BaseModel):
+    purchase: dict[str, str]
+    redeem_existing: dict[str, str]
+    earliest_redeem_new: dict[str, str]
+    earliest_cash_at: str
+    notice: str = (
+        "Mock交易日仅周一至周五，不处理真实节假日。"
+        "每日开放不等于实时到账；此为预估安排，并非已受理订单或到账保证。"
+    )
+
+
+class WealthHistoryWindow(BaseModel):
+    start_date: str | None = None
+    end_date: str | None = None
+    data_as_of: str
+    samples: int = 0
+    change_display: str | None = None
+    drawdown_display: str | None = None
+    missing_reason: str | None = None
+    notice: str = "统一近30日窗口，起点取不晚于目标日期的最近已发布净值；模拟历史不代表未来收益。"
+
+
+class WealthCandidateAnalysis(BaseModel):
+    purchase_entry_key: UUID | None = None
+    product: WealthProductResult
+    matched_conditions: list[str] = []
+    advantages: list[str] = []
+    limitations: list[str] = []
+    unsuitable_when: list[str] = []
+    unknowns: list[str] = []
+    fact_id: str
+    evidence_ids: list[str] = []
+    fee_scenario: WealthFeeScenario | None = None
+    timing: WealthTimingScenario
+    history: WealthHistoryWindow
+
+
+class WealthExcludedProduct(BaseModel):
+    product_id: str
+    version_id: str
+    name: str
+    reasons: list[str]
+
+
+class WealthCustomerResponse(BaseModel):
+    headline: str
+    paragraphs: list[WealthAnalysisBlock] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+    budget_display: str | None = None
+    liquidity_display: str | None = None
+
+
+class WealthAnalysis(BaseModel):
+    schema_version: Literal["wealth-analysis-v1"] = "wealth-analysis-v1"
+    snapshot_id: UUID
+    source_task_id: UUID | None = None
+    result_kind: Literal[
+        "RECOMMENDATION", "COMPARISON", "EXPLANATION", "EDUCATION", "CATALOGUE", "PRODUCT_INTRO"
+    ]
+    status: Literal[
+        "NEEDS_ASSESSMENT", "NEEDS_CLARIFICATION", "CONDITIONAL", "MATCHED", "NO_MATCH", "EDUCATION"
+    ]
+    generated_at: datetime
+    reference_time: datetime
+    needs: WealthNeeds
+    conclusion: str
+    customer_response: WealthCustomerResponse | None = None
+    assessment_id: UUID | None = None
+    customer_grade: str | None = None
+    assessment_expires_at: datetime | None = None
+    assessment_rules_version: str | None = None
+    excluded_products: list[WealthExcludedProduct] = []
+    candidates: list[WealthCandidateAnalysis] = []
+    blocks: list[WealthAnalysisBlock] = []
+    evidence: list[WealthEvidence] = []
+    excluded: dict[str, list[str]] = {}
+    missing_data: list[str] = []
+    ranking_basis: list[str] = []
+    previous_snapshot_id: UUID | None = None
+    historical_reference: str | None = None
+    narrative_source: Literal["DETERMINISTIC", "MODEL_ORGANIZED", "FALLBACK"] = "DETERMINISTIC"
+    degradation_reason: str | None = None
+    new_business_allowed: bool = True
+
+
+class WealthAnalysisInput(RecommendationInput):
+    product_ids: list[str] = Field(default_factory=list, max_length=4)
+    intent: Literal[
+        "RECOMMENDATION", "COMPARISON", "EDUCATION", "EXPLANATION", "CATALOGUE", "PRODUCT_INTRO"
+    ] = "RECOMMENDATION"
+    query: str = Field(default="", max_length=500)
+
+
 class WealthRecommendationResult(BaseModel):
+    analysis: WealthAnalysis | None = None
     constraints: RecommendationConstraints | None = None
     selected_reasons: dict[str, list[str]] = {}
     products: list[WealthProductResult]
@@ -166,12 +335,26 @@ class WealthRecommendationResult(BaseModel):
 
 
 class WealthReadResult(BaseModel):
+    result_kind: (
+        Literal[
+            "CATALOGUE",
+            "PRODUCT",
+            "COMPARISON",
+            "RECOMMENDATION",
+            "KNOWLEDGE",
+            "POSITIONS",
+            "ORDERS",
+        ]
+        | None
+    ) = None
+    analysis: WealthAnalysis | None = None
     constraints: RecommendationConstraints | None = None
     selected_reasons: dict[str, list[str]] = {}
     products: list[WealthProductResult] = []
     positions: list[WealthPositionResult] = []
     orders: list[WealthOrderResult] = []
     evidence: list[WealthKnowledgeResult] = []
+    evidence_sources: list[WealthEvidence] = []
     reasons: list[str] = []
     excluded: dict[str, list[str]] = {}
 
@@ -202,6 +385,10 @@ class WealthReviewResult(WealthDraftResult):
 
 
 class WealthWorkflowState(BaseModel):
+    order_received: bool = False
+    order_stage: str | None = None
+    purchase_entry_allowed: bool = True
+    purchase_entry_block_reason: str | None = None
     validation_message: str | None = None
     draft: WealthDraftResult
     review: WealthReviewResult | None = None

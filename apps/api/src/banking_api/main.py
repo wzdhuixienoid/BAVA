@@ -14,6 +14,7 @@ from banking_api.application.aa_intent_extractor import AAIntentExtractor
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.application.outbox_publication_policy import OutboxPublicationPolicy
 from banking_api.application.task_execution_policy import TaskExecutionPolicy
+from banking_api.config.demo_time import reference_now
 from banking_api.config.settings import get_settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
@@ -43,6 +44,7 @@ from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.security.authentication import AuthenticationService
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
+from banking_api.skills.wealth_recommendation import WealthRecommendationSkill
 from banking_api.subscriptions.provider import MockSubscriptionProvider
 from banking_api.tools.banking import (
     build_commit_transfer_tool,
@@ -259,6 +261,7 @@ def create_app() -> FastAPI:
         agent_registry.register(WEALTH_ADVISOR_AGENT)
     skill_registry = SkillRegistry()
     skill_registry.register(MonthlySpendingReportSkill.definition)
+    skill_registry.register(WealthRecommendationSkill.definition)
     router = RequestRouter(provider)
     manual_runtime = ManualAgentRuntime(
         provider=provider,
@@ -288,6 +291,7 @@ def create_app() -> FastAPI:
         session_factory,
         bus,
         runtime_factory,
+        wealth_clock=lambda: wealth_provider.clock() if wealth_provider else reference_now(),
         default_backend=settings.agent_runtime,
         router=router,
         agent_registry=agent_registry,

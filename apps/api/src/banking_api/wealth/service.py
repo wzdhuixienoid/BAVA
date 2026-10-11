@@ -281,12 +281,12 @@ class WealthService:
         ).all()
         return [await self.product(pid, user_id) for pid in ids]
 
-    async def compare(self, ids):
+    async def compare(self, ids, user_id=None):
         if not 1 <= len(ids) <= 4 or len(set(ids)) != len(ids):
             raise WealthError("COMPARE_LIMIT", "请选择1至4个不同产品")
-        return [await self.product(pid) for pid in ids]
+        return [await self.product(pid, user_id) for pid in ids]
 
-    async def recommend(self, user_id, body):
+    async def recommend(self, user_id, body, *, constraints=None, priority="RISK"):
         a = await self.require_assessment(user_id)
         from banking_api.wealth.calculation import quantity
 
@@ -300,7 +300,7 @@ class WealthService:
         )
         from banking_api.wealth.requirements import parse_requirements
 
-        constraints = parse_requirements(body.needs)
+        constraints = constraints or parse_requirements(body.needs)
         ranked, excluded = [], {}
         for p in await self.products(user_id):
             reasons = []
@@ -319,10 +319,14 @@ class WealthService:
                 or constraints.no_principal_loss
                 or constraints.immediate_cash
             ):
-                reasons.extend(constraints.reasons)
+                reasons.extend(
+                    constraints.reasons or ["本次保本、损失或流动性条件与净值型产品不适配"]
+                )
             if risk in constraints.excluded_risks or risk > constraints.maximum_risk:
                 reasons.append("不符合本次明确风险偏好或排除条件")
-            if constraints.within_week and len(p.terms["weekdays"]) < 5:
+            if (constraints.within_week or constraints.avoid_weekly) and len(
+                p.terms["weekdays"]
+            ) < 5:
                 reasons.append("一周内可能用钱，排除周开放产品")
             if reasons:
                 excluded[p.product_id] = reasons
@@ -331,12 +335,26 @@ class WealthService:
                 risk = int(p.risk[1])
                 day = schedule(self.clock(), p.terms["weekdays"], "PURCHASE")["trade_date"]
                 fee = Decimal(p.terms["purchase_rate"]) + Decimal(p.terms["redeem_rate"])
-                ranked.append(((abs(risk - preferred), risk, day, fee, p.product_id), p))
+                rank = (abs(risk - preferred), risk, day, fee, p.product_id)
+                if priority == "FEES":
+                    rank = (fee, *rank)
+                if priority == "LIQUIDITY":
+                    rank = (len(p.terms["weekdays"]) != 5, day, *rank)
+                ranked.append((rank, p))
         ranked.sort(key=lambda item: item[0])
         selected = {
             p.product_id: [
                 f"产品风险 {p.risk} 符合您的 C{a.grade} 测评范围",
-                "符合您的用款时间和起购金额要求",
+                *(
+                    [f"预算 {amount:,.2f} 元达到起购金额 {p.minimum_display}"]
+                    if amount
+                    else ["尚未提供预算，起购金额需进一步核对"]
+                ),
+                *(
+                    ["尚未确认本次用款日期；每日开放也需要等待成交和到账"]
+                    if not constraints.within_week
+                    else ["已排除周开放产品；异步到账仍可能不满足短期用款"]
+                ),
             ]
             for _, p in ranked[:3]
         }
@@ -414,10 +432,16 @@ class WealthService:
         return results
 
     async def order_result(self, order):
-        from banking_api.persistence.models import OperationModel, WorkflowModel
+        from banking_api.persistence.models import ConversationModel, OperationModel, WorkflowModel
 
         operation = await self.session.get(OperationModel, order.operation_id)
         workflow = await self.session.get(WorkflowModel, order.workflow_id)
+        conversation = (
+            await self.session.get(ConversationModel, workflow.conversation_id)
+            if workflow
+            else None
+        )
+        conversation_deleted = bool(conversation and conversation.deleted_at is not None)
         labels = {
             "CREATED": "待受理",
             "ACCEPTED": "已受理，待成交",
@@ -434,7 +458,10 @@ class WealthService:
         return WealthOrderResult(
             **explain_order(order, operation, hold_active),
             source_task_id=workflow.source_task_id if workflow else None,
-            conversation_id=workflow.conversation_id if workflow else None,
+            conversation_id=workflow.conversation_id
+            if workflow and not conversation_deleted
+            else None,
+            conversation_deleted=conversation_deleted,
             order_id=order.order_id,
             workflow_id=order.workflow_id,
             operation_id=order.operation_id,

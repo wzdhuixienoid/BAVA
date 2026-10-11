@@ -293,13 +293,28 @@ class MockWealthProvider:
             "REJECTED": "明确拒绝",
             "FAILED": "明确失败",
         }
+        name = order.snapshot["name"]
+        direction = "申购" if order.direction == "PURCHASE" else "赎回"
+        title, message = (
+            f"模拟理财{direction}{labels[order.status]}",
+            f"{name}：{labels[order.status]}。",
+        )
+        if order.status == "SETTLED" and order.actual:
+            if order.direction == "PURCHASE":
+                message = f"{name}申购已完成，{Decimal(order.actual['shares']):,.6f}份已计入持仓。"
+            else:
+                message = (
+                    f"{name}赎回款{Decimal(order.actual['net']):,.2f}元已到账，可在原付款账户查看。"
+                )
+        elif order.status == "CONFIRMED" and order.direction == "REDEEM":
+            message = f"{name}赎回已成交，款项尚未到账；到账后会再次通知你。"
         session.add(
             NotificationModel(
                 user_id=order.user_id,
                 source_key=f"wealth:{order.order_id}:{order.status}",
                 kind="WEALTH_RESULT",
-                title=f"模拟理财{labels[order.status]}",
-                message=f"{order.snapshot['name']}：{labels[order.status]}。请在理财交易订单查看实际金融结果。",
+                title=title,
+                message=message,
                 created_at=utc(self.clock()),
             )
         )

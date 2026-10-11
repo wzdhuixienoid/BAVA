@@ -87,6 +87,18 @@ export function responseState(turn: ConversationTurn): { active: boolean; label:
   if (turn.plans.some((plan) => plan.status === "FAILED") || turn.workflows.some((workflow) => workflow.status === "FAILED") || turn.tasks.some((task) => task.status === "FAILED")) {
     return { active: false, label: "处理未完成", failed: true };
   }
+  // An accepted wealth request has finished this conversational action. Settlement
+  // stays pending on the order, independent of this response's activity indicator.
+  const received = turn.workflows.filter(w => w.workflow_type?.startsWith("WEALTH_")
+    && w.status === "COMMITTING" && w.presentation?.wealth_state?.order_received === true);
+  if (received.length) {
+    const taskIds = new Set(received.map(w => w.source_task_id));
+    const remaining = {...turn, workflows:turn.workflows.filter(w => !received.includes(w)),
+      tasks:turn.tasks.filter(t => !taskIds.has(t.task_id) || !["WAITING_EXTERNAL", "COMPLETED"].includes(t.status))};
+    const other = responseState(remaining);
+    return other.active || other.failed || other.label !== "已完成处理" ? other
+      : {active:false,label:"申请已提交，成交后会通知你",failed:false};
+  }
   if (turn.workflows.some((workflow) => workflow.status === "COMMITTING" || (workflow.status === "SUCCEEDED" && !isConfirmedWorkflow(workflow))) || turn.plans.some((plan) => plan.status === "WAITING_EXTERNAL")) {
     return { active: true, label: "正在等待银行确认结果", failed: false };
   }

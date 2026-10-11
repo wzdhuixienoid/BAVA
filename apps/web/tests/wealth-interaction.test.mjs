@@ -35,7 +35,7 @@ test("paused business keeps positions/orders and disables new transaction and qu
  api.wealthStatus=async()=>({new_business_allowed:false,reason:"已暂停新理财交易，已受理订单继续处理"});
  api.wealthOrders=async()=>[{order_id:"o",workflow_id:"w",name:"历史订单",direction_display:"赎回",status_display:"已成交，待到账",quantity_display:"10份",sources:[],user_reason:"赎回已成交，资金尚未到账",next_step:"等待原订单到账"}];
  const r=await mount();assert.ok(text(r.toJSON()).includes("历史订单"));assert.ok(text(r.toJSON()).includes("123.456789"));
- for(const name of ["提交测评","全部赎回","部分赎回并核对","申购并核对"])assert.equal(button(r,name).props.disabled,true,name);
+ for(const name of ["提交测评","全部赎回","部分赎回并核对","购买演示稳健优选"])assert.equal(button(r,name).props.disabled,true,name);
 }));
 
 test("all redemption copies server Decimal string and duplicate clicks create one atomic draft",async()=>environment(async({mount})=>{
@@ -63,7 +63,10 @@ test("refresh failures retain old data, static resources load once, polling hide
 test("failed atomic draft does not create empty conversations and retries reuse same creation key",async()=>environment(async({mount})=>{
  let keys=[]; api.createConversation=async()=>{throw Error("should never run");};
  api.wealthCreate=async body=>{keys.push(body.creation_key);throw Error("创建失败");};
- const r=await mount();await act(async()=>button(r,"申购并核对").props.onClick());await act(async()=>button(r,"申购并核对").props.onClick());
+ const r=await mount();await act(async()=>button(r,"购买演示稳健优选").props.onClick());
+ await act(async()=>r.root.findByProps({"aria-label":"购买演示稳健优选的账户"}).props.onChange({target:{value:"a"}}));
+ await act(async()=>r.root.findByProps({"aria-label":"购买演示稳健优选的金额"}).props.onChange({target:{value:"1000"}}));
+ await act(async()=>button(r,"下一步：核对申购").props.onClick());await act(async()=>button(r,"下一步：核对申购").props.onClick());
  assert.equal(keys.length,2);assert.equal(keys[0],keys[1]);assert.ok(text(r.toJSON()).includes("创建失败"));
 }));
 

@@ -47,6 +47,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  wealthAnalyze: (body: components["schemas"]["WealthAnalysisInput"]) => request<components["schemas"]["WealthAnalysis"]>("/api/v1/wealth/analysis", {method:"POST", body:JSON.stringify(body)}),
   wealthStatus: () => request<components["schemas"]["WealthFeatureStatus"]>("/api/v1/wealth/status"),
   wealthWorkflows: () => request<Workflow[]>("/api/v1/wealth/workflows"),
   wealthProducts: () => request<components["schemas"]["WealthProductResult"][]>("/api/v1/wealth/products"),

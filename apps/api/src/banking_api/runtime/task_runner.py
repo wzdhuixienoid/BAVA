@@ -126,6 +126,7 @@ class InProcessTaskRunner:
         subscription_intent_extractor: SubscriptionCancelIntentExtractor | None = None,
         subscription_workflow_engine: SubscriptionCancellationWorkflow | None = None,
         planner: ConstrainedPlanner | None = None,
+        wealth_clock=None,
         clock=_now,  # type: ignore[no-untyped-def]
     ) -> None:
         self.session_factory = session_factory
@@ -143,6 +144,9 @@ class InProcessTaskRunner:
         self.subscription_workflow_engine = subscription_workflow_engine
         self.planner = planner
         self.clock = clock
+        from banking_api.config.demo_time import reference_now
+
+        self.wealth_clock = wealth_clock or reference_now
 
     async def run(self, task_id: UUID) -> None:
         """Compatibility/test entry point using the durable claim path."""
@@ -165,6 +169,7 @@ class InProcessTaskRunner:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
             task = await self._get_owned(tasks, claim)
+            wealth_before = task.created_at
             message_id = UUID(str(task.input_json["message_id"]))
             current_message = await messages.get(message_id)
             if current_message is None:
@@ -232,11 +237,41 @@ class InProcessTaskRunner:
             )
 
         try:
+            from banking_api.wealth.context import (
+                ASSESSMENT_UPDATE,
+                concise_context,
+                latest_analysis,
+                latest_purchase_interest,
+                trade_reference,
+            )
+
+            async with self.session_factory() as snapshot_session:
+                previous_wealth = await latest_analysis(
+                    snapshot_session, user_id, conversation_id, before=wealth_before
+                )
+                prior_purchase = (
+                    await latest_purchase_interest(
+                        snapshot_session, user_id, conversation_id, before=wealth_before
+                    )
+                    if ASSESSMENT_UPDATE.search(current_task) and previous_wealth is None
+                    else None
+                )
+            workflow_task = trade_reference(current_task, previous_wealth)
+            if workflow_task is None:
+                await self._complete_without_agent(
+                    claim=claim,
+                    conversation_id=conversation_id,
+                    answer="产品指代不唯一或没有对应候选，请先明确产品名称；不会创建交易。",
+                    route=RequestRoute.WEALTH_ANALYSIS,
+                )
+                return
             decision = self._durable_route(
                 executor_type=durable_executor_type,
                 executor_id=durable_executor_id,
                 requested_output=durable_requested_output,
-            ) or await self._route(current_task)
+            ) or await self._route(
+                workflow_task, concise_context(previous_wealth) if previous_wealth else None
+            )
             executor_id = (
                 "planner:constrained"
                 if decision.route is RequestRoute.COMPLEX_PLAN
@@ -273,7 +308,7 @@ class InProcessTaskRunner:
                 return
             if decision.route in {RequestRoute.WEALTH_PURCHASE, RequestRoute.WEALTH_REDEEM}:
                 await self._run_wealth(
-                    claim, conversation_id, user_id, current_task, decision.route
+                    claim, conversation_id, user_id, workflow_task, decision.route
                 )
                 return
             if decision.route is RequestRoute.AA_COLLECTION:
@@ -315,7 +350,6 @@ class InProcessTaskRunner:
                     "FINANCIAL_AGENT_REQUIRES_LANGGRAPH",
                     "FinancialAnalysisAgent requires LangGraph runtime",
                 )
-            runtime = self.runtime_factory.get(runtime_backend)
             run_agent = (
                 self._report_source_agent(agent)
                 if decision.requested_output is RequestedOutput.MONTHLY_REPORT
@@ -327,17 +361,104 @@ class InProcessTaskRunner:
                     conversation_id=conversation_id,
                     message="正在分析消费数据",
                 )
-            result = await runtime.run(
-                AgentRunRequest(
-                    task_id=task_id,
-                    conversation_id=conversation_id,
-                    current_task=current_task,
-                    conversation_messages=conversation_messages,
-                    principal=execution_principal,
-                    agent=run_agent,
-                    event_sink=event_sink,
+            wealth_analysis = None
+            wealth_context = concise_context(previous_wealth) if previous_wealth else None
+            if (
+                agent.agent_id == "agent:wealth-advisor"
+                and self.transfer_workflow_engine
+                and not any(w in current_task for w in ("持仓", "订单"))
+            ):
+                from banking_api.wealth.advisory import WealthAdvisoryService, organization_prompt
+                from banking_api.wealth.context import analysis_input
+                from banking_api.wealth.service import WealthService
+
+                async with self.session_factory() as analysis_session:
+                    balances = self.transfer_workflow_engine.wealth_engine.balances
+                    svc = WealthService(analysis_session, balances, self.wealth_clock)
+                    body = analysis_input(
+                        (prior_purchase + "；" + current_task) if prior_purchase else workflow_task,
+                        await svc.products(user_id),
+                        previous_wealth,
+                    )
+                    body.query = current_task
+                    wealth_analysis = await WealthAdvisoryService(svc).analyze(
+                        user_id, body, previous_wealth
+                    )
+                    wealth_analysis.source_task_id = task_id
+                    wealth_analysis.snapshot_id = task_id
+                    from uuid import NAMESPACE_URL, uuid5
+
+                    for candidate in wealth_analysis.candidates:
+                        candidate.purchase_entry_key = uuid5(
+                            NAMESPACE_URL,
+                            f"{task_id}:{candidate.product.product_id}:purchase-entry",
+                        )
+                run_agent = AgentDefinition(
+                    agent_id=agent.agent_id,
+                    allowed_capabilities=frozenset(),
+                    instructions=organization_prompt(wealth_analysis),
                 )
-            )
+            try:
+                runtime = self.runtime_factory.get(runtime_backend)
+                result = await runtime.run(
+                    AgentRunRequest(
+                        task_id=task_id,
+                        conversation_id=conversation_id,
+                        current_task=current_task,
+                        conversation_messages=conversation_messages
+                        if wealth_analysis is None
+                        else [],
+                        principal=execution_principal,
+                        agent=run_agent,
+                        event_sink=event_sink,
+                        wealth_context=wealth_context,
+                    )
+                )
+            except Exception as exc:
+                if wealth_analysis is None:
+                    raise
+                from banking_api.runtime.base import AgentRunResult, AgentRunState
+
+                wealth_analysis.degradation_reason = (
+                    "说明整理暂不可用，已使用相同事实与资料的基础分析。"
+                )
+                result = AgentRunResult(answer="", state=AgentRunState(task_id, conversation_id))
+                logger.info("Wealth narrative unavailable: %s", type(exc).__name__)
+            if wealth_analysis is not None:
+                from banking_api.runtime.base import AgentRunResult
+                from banking_api.wealth.advisory import apply_organization
+
+                canonical = wealth_analysis.model_copy(deep=True)
+                wealth_analysis = apply_organization(wealth_analysis, result.answer)
+                if wealth_analysis.narrative_source == "FALLBACK" and result.answer:
+                    # At most one contract repair, using the same facts; never rerun transactions.
+                    try:
+                        from banking_api.wealth.advisory import organization_prompt
+
+                        repaired = await runtime.run(
+                            AgentRunRequest(
+                                task_id=task_id,
+                                conversation_id=conversation_id,
+                                current_task="请修复输出格式，只返回给定段落ID的JSON。",
+                                conversation_messages=[],
+                                principal=execution_principal,
+                                agent=AgentDefinition(
+                                    agent_id=agent.agent_id,
+                                    allowed_capabilities=frozenset(),
+                                    instructions=organization_prompt(canonical),
+                                ),
+                                event_sink=event_sink,
+                                wealth_context=wealth_context,
+                            )
+                        )
+                        wealth_analysis = apply_organization(canonical, repaired.answer)
+                        repaired.state.step_count += result.state.step_count
+                        result = repaired
+                    except AgentRuntimeError:
+                        pass
+                result = AgentRunResult(
+                    answer="\n\n".join(b.text for b in wealth_analysis.blocks), state=result.state
+                )
             if decision.requested_output is RequestedOutput.MONTHLY_REPORT:
                 snapshot = build_financial_analysis_snapshot(result.state.successful_tool_results)
                 if snapshot.spending_summary is None or snapshot.category_breakdown is None:
@@ -380,6 +501,11 @@ class InProcessTaskRunner:
                         tool_calls=result.state.tool_call_count,
                         successful_tool_results=result.state.successful_tool_results,
                         requested_output=decision.requested_output,
+                    )
+                    | (
+                        {"wealth_analysis": wealth_analysis.model_dump(mode="json")}
+                        if wealth_analysis
+                        else {}
                     ),
                 )
                 await publisher.persist(
@@ -489,14 +615,18 @@ class InProcessTaskRunner:
             )
             await self._fail(claim, conversation_id, error, policy=policy)
 
-    async def _route(self, current_task: str) -> RouteDecision:
+    async def _route(self, current_task: str, wealth_context=None) -> RouteDecision:
         if self.router is None:
             return RouteDecision(
                 route=RequestRoute.MINIMAL_BANKING,
                 requested_output=RequestedOutput.ANSWER,
                 confidence=1,
             )
-        return await self.router.route(current_task)
+        return (
+            await self.router.route(current_task, wealth_context=wealth_context)
+            if wealth_context
+            else await self.router.route(current_task)
+        )
 
     @staticmethod
     def _durable_route(
@@ -628,9 +758,33 @@ class InProcessTaskRunner:
                 "redeem_all": numeric.redeem_all,
                 "quantity_message": numeric.message,
             }
-            workflow = await wealth_workflow(
-                direction, session, self.transfer_workflow_engine.wealth_engine.balances
-            ).create(user_id, conversation_id, claim.task_id, draft, allow_invalid_draft=True)
+            from banking_api.wealth.calculation import WealthError
+
+            try:
+                workflow = await wealth_workflow(
+                    direction, session, self.transfer_workflow_engine.wealth_engine.balances
+                ).create(user_id, conversation_id, claim.task_id, draft, allow_invalid_draft=True)
+            except WealthError as exc:
+                if direction != "PURCHASE" or exc.code not in {
+                    "ASSESSMENT_REQUIRED",
+                    "ASSESSMENT_EXPIRED",
+                    "SUITABILITY_MISMATCH",
+                }:
+                    raise
+                await session.rollback()
+                guidance = {
+                    "ASSESSMENT_REQUIRED": "购买理财前，请先完成有效的风险测评。",
+                    "ASSESSMENT_EXPIRED": "你的风险测评已失效，购买理财前请重新测评。",
+                    "SUITABILITY_MISMATCH": f"当前测评结果不适合购买这些净值型模拟产品。{exc}。",
+                }[exc.code]
+                await self._complete_without_agent(
+                    claim=claim,
+                    conversation_id=conversation_id,
+                    answer=f"{guidance}\n\n[前往理财中心查看并完成风险测评](/wealth)"
+                    "\n\n你仍可先了解产品和风险。完成有效测评后，再按测评结果判断是否适合购买。",
+                    route=RequestRoute.WEALTH_ANALYSIS,
+                )
+                return
             await tasks.transition(
                 task,
                 TaskStatus.WAITING_USER,
@@ -936,6 +1090,8 @@ class InProcessTaskRunner:
                 for item in successful_tool_results
                 if item.capability_id.startswith("wealth.")
             ]
+            if output["wealth_results"]:
+                output["wealth_final_result_index"] = len(output["wealth_results"]) - 1
         return output
 
     @staticmethod

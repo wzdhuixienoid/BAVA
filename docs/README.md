@@ -32,3 +32,6 @@
 旧 `report/` 已并入档案区。历史文档保留其记录日期和测试结论，带有明确历史标识；旧风险阈值、旧页面截图和当时待办不代表当前行为。当前指南发生变化时更新对应主题，版本执行证据留在更新说明或历史档案中。
 
 - [v0.11.1 理财修复与体验优化](releases/release-notes-v0.11.1.md)
+
+- [v0.11.2 理财分析、知识与连续追问](releases/release-notes-v0.11.2.md)
+- [理财知识维护与检索评估](../apps/api/src/banking_api/knowledge/README.md)

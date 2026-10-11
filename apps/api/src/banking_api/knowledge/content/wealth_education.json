@@ -1,0 +1,717 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "edu-deposit",
+      "title": "理财与存款的区别",
+      "tags": [
+        "deposit",
+        "理财与存款的区别"
+      ],
+      "aliases": [
+        "存款",
+        "存钱",
+        "银行存款",
+        "理财是存款吗"
+      ],
+      "summary": "非保证收益理财不等同于存款，可能出现本金损失。购买前应阅读风险揭示。",
+      "content": "非保证收益理财不等同于存款，可能出现本金损失。购买前应阅读风险揭示。",
+      "source_name": "中国银行·2019理财知识宣传",
+      "url": "https://www.boc.cn/custserv/cs7/cs72/201904/t20190417_17045395.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "section": "家庭理财规划、知情提示（仅采用概念，不采用旧保本产品分类）",
+      "enabled": true,
+      "content_hash": "5ad5cf9afe0cab668bb5942040f04d3cc9e6d2eb225cc24e5efc020769aa9c7c"
+    },
+    {
+      "id": "edu-nav",
+      "title": "净值型理财",
+      "tags": [
+        "nav",
+        "净值型理财"
+      ],
+      "aliases": [
+        "净值",
+        "净值型",
+        "净值怎么变",
+        "为什么涨跌"
+      ],
+      "summary": "净值反映产品投资运作的收益与风险，会波动。净值变化不等于固定利息。",
+      "content": "净值反映产品投资运作的收益与风险，会波动。净值变化不等于固定利息。",
+      "source_name": "中国银行·理财产品代销业务",
+      "url": "https://www.boc.cn/pbservice/pb3/202409/t20240912_25152706.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2024-09-12",
+      "effective_from": null,
+      "effective_to": null,
+      "section": "如何选择理财产品",
+      "enabled": true,
+      "content_hash": "caadedcbd470e58476d9b26debcd27be03e36e8779f779a458b0e08af9decded"
+    },
+    {
+      "id": "edu-grade",
+      "title": "风险等级与承受能力",
+      "tags": [
+        "grade",
+        "风险等级与承受能力"
+      ],
+      "aliases": [
+        "风险等级",
+        "R1",
+        "R2",
+        "C5",
+        "风险承受",
+        "高等级"
+      ],
+      "summary": "测评用于判断承受能力；产品风险应与承受能力匹配。等级高不意味着必须买高风险。",
+      "content": "测评用于判断承受能力；产品风险应与承受能力匹配。等级高不意味着必须买高风险。",
+      "source_name": "金融监管总局·产品适当性办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202507/t20250714_33738350.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-07-11",
+      "effective_from": "2026-02-01",
+      "effective_to": null,
+      "section": "第二、十二、十三条",
+      "enabled": true,
+      "content_hash": "3a4ceab6f022141b3f5cb38bcd412987bb91ddb2c350e49426b43b53c69c1a1b"
+    },
+    {
+      "id": "edu-needs",
+      "title": "适当性与本次需求",
+      "tags": [
+        "needs",
+        "适当性与本次需求"
+      ],
+      "aliases": [
+        "为什么更适合我",
+        "适合",
+        "测评",
+        "需求",
+        "为什么推荐"
+      ],
+      "summary": "适当性还要结合金融需求和财务状况。只看测评等级不足以判断本次投资是否合适。",
+      "content": "适当性还要结合金融需求和财务状况。只看测评等级不足以判断本次投资是否合适。",
+      "source_name": "金融监管总局·产品适当性办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202507/t20250714_33738350.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-07-11",
+      "effective_from": "2026-02-01",
+      "effective_to": null,
+      "section": "第二、十二、十三条",
+      "enabled": true,
+      "content_hash": "31a05b782096305eb06a3ef1b60850240b99eca8de6caee787499b9ebc3f3c12"
+    },
+    {
+      "id": "edu-no-guarantee",
+      "title": "非保本与低风险",
+      "tags": [
+        "no-guarantee",
+        "非保本与低风险"
+      ],
+      "aliases": [
+        "保本",
+        "保证不亏",
+        "安全吗",
+        "这个安全吗",
+        "保证收益"
+      ],
+      "summary": "不能把低风险理解为保本。存在损失可能的产品不能以保本保收益的表述误导。",
+      "content": "不能把低风险理解为保本。存在损失可能的产品不能以保本保收益的表述误导。",
+      "source_name": "金融监管总局·产品适当性办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202507/t20250714_33738350.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-07-11",
+      "effective_from": "2026-02-01",
+      "effective_to": null,
+      "section": "第二、十二、十三条",
+      "enabled": true,
+      "content_hash": "2ebfd50e18bea66df0381594546cfaf982ebe671294c24bdc13c40a3afa8ce04"
+    },
+    {
+      "id": "edu-loss",
+      "title": "本金损失的可能",
+      "tags": [
+        "loss",
+        "本金损失的可能"
+      ],
+      "aliases": [
+        "为什么会亏",
+        "亏本金",
+        "本金损失",
+        "会不会亏",
+        "亏损"
+      ],
+      "summary": "市场变化可能造成理财本金损失。是否能够承受损失，应在选择产品前考虑。",
+      "content": "市场变化可能造成理财本金损失。是否能够承受损失，应在选择产品前考虑。",
+      "source_name": "中国银行·2019理财知识宣传",
+      "url": "https://www.boc.cn/custserv/cs7/cs72/201904/t20190417_17045395.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "section": "家庭理财规划、知情提示（仅采用概念，不采用旧保本产品分类）",
+      "enabled": true,
+      "content_hash": "b9213d2ecbbce6cea1ce01405591d18651e73478f6a1f2040e02bcb77213c544"
+    },
+    {
+      "id": "edu-open",
+      "title": "开放期与持有期",
+      "tags": [
+        "open",
+        "开放期与持有期"
+      ],
+      "aliases": [
+        "开放期",
+        "持有期",
+        "开放日",
+        "每天开放",
+        "最短持有"
+      ],
+      "summary": "开放式产品有每日开放、定期开放等不同安排；开放方式与资金期限需要一起核对。",
+      "content": "开放式产品有每日开放、定期开放等不同安排；开放方式与资金期限需要一起核对。",
+      "source_name": "中国银行·理财产品代销业务",
+      "url": "https://www.boc.cn/pbservice/pb3/202409/t20240912_25152706.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2024-09-12",
+      "effective_from": null,
+      "effective_to": null,
+      "section": "如何选择理财产品",
+      "enabled": true,
+      "content_hash": "0cc3dcd28872283bf71cedbf72661a79d965f886742699685dcf1a7a7040536e"
+    },
+    {
+      "id": "edu-arrival",
+      "title": "赎回与现金到账",
+      "tags": [
+        "arrival",
+        "赎回与现金到账"
+      ],
+      "aliases": [
+        "什么时候拿到钱",
+        "赎回要等几天",
+        "到账",
+        "提现",
+        "拿到钱",
+        "实时"
+      ],
+      "summary": "赎回安排应从说明书核对。能够提出赎回申请，并不代表现金已经可用。",
+      "content": "赎回安排应从说明书核对。能够提出赎回申请，并不代表现金已经可用。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "da6d34c95fc11e788589f1d3755e7a9b139698fa21bc17dc908aba764d014a04"
+    },
+    {
+      "id": "edu-liquidity",
+      "title": "流动性风险",
+      "tags": [
+        "liquidity",
+        "流动性风险"
+      ],
+      "aliases": [
+        "流动性",
+        "急用钱",
+        "随时用钱",
+        "及时变现",
+        "马上用钱"
+      ],
+      "summary": "约定的停止赎回或期限顺延，可能让资金无法按需变现；急用资金要关注流动性。",
+      "content": "约定的停止赎回或期限顺延，可能让资金无法按需变现；急用资金要关注流动性。",
+      "source_name": "中国银行·2019理财知识宣传",
+      "url": "https://www.boc.cn/custserv/cs7/cs72/201904/t20190417_17045395.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "section": "家庭理财规划、知情提示（仅采用概念，不采用旧保本产品分类）",
+      "enabled": true,
+      "content_hash": "4add1065b118127ec7e3eb412cf50190ec492851c3f54af339521ed7db152ba0"
+    },
+    {
+      "id": "edu-buy-fee",
+      "title": "申购费用",
+      "tags": [
+        "buy-fee",
+        "申购费用"
+      ],
+      "aliases": [
+        "申购费",
+        "购买费用",
+        "买入手续费",
+        "申购手续费"
+      ],
+      "summary": "说明书应披露申购收费条件、标准和方式。不同产品的申购费用应按同一预算比较。",
+      "content": "说明书应披露申购收费条件、标准和方式。不同产品的申购费用应按同一预算比较。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "b8b56b5826741edd384d0ee91e2c658a3fc1abf1bfff1b9a63bd734e4dfe7b74"
+    },
+    {
+      "id": "edu-sell-fee",
+      "title": "赎回费用",
+      "tags": [
+        "sell-fee",
+        "赎回费用"
+      ],
+      "aliases": [
+        "赎回费",
+        "卖出费用",
+        "手续费多少",
+        "赎回手续费"
+      ],
+      "summary": "赎回费的条件和口径应以产品资料为准；费用比较需区分申购和赎回两个环节。",
+      "content": "赎回费的条件和口径应以产品资料为准；费用比较需区分申购和赎回两个环节。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "ea0d739fad481307362f4e4735a271393a8fdc41521e2f788062e2d86301c4d5"
+    },
+    {
+      "id": "edu-ongoing",
+      "title": "持续费用与净值口径",
+      "tags": [
+        "ongoing",
+        "持续费用与净值口径"
+      ],
+      "aliases": [
+        "管理费",
+        "托管费",
+        "持续费用",
+        "重复扣费",
+        "净值扣费"
+      ],
+      "summary": "核对管理费、托管费及业绩报酬的收费方式。不可把不同费用口径混作同一种扣款。",
+      "content": "核对管理费、托管费及业绩报酬的收费方式。不可把不同费用口径混作同一种扣款。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "01457f39224e3bd0c577c25534b1d0236c034e48891bf7cc9a8d6abb89f3aba8"
+    },
+    {
+      "id": "edu-interval",
+      "title": "区间涨跌与比较窗口",
+      "tags": [
+        "interval",
+        "区间涨跌与比较窗口"
+      ],
+      "aliases": [
+        "区间涨跌",
+        "近30日",
+        "历史涨跌",
+        "同窗口",
+        "收益率"
+      ],
+      "summary": "比较过往业绩应使用可比数据和一致口径，不能选择性展示某段上涨来夸大表现。",
+      "content": "比较过往业绩应使用可比数据和一致口径，不能选择性展示某段上涨来夸大表现。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "1c9604c050a26529daa8ddf8fdf831ebd4ea0932cd704d5019d3b15b351c39be"
+    },
+    {
+      "id": "edu-annualized",
+      "title": "年化不是实际收益",
+      "tags": [
+        "annualized",
+        "年化不是实际收益"
+      ],
+      "aliases": [
+        "年化",
+        "年化收益",
+        "七日年化",
+        "折算"
+      ],
+      "summary": "年化是把特定期间收益换算成年尺度的指标；不能把年化数值当作这段时间实际所得。",
+      "content": "年化是把特定期间收益换算成年尺度的指标；不能把年化数值当作这段时间实际所得。",
+      "source_name": "中银基金·帮助中心",
+      "url": "https://www.bocim.com/Channel/16819",
+      "source_type": "MANAGER_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "section": "七日年化收益率（只用于折算概念）",
+      "enabled": true,
+      "content_hash": "e0586ee24b16276de0f80fb59d4d2fb5f5944f7dc77d3b5e2c383c59c096af16"
+    },
+    {
+      "id": "edu-drawdown",
+      "title": "最大回撤",
+      "tags": [
+        "drawdown",
+        "最大回撤"
+      ],
+      "aliases": [
+        "最大回撤",
+        "回撤",
+        "高点跌到低点",
+        "最惨跌幅",
+        "最多跌过多少"
+      ],
+      "summary": "最大回撤描述指定历史区间内，从先前高点到随后低点的最大跌幅；不是未来损失上限。",
+      "content": "最大回撤描述指定历史区间内，从先前高点到随后低点的最大跌幅；不是未来损失上限。",
+      "source_name": "湖南省委金融办·金融小知识：最大回撤",
+      "url": "https://dfjrjgj.hunan.gov.cn/dfjrjgj/jrbk/jrzs/202607/t20260709_34023141.html",
+      "source_type": "GOVERNMENT_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2026-07-09",
+      "effective_from": null,
+      "effective_to": null,
+      "section": "最大回撤",
+      "enabled": true,
+      "content_hash": "544aec415aca27df8a99518aaca5beaa2ccc55f691fb3f415891319082daa671"
+    },
+    {
+      "id": "edu-drawdown-limit",
+      "title": "回撤的使用边界",
+      "tags": [
+        "drawdown-limit",
+        "回撤的使用边界"
+      ],
+      "aliases": [
+        "回撤小就安全",
+        "回撤代表什么",
+        "最大损失",
+        "回撤保本"
+      ],
+      "summary": "单一区间的回撤不能全面反映产品表现，需结合投资周期和其他信息判断。",
+      "content": "单一区间的回撤不能全面反映产品表现，需结合投资周期和其他信息判断。",
+      "source_name": "湖南省委金融办·金融小知识：最大回撤",
+      "url": "https://dfjrjgj.hunan.gov.cn/dfjrjgj/jrbk/jrzs/202607/t20260709_34023141.html",
+      "source_type": "GOVERNMENT_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2026-07-09",
+      "effective_from": null,
+      "effective_to": null,
+      "section": "最大回撤",
+      "enabled": true,
+      "content_hash": "f860818e5717835813e3fc7263e1721b98aa809735a09ebad7ad06412d339120"
+    },
+    {
+      "id": "edu-benchmark",
+      "title": "业绩比较基准",
+      "tags": [
+        "benchmark",
+        "业绩比较基准"
+      ],
+      "aliases": [
+        "业绩比较基准",
+        "基准",
+        "目标收益",
+        "预期收益"
+      ],
+      "summary": "业绩比较基准不是预期收益率，不代表未来实际收益，也不构成收益承诺。",
+      "content": "业绩比较基准不是预期收益率，不代表未来实际收益，也不构成收益承诺。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "891e1a355f486304d6eeb0f6d1b3dec4d27a60e0bc12d3f0f5dd7821848ade64"
+    },
+    {
+      "id": "edu-past",
+      "title": "历史表现与未来",
+      "tags": [
+        "past",
+        "历史表现与未来"
+      ],
+      "aliases": [
+        "历史收益",
+        "过去涨",
+        "未来收益",
+        "预测",
+        "一定上涨"
+      ],
+      "summary": "过往表现不能代表未来收益，也不能线性推算未来表现。短期上涨不是购买依据。",
+      "content": "过往表现不能代表未来收益，也不能线性推算未来表现。短期上涨不是购买依据。",
+      "source_name": "中国银行·理财产品代销业务",
+      "url": "https://www.boc.cn/pbservice/pb3/202409/t20240912_25152706.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2024-09-12",
+      "effective_from": null,
+      "effective_to": null,
+      "section": "如何选择理财产品",
+      "enabled": true,
+      "content_hash": "65529872a2337a5b91e706d8058e50aa6f23e169787120252d883bedb0e689a4"
+    },
+    {
+      "id": "edu-short-cash",
+      "title": "短期用款",
+      "tags": [
+        "short-cash",
+        "短期用款"
+      ],
+      "aliases": [
+        "下周用钱",
+        "短期用款",
+        "下周可能用钱",
+        "一周内",
+        "短钱长投"
+      ],
+      "summary": "选择期限要考虑资金使用需要，避免把短期需要的资金投入难以及时变现的产品。",
+      "content": "选择期限要考虑资金使用需要，避免把短期需要的资金投入难以及时变现的产品。",
+      "source_name": "中国银行·理财产品代销业务",
+      "url": "https://www.boc.cn/pbservice/pb3/202409/t20240912_25152706.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2024-09-12",
+      "effective_from": null,
+      "effective_to": null,
+      "section": "如何选择理财产品",
+      "enabled": true,
+      "content_hash": "643a55ef181a4d414557d359f2928acde9fc32ca3c45174a86d8c002f1a55ca9"
+    },
+    {
+      "id": "edu-budget",
+      "title": "预算与应急资金",
+      "tags": [
+        "budget",
+        "预算与应急资金"
+      ],
+      "aliases": [
+        "应急资金",
+        "预算",
+        "生活费",
+        "备用金",
+        "多少钱"
+      ],
+      "summary": "先考虑生活支出、收支和家庭财务规划，再决定可用于投资的预算。",
+      "content": "先考虑生活支出、收支和家庭财务规划，再决定可用于投资的预算。",
+      "source_name": "中国银行·2019理财知识宣传",
+      "url": "https://www.boc.cn/custserv/cs7/cs72/201904/t20190417_17045395.html",
+      "source_type": "BANK_EDUCATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": null,
+      "effective_from": null,
+      "effective_to": null,
+      "section": "家庭理财规划、知情提示（仅采用概念，不采用旧保本产品分类）",
+      "enabled": true,
+      "content_hash": "a2c15fb79a15e132138f98e786fea42727e276ee53c173b3299b236e1cf2dc41"
+    },
+    {
+      "id": "edu-read",
+      "title": "如何阅读说明书",
+      "tags": [
+        "read",
+        "如何阅读说明书"
+      ],
+      "aliases": [
+        "说明书",
+        "怎么看资料",
+        "风险揭示",
+        "产品合同"
+      ],
+      "summary": "重点核对投资范围、风险揭示、申赎安排、估值和收费。资料中的限制与费用不能略过。",
+      "content": "重点核对投资范围、风险揭示、申赎安排、估值和收费。资料中的限制与费用不能略过。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "d3b1cc695e4078ddcf4c3b231e5af7eecfe6aca8b1fe23f23a96b17697c0b123"
+    },
+    {
+      "id": "edu-unknown",
+      "title": "资料缺失的判断边界",
+      "tags": [
+        "unknown",
+        "资料缺失的判断边界"
+      ],
+      "aliases": [
+        "资产配置",
+        "债券比例",
+        "股票敞口",
+        "投什么",
+        "资料缺失"
+      ],
+      "summary": "产品投资范围和风险等应在资料中披露；资料缺失时，不能把未知特征写成已知事实。",
+      "content": "产品投资范围和风险等应在资料中披露；资料缺失时，不能把未知特征写成已知事实。",
+      "source_name": "金融监管总局·资管产品信息披露办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202512/t20251229_33881962.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-12-22",
+      "effective_from": "2026-09-01",
+      "effective_to": null,
+      "section": "第八、十一、十三、二十条",
+      "enabled": true,
+      "content_hash": "e1be3712d85f1cbf9ca4864cf3ce267496e358932f7eb6a2fe27d532a67702d1"
+    },
+    {
+      "id": "edu-confirmation",
+      "title": "推荐与交易确认",
+      "tags": [
+        "confirmation",
+        "推荐与交易确认"
+      ],
+      "aliases": [
+        "推荐等于买了吗",
+        "确认",
+        "授权",
+        "下单",
+        "推荐与交易"
+      ],
+      "summary": "推荐和提示与实际销售、交易属于不同活动。阅读建议不等于已完成购买。",
+      "content": "推荐和提示与实际销售、交易属于不同活动。阅读建议不等于已完成购买。",
+      "source_name": "金融监管总局·产品适当性办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202507/t20250714_33738350.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-07-11",
+      "effective_from": "2026-02-01",
+      "effective_to": null,
+      "section": "第二、十二、十三条",
+      "enabled": true,
+      "content_hash": "0d6523063bcea8bb2c966b53e934352edb9486ed3e37ba9520eb6e6717dff91c"
+    },
+    {
+      "id": "edu-update",
+      "title": "信息变化后重新判断",
+      "tags": [
+        "update",
+        "信息变化后重新判断"
+      ],
+      "aliases": [
+        "现在还能买吗",
+        "重新测评",
+        "状态变化",
+        "上次推荐",
+        "现在还适合"
+      ],
+      "summary": "产品特征与客户情况都参与匹配；本次需求或信息变化后，应重新判断是否适合。",
+      "content": "产品特征与客户情况都参与匹配；本次需求或信息变化后，应重新判断是否适合。",
+      "source_name": "金融监管总局·产品适当性办法（湖南省政府转载）",
+      "url": "https://www.hunan.gov.cn/zqt/zcsd/202507/t20250714_33738350.html",
+      "source_type": "REGULATION",
+      "scope": "EDUCATION",
+      "version": "2026-10-10-v1",
+      "verified_at": "2026-10-10",
+      "published_at": "2025-07-11",
+      "effective_from": "2026-02-01",
+      "effective_to": null,
+      "section": "第二、十二、十三条",
+      "enabled": true,
+      "content_hash": "8b954dff4c26f8d06dc7f443501c54ffc6502316647ee1f88468de2894692d46"
+    }
+  ],
+  "unverified_sources": [
+    {
+      "url": "https://www.nfra.gov.cn/cn/view/pages/rulesDetail.html?docId=1217183",
+      "status": "直连动态占位，采用湖南省政府全文转载"
+    },
+    {
+      "url": "https://www.nfra.gov.cn/cn/view/pages/ItemDetail.html?docId=1239473&itemId=4214",
+      "status": "403，采用湖南省政府全文转载"
+    },
+    {
+      "url": "https://www.china-cba.net/Index/show/catid/153/id/41600.html",
+      "status": "超时，未纳入"
+    },
+    {
+      "url": "https://www.china-cba.net/Index/show/catid/153/id/41601.html",
+      "status": "超时，未纳入"
+    },
+    {
+      "url": "https://www.icbc.com.cn/ICBC/金融知识与收费政策/消费者金融知识/消费者金融知识2.htm",
+      "status": "403，未纳入"
+    }
+  ]
+}

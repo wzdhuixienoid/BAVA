@@ -1,0 +1,400 @@
+[
+  {
+    "query": "理财是存款吗",
+    "expected": [
+      "edu-deposit"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "银行存钱与理财有什么区别",
+    "expected": [
+      "edu-deposit"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "净值怎么变",
+    "expected": [
+      "edu-nav"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "什么是净值型理财",
+    "expected": [
+      "edu-nav"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "为什么C5也不该随便买高风险",
+    "expected": [
+      "edu-grade"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "风险等级是不是投资目标",
+    "expected": [
+      "edu-grade"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "为什么更适合我",
+    "expected": [
+      "edu-needs"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "测评之外还要考虑需求吗",
+    "expected": [
+      "edu-needs"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "这个安全吗",
+    "expected": [
+      "edu-no-guarantee"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "风险低的保证不亏吗",
+    "expected": [
+      "edu-no-guarantee"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "为什么会亏",
+    "expected": [
+      "edu-loss"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "理财会不会亏本金",
+    "expected": [
+      "edu-loss"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "开放期和持有期有啥不同",
+    "expected": [
+      "edu-open"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "每天开放就可以随时买卖吗",
+    "expected": [
+      "edu-open"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "什么时候拿到钱",
+    "expected": [
+      "edu-arrival"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "赎回要等几天",
+    "expected": [
+      "edu-arrival"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "急用钱会有什么风险",
+    "expected": [
+      "edu-liquidity"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "无法及时变现是什么意思",
+    "expected": [
+      "edu-liquidity"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "购买时申购手续费怎么看",
+    "expected": [
+      "edu-buy-fee"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "卖出赎回费用如何看",
+    "expected": [
+      "edu-sell-fee"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "管理费与托管费要重复算吗",
+    "expected": [
+      "edu-ongoing"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "持续费用有哪些",
+    "expected": [
+      "edu-ongoing"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "区间涨跌怎么比较",
+    "expected": [
+      "edu-interval"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "近30日收益数据用什么窗口",
+    "expected": [
+      "edu-interval"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "年化收益等于实际赚的钱吗",
+    "expected": [
+      "edu-annualized"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "七日年化到底代表什么",
+    "expected": [
+      "edu-annualized"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "最大回撤是什么",
+    "expected": [
+      "edu-drawdown"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "最多跌过多少怎么衡量",
+    "expected": [
+      "edu-drawdown"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "回撤小就安全吗",
+    "expected": [
+      "edu-drawdown-limit"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "最大回撤能预测风险吗",
+    "expected": [
+      "edu-drawdown-limit"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "业绩比较基准承诺收益吗",
+    "expected": [
+      "edu-benchmark"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "目标收益就是未来收益吗",
+    "expected": [
+      "edu-benchmark"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "过去涨得多未来一定涨吗",
+    "expected": [
+      "edu-past"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "下周用钱可以长投吗",
+    "expected": [
+      "edu-short-cash"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "应急资金要不要拿来投资",
+    "expected": [
+      "edu-budget"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "怎么看说明书和风险揭示",
+    "expected": [
+      "edu-read"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "资料没写股票敞口能推测吗",
+    "expected": [
+      "edu-unknown"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "推荐等于已经买了吗",
+    "expected": [
+      "edu-confirmation"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "现在还能买吗需要重看资料吗",
+    "expected": [
+      "edu-update"
+    ],
+    "scope": "EDUCATION",
+    "product_id": null,
+    "forbidden_scope": "PRODUCT"
+  },
+  {
+    "query": "手续费多少",
+    "expected_section": "说明书",
+    "scope": "PRODUCT",
+    "product_id": "mock-wealth-02",
+    "forbidden_product": "mock-wealth-03"
+  },
+  {
+    "query": "赎回要等几天",
+    "expected_section": "交易FAQ",
+    "scope": "PRODUCT",
+    "product_id": "mock-wealth-02",
+    "forbidden_product": "mock-wealth-03"
+  },
+  {
+    "query": "为什么会亏",
+    "expected_section": "风险揭示",
+    "scope": "PRODUCT",
+    "product_id": "mock-wealth-02",
+    "forbidden_product": "mock-wealth-03"
+  },
+  {
+    "query": "什么时候拿到钱",
+    "expected_section": "交易FAQ",
+    "scope": "PRODUCT",
+    "product_id": "mock-wealth-02",
+    "forbidden_product": "mock-wealth-03"
+  },
+  {
+    "query": "每周哪天开放",
+    "expected_section": "说明书",
+    "scope": "PRODUCT",
+    "product_id": "mock-wealth-02",
+    "forbidden_product": "mock-wealth-03"
+  },
+  {
+    "query": "火星移民签证费用",
+    "expected": [],
+    "scope": "NONE",
+    "product_id": null
+  },
+  {
+    "query": "本产品发行人信用评级AAA",
+    "expected": [],
+    "scope": "NONE",
+    "product_id": null
+  }
+]

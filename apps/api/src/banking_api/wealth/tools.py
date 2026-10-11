@@ -9,6 +9,7 @@ from banking_api.tools.models import ToolSpec
 from banking_api.wealth.schemas import (
     CompareInput,
     RecommendationInput,
+    WealthAnalysisInput,
     WealthInput,
     WealthReadResult,
 )
@@ -33,8 +34,10 @@ class ProductInput(WealthInput):
     product_id: str = Field(min_length=1, max_length=40)
 
 
-class KnowledgeInput(ProductInput):
+class KnowledgeInput(WealthInput):
+    product_id: str | None = Field(default=None, max_length=40)
     query: str = Field(min_length=1, max_length=300)
+    version_id: str | None = Field(default=None, max_length=80)
     order_id: UUID | None = None
 
 
@@ -65,26 +68,46 @@ def build_wealth_tools(factory, balances, provider):
                         products=[await service.product(args.product_id, user_id)]
                     )
                 if name == "compare_products":
-                    return WealthReadResult(products=await service.compare(args.product_ids))
+                    from banking_api.wealth.advisory import WealthAdvisoryService
+
+                    return WealthReadResult(
+                        products=await service.compare(args.product_ids, user_id),
+                        analysis=await WealthAdvisoryService(service).analyze(
+                            user_id,
+                            WealthAnalysisInput(intent="COMPARISON", **args.model_dump()),
+                        ),
+                    )
                 if name == "recommend":
-                    return WealthReadResult(**(await service.recommend(user_id, args)).model_dump())
+                    from banking_api.wealth.advisory import WealthAdvisoryService
+
+                    result = await WealthAdvisoryService(service).recommendation(user_id, args)
+                    return WealthReadResult(**result.model_dump())
                 if name == "list_positions":
                     return WealthReadResult(positions=await service.positions(user_id))
                 if name == "get_orders":
                     return WealthReadResult(orders=await service.orders(user_id))
-                version = None
+                version = args.version_id
                 if args.order_id:
                     from banking_api.wealth.models import WealthOrder
 
                     order = await session.get(WealthOrder, args.order_id)
-                    if not order or order.user_id != user_id or order.product_id != args.product_id:
+                    if (
+                        not order
+                        or order.user_id != user_id
+                        or (args.product_id and order.product_id != args.product_id)
+                    ):
                         return WealthReadResult(reasons=["未找到本人订单"])
-                    version = order.version_id
+                    if version and version != order.version_id:
+                        return WealthReadResult(reasons=["指定版本与本人订单绑定资料不一致"])
+                    args.product_id, version = order.product_id, order.version_id
                 evidence = await KeywordWealthKnowledge(service).search(
                     args.product_id, args.query, version
                 )
                 return WealthReadResult(
                     evidence=evidence,
+                    evidence_sources=await KeywordWealthKnowledge(service).fragments(
+                        args.query, product_id=args.product_id, version_id=version
+                    ),
                     reasons=[] if evidence else ["没有找到相关有效资料，不能补造条款"],
                 )
 
@@ -93,7 +116,17 @@ def build_wealth_tools(factory, balances, provider):
             from banking_api.wealth.calculation import WealthError
 
             try:
-                return await read_handler(context, args)
+                result = await read_handler(context, args)
+                result.result_kind = {
+                    "list_products": "CATALOGUE",
+                    "get_product": "PRODUCT",
+                    "compare_products": "COMPARISON",
+                    "recommend": "RECOMMENDATION",
+                    "search_knowledge": "KNOWLEDGE",
+                    "list_positions": "POSITIONS",
+                    "get_orders": "ORDERS",
+                }[name]
+                return result
             except WealthError as exc:
                 return WealthReadResult(reasons=[str(exc)])
             except AccountNotFoundError:

@@ -31,6 +31,24 @@ async def wealth_workflow_resource(service, model):
         and order.status == "SETTLED"
     )
     review = model.state_json.get("review")
+    display_state = dict(model.state_json)
+    display_state.update(
+        order_received=bool(order and order.status in {"ACCEPTED", "CONFIRMED", "SETTLED"}),
+        order_stage=order.status if order else None,
+    )
+    # Project current eligibility without rewriting historical drafts or accepted orders.
+    if (
+        model.state_json["draft"]["direction"] == "PURCHASE"
+        and status
+        in {"WAITING_FOR_INPUT", "READY_FOR_REVIEW", "REAUTH_REQUIRED", "READY_FOR_COMMIT"}
+        and o is None
+    ):
+        from banking_api.wealth.calculation import WealthError
+
+        try:
+            await service._wealth(model).service.require_assessment(model.user_id)
+        except WealthError as exc:
+            display_state.update(purchase_entry_allowed=False, purchase_entry_block_reason=str(exc))
     return Workflow(
         workflow_id=model.workflow_id,
         user_id=model.user_id,
@@ -48,7 +66,7 @@ async def wealth_workflow_resource(service, model):
         else None,
         operation_summary=OperationSummary.model_validate(o, from_attributes=True) if o else None,
         presentation=WorkflowPresentation(
-            wealth_state=model.state_json,
+            wealth_state=display_state,
             business_success=done,
             approval_required=True,
             reauthentication_required=True,

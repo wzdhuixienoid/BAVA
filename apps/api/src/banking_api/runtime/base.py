@@ -50,6 +50,7 @@ class AgentRunRequest:
     agent: AgentDefinition | None = None
     caller: str | None = None
     event_sink: RuntimeEventSink | None = None
+    wealth_context: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

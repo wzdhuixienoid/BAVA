@@ -35,7 +35,9 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 其他条件或 ELSE 请求也交给 COMPLEX_PLAN 确定性拒绝；循环及不支持业务不得执行
 - 不含转账的分析请求如果包含其他不支持内容，只处理可支持的分析部分
 - 理财产品、对比、推荐、说明书、持仓、订单查询 -> WEALTH_ANALYSIS / ANSWER
-- 独立理财申购 -> WEALTH_PURCHASE / WORKFLOW；独立理财赎回 -> WEALTH_REDEEM / WORKFLOW
+- 想买理财、只说产品名或询问完成测评后能否购买 -> WEALTH_ANALYSIS / ANSWER，先介绍产品及购买入口
+- 明确指定产品、本人付款账户及数量的独立申购 -> WEALTH_PURCHASE / WORKFLOW
+- 独立理财赎回 -> WEALTH_REDEEM / WORKFLOW
 - 条件自动投资、多笔理财或理财与其他写业务组合 -> UNSUPPORTED / ANSWER
 - 卡片写操作或当前系统不支持的业务 -> UNSUPPORTED / ANSWER
 
@@ -55,7 +57,25 @@ class RequestRouter:
         self._provider = provider
         self._max_retries = max_retries
 
-    async def route(self, user_request: str) -> RouteDecision:
+    async def route(
+        self, user_request: str, *, wealth_context: dict | None = None
+    ) -> RouteDecision:
+        from banking_api.config.settings import get_settings
+        from banking_api.wealth.context import ASSESSMENT_UPDATE, EDUCATION, FOLLOW_UP
+
+        if get_settings().app_environment in {"development", "test"} and (
+            (wealth_context and FOLLOW_UP.search(user_request))
+            or EDUCATION.search(user_request)
+            or ASSESSMENT_UPDATE.search(user_request)
+        ):
+            if not has_conditional_control(user_request) and not re.search(
+                r"自动|定投|调仓|转账|取消订阅|申购|赎回.*(?:份|全部)", user_request
+            ):
+                return RouteDecision(
+                    route=RequestRoute.WEALTH_ANALYSIS,
+                    requested_output=RequestedOutput.ANSWER,
+                    confidence=1,
+                )
         normalized = "".join(user_request.casefold().split())
         wealth = any(
             word in normalized
@@ -88,6 +108,9 @@ class RequestRouter:
                 w in normalized
                 for w in (
                     "推荐",
+                    "适合",
+                    "是否",
+                    "能买",
                     "对比",
                     "比较",
                     "费用",
@@ -155,11 +178,23 @@ class RequestRouter:
                     )
                     > 1
                 )
+            # General purchase interest opens product discovery, not an empty transaction.
+            product_named = bool(
+                re.search(
+                    r"稳享日日|稳享周周|稳健优选|均衡优选|均衡周享|进取成长|进取周享|高波动精选",
+                    normalized,
+                )
+            )
+            purchase_payload = (
+                product_named
+                and bool(re.search(r"\d", normalized))
+                and bool(re.search(r"从.+(?:卡|账户)", normalized))
+            )
             route = (
                 RequestRoute.UNSUPPORTED
                 if unsupported
                 else RequestRoute.WEALTH_ANALYSIS
-                if not writes
+                if not writes or (buys and not sells and not purchase_payload)
                 else RequestRoute.WEALTH_REDEEM
                 if sells
                 else RequestRoute.WEALTH_PURCHASE

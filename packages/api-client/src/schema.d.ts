@@ -1001,6 +1001,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wealth/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Analysis */
+        post: operations["analysis_api_v1_wealth_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wealth/snapshots/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Snapshot */
+        get: operations["snapshot_api_v1_wealth_snapshots__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/wealth/recommendations": {
         parameters: {
             query?: never;
@@ -1490,6 +1524,15 @@ export interface components {
         };
         /** CompareInput */
         CompareInput: {
+            /**
+             * Needs
+             * @default
+             */
+            needs: string;
+            /** Amount */
+            amount?: string | null;
+            /** Account Id */
+            account_id?: string | null;
             /** Product Ids */
             product_ids: string[];
         };
@@ -2161,6 +2204,11 @@ export interface components {
              * @default false
              */
             within_week: boolean;
+            /**
+             * Avoid Weekly
+             * @default false
+             */
+            avoid_weekly: boolean;
             /**
              * Ambiguous
              * @default false
@@ -2835,8 +2883,11 @@ export interface components {
         };
         /** TaskOutput */
         TaskOutput: {
+            wealth_analysis?: components["schemas"]["WealthAnalysis"];
             /** Wealth Results */
             wealth_results?: components["schemas"]["WealthReadResult"][];
+            /** Wealth Final Result Index */
+            wealth_final_result_index?: number;
             /** Account Results */
             account_results?: (components["schemas"]["AccountListResult"] | components["schemas"]["AccountBalanceResult"])[];
             financial_display?: components["schemas"]["MonthlySpendingReportCore"];
@@ -3224,6 +3275,152 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** WealthAnalysis */
+        WealthAnalysis: {
+            /**
+             * Schema Version
+             * @default wealth-analysis-v1
+             * @constant
+             */
+            schema_version: "wealth-analysis-v1";
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+            /** Source Task Id */
+            source_task_id?: string | null;
+            /**
+             * Result Kind
+             * @enum {string}
+             */
+            result_kind: "RECOMMENDATION" | "COMPARISON" | "EXPLANATION" | "EDUCATION" | "CATALOGUE" | "PRODUCT_INTRO";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NEEDS_ASSESSMENT" | "NEEDS_CLARIFICATION" | "CONDITIONAL" | "MATCHED" | "NO_MATCH" | "EDUCATION";
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /**
+             * Reference Time
+             * Format: date-time
+             */
+            reference_time: string;
+            needs: components["schemas"]["WealthNeeds"];
+            /** Conclusion */
+            conclusion: string;
+            customer_response?: components["schemas"]["WealthCustomerResponse"] | null;
+            /** Assessment Id */
+            assessment_id?: string | null;
+            /** Customer Grade */
+            customer_grade?: string | null;
+            /** Assessment Expires At */
+            assessment_expires_at?: string | null;
+            /** Assessment Rules Version */
+            assessment_rules_version?: string | null;
+            /**
+             * Excluded Products
+             * @default []
+             */
+            excluded_products: components["schemas"]["WealthExcludedProduct"][];
+            /**
+             * Candidates
+             * @default []
+             */
+            candidates: components["schemas"]["WealthCandidateAnalysis"][];
+            /**
+             * Blocks
+             * @default []
+             */
+            blocks: components["schemas"]["WealthAnalysisBlock"][];
+            /**
+             * Evidence
+             * @default []
+             */
+            evidence: components["schemas"]["WealthEvidence"][];
+            /**
+             * Excluded
+             * @default {}
+             */
+            excluded: {
+                [key: string]: string[];
+            };
+            /**
+             * Missing Data
+             * @default []
+             */
+            missing_data: string[];
+            /**
+             * Ranking Basis
+             * @default []
+             */
+            ranking_basis: string[];
+            /** Previous Snapshot Id */
+            previous_snapshot_id?: string | null;
+            /** Historical Reference */
+            historical_reference?: string | null;
+            /**
+             * Narrative Source
+             * @default DETERMINISTIC
+             * @enum {string}
+             */
+            narrative_source: "DETERMINISTIC" | "MODEL_ORGANIZED" | "FALLBACK";
+            /** Degradation Reason */
+            degradation_reason?: string | null;
+            /**
+             * New Business Allowed
+             * @default true
+             */
+            new_business_allowed: boolean;
+        };
+        /** WealthAnalysisBlock */
+        WealthAnalysisBlock: {
+            /** Block Id */
+            block_id: string;
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+            /**
+             * Fact Ids
+             * @default []
+             */
+            fact_ids: string[];
+            /**
+             * Evidence Ids
+             * @default []
+             */
+            evidence_ids: string[];
+        };
+        /** WealthAnalysisInput */
+        WealthAnalysisInput: {
+            /**
+             * Needs
+             * @default
+             */
+            needs: string;
+            /** Amount */
+            amount?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Product Ids */
+            product_ids?: string[];
+            /**
+             * Intent
+             * @default RECOMMENDATION
+             * @enum {string}
+             */
+            intent: "RECOMMENDATION" | "COMPARISON" | "EDUCATION" | "EXPLANATION" | "CATALOGUE" | "PRODUCT_INTRO";
+            /**
+             * Query
+             * @default
+             */
+            query: string;
+        };
         /** WealthAssessmentResult */
         WealthAssessmentResult: {
             /**
@@ -3250,6 +3447,60 @@ export interface components {
             questionnaire_version: string;
             /** Rules Version */
             rules_version: string;
+        };
+        /** WealthCandidateAnalysis */
+        WealthCandidateAnalysis: {
+            /** Purchase Entry Key */
+            purchase_entry_key?: string | null;
+            product: components["schemas"]["WealthProductResult"];
+            /**
+             * Matched Conditions
+             * @default []
+             */
+            matched_conditions: string[];
+            /**
+             * Advantages
+             * @default []
+             */
+            advantages: string[];
+            /**
+             * Limitations
+             * @default []
+             */
+            limitations: string[];
+            /**
+             * Unsuitable When
+             * @default []
+             */
+            unsuitable_when: string[];
+            /**
+             * Unknowns
+             * @default []
+             */
+            unknowns: string[];
+            /** Fact Id */
+            fact_id: string;
+            /**
+             * Evidence Ids
+             * @default []
+             */
+            evidence_ids: string[];
+            fee_scenario?: components["schemas"]["WealthFeeScenario"] | null;
+            timing: components["schemas"]["WealthTimingScenario"];
+            history: components["schemas"]["WealthHistoryWindow"];
+        };
+        /** WealthCustomerResponse */
+        WealthCustomerResponse: {
+            /** Headline */
+            headline: string;
+            /** Paragraphs */
+            paragraphs?: components["schemas"]["WealthAnalysisBlock"][];
+            /** Questions */
+            questions?: string[];
+            /** Budget Display */
+            budget_display?: string | null;
+            /** Liquidity Display */
+            liquidity_display?: string | null;
         };
         /** WealthDraftInput */
         WealthDraftInput: {
@@ -3311,6 +3562,57 @@ export interface components {
             /** Quantity */
             quantity?: string | null;
         };
+        /** WealthEvidence */
+        WealthEvidence: {
+            /** Evidence Id */
+            evidence_id: string;
+            /** Title */
+            title: string;
+            /** Section */
+            section: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "EDUCATION" | "PRODUCT";
+            /** Source Type */
+            source_type: string;
+            /** Source Name */
+            source_name: string;
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+            /** Verified At */
+            verified_at?: string | null;
+            /** Published At */
+            published_at?: string | null;
+            /** Effective From */
+            effective_from?: string | null;
+            /** Effective To */
+            effective_to?: string | null;
+            /** Content Hash */
+            content_hash: string;
+            /** Content */
+            content: string;
+            /** Product Id */
+            product_id?: string | null;
+            /** Version Id */
+            version_id?: string | null;
+            /** Document Id */
+            document_id?: string | null;
+        };
+        /** WealthExcludedProduct */
+        WealthExcludedProduct: {
+            /** Product Id */
+            product_id: string;
+            /** Version Id */
+            version_id: string;
+            /** Name */
+            name: string;
+            /** Reasons */
+            reasons: string[];
+        };
         /** WealthFeatureStatus */
         WealthFeatureStatus: {
             /** Catalog Version */
@@ -3327,6 +3629,61 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** WealthFeeScenario */
+        WealthFeeScenario: {
+            /** Amount */
+            amount: string;
+            /** Budget Display */
+            budget_display: string;
+            /** Nav */
+            nav: string;
+            /** Nav Date */
+            nav_date: string;
+            /** Purchase Rate */
+            purchase_rate: string;
+            /** Redeem Rate */
+            redeem_rate: string;
+            /** Purchase Fee Display */
+            purchase_fee_display: string;
+            /** Redeem Fee Display */
+            redeem_fee_display: string;
+            /** Total Fee Display */
+            total_fee_display: string;
+            /** Estimated Cash Display */
+            estimated_cash_display: string;
+            /** Shares */
+            shares: string;
+            /**
+             * Assumption
+             * @default 假设申购和赎回净值均等于最新已发布净值；仅作费用情景，实际金额按未来净值成交。
+             */
+            assumption: string;
+        };
+        /** WealthHistoryWindow */
+        WealthHistoryWindow: {
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Data As Of */
+            data_as_of: string;
+            /**
+             * Samples
+             * @default 0
+             */
+            samples: number;
+            /** Change Display */
+            change_display?: string | null;
+            /** Drawdown Display */
+            drawdown_display?: string | null;
+            /** Missing Reason */
+            missing_reason?: string | null;
+            /**
+             * Notice
+             * @default 统一近30日窗口，起点取不晚于目标日期的最近已发布净值；模拟历史不代表未来收益。
+             */
+            notice: string;
+        };
         /** WealthKnowledgeResult */
         WealthKnowledgeResult: {
             /** Document Id */
@@ -3340,8 +3697,64 @@ export interface components {
             /** Content */
             content: string;
         };
+        /** WealthNeeds */
+        WealthNeeds: {
+            /**
+             * Raw
+             * @default
+             */
+            raw: string;
+            /** Amount */
+            amount?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Liquidity Raw */
+            liquidity_raw?: string | null;
+            /** Return Goal */
+            return_goal?: "HIGHER_POTENTIAL" | null;
+            /** Loss Tolerance Raw */
+            loss_tolerance_raw?: string | null;
+            /** Use Date From */
+            use_date_from?: string | null;
+            /** Use Date To */
+            use_date_to?: string | null;
+            /** Liquidity Basis */
+            liquidity_basis?: string | null;
+            /**
+             * Priority
+             * @default RISK
+             * @enum {string}
+             */
+            priority: "RISK" | "LIQUIDITY" | "FEES";
+            constraints?: components["schemas"]["RecommendationConstraints"];
+            /**
+             * Missing Fields
+             * @default []
+             */
+            missing_fields: string[];
+            /**
+             * Assumptions
+             * @default []
+             */
+            assumptions: string[];
+            /**
+             * Clarification Questions
+             * @default []
+             */
+            clarification_questions: string[];
+            /**
+             * Changed Fields
+             * @default []
+             */
+            changed_fields: string[];
+        };
         /** WealthOrderResult */
         WealthOrderResult: {
+            /**
+             * Conversation Deleted
+             * @default false
+             */
+            conversation_deleted: boolean;
             /** Source Task Id */
             source_task_id?: string | null;
             /** Conversation Id */
@@ -3481,6 +3894,9 @@ export interface components {
         };
         /** WealthReadResult */
         WealthReadResult: {
+            /** Result Kind */
+            result_kind?: ("CATALOGUE" | "PRODUCT" | "COMPARISON" | "RECOMMENDATION" | "KNOWLEDGE" | "POSITIONS" | "ORDERS") | null;
+            analysis?: components["schemas"]["WealthAnalysis"] | null;
             constraints?: components["schemas"]["RecommendationConstraints"] | null;
             /**
              * Selected Reasons
@@ -3510,6 +3926,11 @@ export interface components {
              */
             evidence: components["schemas"]["WealthKnowledgeResult"][];
             /**
+             * Evidence Sources
+             * @default []
+             */
+            evidence_sources: components["schemas"]["WealthEvidence"][];
+            /**
              * Reasons
              * @default []
              */
@@ -3524,6 +3945,7 @@ export interface components {
         };
         /** WealthRecommendationResult */
         WealthRecommendationResult: {
+            analysis?: components["schemas"]["WealthAnalysis"] | null;
             constraints?: components["schemas"]["RecommendationConstraints"] | null;
             /**
              * Selected Reasons
@@ -3611,8 +4033,44 @@ export interface components {
              */
             reasons: string[];
         };
+        /** WealthTimingScenario */
+        WealthTimingScenario: {
+            /** Purchase */
+            purchase: {
+                [key: string]: string;
+            };
+            /** Redeem Existing */
+            redeem_existing: {
+                [key: string]: string;
+            };
+            /** Earliest Redeem New */
+            earliest_redeem_new: {
+                [key: string]: string;
+            };
+            /** Earliest Cash At */
+            earliest_cash_at: string;
+            /**
+             * Notice
+             * @default Mock交易日仅周一至周五，不处理真实节假日。每日开放不等于实时到账；此为预估安排，并非已受理订单或到账保证。
+             */
+            notice: string;
+        };
         /** WealthWorkflowState */
         WealthWorkflowState: {
+            /**
+             * Order Received
+             * @default false
+             */
+            order_received: boolean;
+            /** Order Stage */
+            order_stage?: string | null;
+            /**
+             * Purchase Entry Allowed
+             * @default true
+             */
+            purchase_entry_allowed: boolean;
+            /** Purchase Entry Block Reason */
+            purchase_entry_block_reason?: string | null;
             /** Validation Message */
             validation_message?: string | null;
             draft: components["schemas"]["WealthDraftResult"];
@@ -5759,6 +6217,70 @@ export interface operations {
             };
         };
     };
+    analysis_api_v1_wealth_analysis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WealthAnalysisInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthAnalysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    snapshot_api_v1_wealth_snapshots__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthAnalysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     recommendations_api_v1_wealth_recommendations_post: {
         parameters: {
             query?: never;
@@ -5868,9 +6390,10 @@ export interface operations {
     knowledge_api_v1_wealth_knowledge_search_get: {
         parameters: {
             query: {
-                product_id: string;
                 query: string;
+                product_id?: string | null;
                 order_id?: string | null;
+                version_id?: string | null;
             };
             header?: never;
             path?: never;

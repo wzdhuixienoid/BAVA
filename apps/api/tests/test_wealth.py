@@ -332,6 +332,10 @@ async def test_roundtrip_timeout_conservation_and_security(wealth):
             == 0
         )
         assert await session.scalar(select(func.count()).select_from(NotificationModel)) == 6
+        notices = (await session.scalars(select(NotificationModel))).all()
+        assert sum("申购已完成" in n.message and "份已计入持仓" in n.message for n in notices) == 1
+        assert sum("赎回已成交，款项尚未到账" in n.message for n in notices) == 1
+        assert sum("赎回款" in n.message and "已到账" in n.message for n in notices) == 1
 
 
 async def test_queries_assessment_versions_and_evidence(wealth):
@@ -627,7 +631,7 @@ async def test_routing_and_persisted_executor_maps(wealth):
 
     router = RequestRouter(FakeLLMProvider([]))
     for request, expected in [
-        ("申购演示稳健优选1000元", RequestRoute.WEALTH_PURCHASE),
+        ("申购演示稳健优选1000元", RequestRoute.WEALTH_ANALYSIS),
         ("赎回演示稳健优选10份", RequestRoute.WEALTH_REDEEM),
         ("演示稳健优选的申购与赎回费用是什么", RequestRoute.WEALTH_ANALYSIS),
         ("推荐1000元稳健理财", RequestRoute.WEALTH_ANALYSIS),
@@ -719,6 +723,7 @@ async def test_natural_purchase_creates_persistent_owned_draft_once(wealth):
     from banking_api.runtime.runtime_factory import AgentRuntimeFactory
     from banking_api.runtime.task_runner import InProcessTaskRunner
 
+    await assessment(wealth)  # Purchase drafts require valid assessment before unit completion.
     factory, _, _, _, engine, bus = wealth
     async with factory() as session:
         conversation = await ConversationService(session, bus).create(
@@ -749,7 +754,10 @@ async def test_natural_purchase_creates_persistent_owned_draft_once(wealth):
         workflow = await session.scalar(select(WorkflowModel))
         assert workflow.user_id == USER and workflow.source_task_id == accepted.task_id
         assert workflow.state_json["draft"]["quantity"] == "1000"
-        assert workflow.state_json["validation_message"] == "请先完成风险测评"
+        assert workflow.status == WorkflowStatus.READY_FOR_REVIEW
+        assert workflow.state_json["validation_message"] is None
+        assert workflow.state_json["review"]["assessment_id"]
+        assert workflow.state_json["review"]["quantity"] == "1000"
 
 
 async def test_http_confirmation_verification_submission_and_read_only_get(wealth):
@@ -812,6 +820,8 @@ async def test_http_confirmation_verification_submission_and_read_only_get(wealt
         assert w["status"] == "READY_FOR_COMMIT"
         w = await act("commit")
         assert w["status"] == "COMMITTING" and not w["presentation"]["business_success"]
+        assert w["presentation"]["wealth_state"]["order_received"] is True
+        assert w["presentation"]["wealth_state"]["order_stage"] == "ACCEPTED"
         orders = (await client.get("/api/v1/wealth/orders")).json()
         assert len(orders) == 1 and orders[0]["status_display"] == "已受理，待成交"
         assert (await client.get(f"/api/v1/wealth/orders/{orders[0]['order_id']}")).json()[
@@ -828,3 +838,53 @@ async def test_http_confirmation_verification_submission_and_read_only_get(wealt
         assert (await client.get("/api/v1/wealth/orders")).json()[0][
             "status_display"
         ] == "已受理，待成交"
+
+
+async def test_soft_delete_accepted_chat_keeps_original_order_recovery(wealth):
+    from banking_api.application.conversation_service import (
+        ConversationActiveError,
+        ConversationService,
+    )
+    from banking_api.persistence.models import ConversationModel, WorkflowModel
+
+    factory, clock, balances, provider, *_ = wealth
+    await assessment(wealth)
+    workflow = await draft(wealth)
+    async with factory() as session:
+        model = await session.get(WorkflowModel, workflow.workflow_id)
+        conversation_id = model.conversation_id
+        with pytest.raises(ConversationActiveError):
+            await ConversationService(session, EventBus()).delete(
+                conversation_id=conversation_id, user_id=USER
+            )
+    workflow = await authorize(wealth, workflow)
+    provider.fault_mode = "TIMEOUT_AFTER_ACCEPT"
+    operation = await commit(wealth, workflow)
+    assert operation.status == OperationStatus.UNKNOWN
+    balance = await balances.effective_balance(USER, ACCOUNT)
+    async with factory() as session:
+        order = await session.scalar(select(WealthOrder))
+        order_id, confirm = order.order_id, order.confirm_at
+        await ConversationService(session, EventBus()).delete(
+            conversation_id=conversation_id, user_id=USER
+        )
+        assert (await session.get(ConversationModel, conversation_id)).deleted_at is not None
+        assert (await session.get(WealthOrder, order_id)).status == "ACCEPTED"
+    assert await balances.effective_balance(USER, ACCOUNT) == balance
+    clock.now = confirm.replace(tzinfo=UTC) if confirm.tzinfo is None else confirm
+    await recover(wealth)
+    await recover(wealth)
+    async with factory() as session:
+        assert (await session.get(WealthOrder, order_id)).status == "SETTLED"
+        assert await session.scalar(select(func.count()).select_from(WealthOrder)) == 1
+        assert (
+            await session.scalar(
+                select(func.count())
+                .select_from(WealthLedger)
+                .where(WealthLedger.action == "PURCHASE_DEBIT")
+            )
+            == 1
+        )
+        result = (await WealthService(session, balances, clock).orders(USER))[0]
+        assert result.order_id == order_id
+        assert result.conversation_deleted is True and result.conversation_id is None

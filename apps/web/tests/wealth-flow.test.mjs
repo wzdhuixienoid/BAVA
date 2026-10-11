@@ -9,7 +9,7 @@ const base = {workflow_id:"w",source_task_id:"t",workflow_type:"WEALTH_PURCHASE"
 const render = workflow => renderToStaticMarkup(createElement(WealthWorkflowCard,{workflow,onRefresh:async()=>{}}));
 test("wealth review uses backend estimates and dates, sources and explicit confirmation",()=>{
  const html=render(base);
- for (const text of ["1,000.00 元","1.00 元（估算）","999.123456 份（估算）","未来交易日净值","2026-10-12 10:00:00","查看资料","我已核对，确认交易"]) assert.ok(html.includes(text),text);
+ for (const text of ["1,000.00 元","1.00 元（估算）","999.123456 份（估算）","未来交易日净值","2026-10-12 10:00:00","产品说明书","我已核对，确认交易"]) assert.ok(html.includes(text),text);
  assert.ok(!html.includes("提交申购"));
 });
 test("wealth strong verification gates submit",()=>{

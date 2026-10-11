@@ -17,6 +17,7 @@ class ContextBuilder:
         conversation_messages: list[Message],
         runtime_messages: list[LLMMessage],
         allowed_tools: list[ToolSpec],
+        wealth_context: dict | None = None,
     ) -> LLMRequest:
         eligible = [
             message
@@ -50,6 +51,16 @@ class ContextBuilder:
                         "分类统计优先汇总和分类；仅在用户要求变化或最大消费时补查对应工具。"
                         "无数据时说明该期间没有可分析账单，不反复尝试其他月份，也不能声称生成了报告。"
                     ),
+                )
+            )
+        if wealth_context and agent.agent_id == "agent:wealth-advisor":
+            import json
+
+            messages.append(
+                LLMMessage(
+                    role="system",
+                    content="经本人及本对话归属校验的精简历史快照，仅作解释："
+                    + json.dumps(wealth_context, ensure_ascii=False),
                 )
             )
         messages.extend(

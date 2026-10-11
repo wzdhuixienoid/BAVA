@@ -240,6 +240,10 @@ class WealthWorkflow:
         old = await WorkflowRepository(self.session).get_by_source_task(source_task_id, user_id)
         if old:
             return old
+        # Assessment is an entry prerequisite, not an optional draft field.
+        # Never let allow_invalid_draft turn missing/expired evidence into a purchase card.
+        if draft["direction"] == "PURCHASE":
+            await self.service.require_assessment(user_id)
         validation_message = None
         try:
             draft = await self.resolve_draft(user_id, draft)

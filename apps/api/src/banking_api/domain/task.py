@@ -13,14 +13,16 @@ from banking_api.domain.enums import (
     TaskStatus,
 )
 from banking_api.financial.report_models import MonthlySpendingReportCore
-from banking_api.wealth.schemas import WealthReadResult
+from banking_api.wealth.schemas import WealthAnalysis, WealthReadResult
 
 
 class TaskOutput(TypedDict, total=False):
     # Keep existing result keys without refactoring unrelated snapshots or workflows.
     __pydantic_config__ = ConfigDict(extra="allow")
 
+    wealth_analysis: WealthAnalysis
     wealth_results: list[WealthReadResult]
+    wealth_final_result_index: int
     account_results: AccountQueryResults
     financial_display: MonthlySpendingReportCore
 

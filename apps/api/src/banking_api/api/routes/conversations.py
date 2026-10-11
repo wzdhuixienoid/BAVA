@@ -122,7 +122,7 @@ async def delete_conversation(
             status_code=409,
             detail={
                 "code": "CONVERSATION_HAS_ACTIVE_TASKS",
-                "message": "该对话还有未结束的任务，请先完成或取消相关流程。",
+                "message": exc.message,
             },
         ) from exc
     return Response(status_code=204)

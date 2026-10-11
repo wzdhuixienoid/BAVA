@@ -13,6 +13,7 @@ class RecommendationConstraints(BaseModel):
     maximum_risk: int = 5
     immediate_cash: bool = False
     within_week: bool = False
+    avoid_weekly: bool = False
     ambiguous: bool = False
     reasons: list[str] = Field(default_factory=list)
 
@@ -23,7 +24,25 @@ def parse_requirements(needs: str) -> RecommendationConstraints:
     preferences = set()
     understood = not clauses
     for clause in clauses:
-        recognized = False
+        recognized = bool(
+            re.search(
+                r"测评|购买|申购|想买|要买|可以买|指定产品|推荐|比较|对比|为什么|优势|费用|手续费|起购|有什么|买理财|预算|期限|持有|投资|收益|赚钱|赚得|赚的|亏损|下周|用钱|适合|能买|这两款|第一款|第二款|现在|上次|多少|稳享|优选|周享|成长|精选|R[1-5]|\d{4}-\d{2}-\d{2}",
+                clause,
+                re.I,
+            )
+        )
+        cap = re.search(r"R([1-5])\s*(?:以下|以内|及以下)", clause, re.I)
+        if cap:
+            result.maximum_risk = min(result.maximum_risk, int(cap[1]))
+        if "不能等周一" in clause or "不要周开放" in clause:
+            result.avoid_weekly = True
+        if "下周" in clause:
+            result.within_week = True
+        if re.search(
+            r"收益.{0,6}(?:一定|保证)|(?:必须|保证|一定).{0,6}(?:收益|赚钱|盈利)|稳赚", clause
+        ):
+            result.ambiguous = True
+            result.reasons.append("当前产品不能保证未来收益，无法满足必然获利或超过市场的要求")
         if "保本" in clause:
             recognized = True
             if not re.search(r"(?:不要求|不需要|无需|不用|不必|不追求)\s*保本", clause):

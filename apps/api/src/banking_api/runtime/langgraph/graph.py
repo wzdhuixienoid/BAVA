@@ -159,6 +159,7 @@ class LangGraphAgentRuntime:
                 conversation_messages=request.conversation_messages,
                 runtime_messages=runtime_messages,
                 allowed_tools=allowed_tools,
+                wealth_context=request.wealth_context,
             )
             if state.get("financial_window"):
                 window = state["financial_window"]

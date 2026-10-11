@@ -204,6 +204,7 @@ async def test_downgrade_refuses_unsubmitted_wealth_draft(pg_wealth):
     from pathlib import Path
 
     factory, *_ = pg_wealth
+    await assessment(pg_wealth)
     workflow = await draft(pg_wealth, value=None)
     url = os.environ["TEST_DATABASE_URL"]
     result = subprocess.run(
@@ -246,3 +247,46 @@ async def test_postgres_all_redeem_rechecks_free_snapshot(pg_wealth):
     from test_wealth_repairs import test_all_redeem_free_quantity_snapshot_rechecks_changed_hold
 
     await test_all_redeem_free_quantity_snapshot_rechecks_changed_hold(pg_wealth)
+
+
+async def test_wealth_snapshot_json_owner_conversation_and_restart(pg_wealth):
+    from banking_api.domain.enums import ExecutorType, TaskStatus
+    from banking_api.persistence.repositories.conversations import ConversationRepository
+    from banking_api.persistence.repositories.tasks import TaskRepository
+    from banking_api.wealth.advisory import WealthAdvisoryService
+    from banking_api.wealth.context import latest_analysis
+    from banking_api.wealth.schemas import WealthAnalysisInput
+    from banking_api.wealth.service import WealthService
+
+    factory, clock, balances, *_ = pg_wealth
+    await assessment(pg_wealth)
+    async with factory() as session:
+        conversation = await ConversationRepository(session).create(user_id=USER, title="test")
+        other = await ConversationRepository(session).create(user_id=USER, title="another test")
+        task = await TaskRepository(session).create(
+            conversation_id=conversation.conversation_id,
+            user_id=USER,
+            task_type="USER_REQUEST",
+            input_data={},
+        )
+        task.executor_type, task.executor_id = ExecutorType.AGENT, "agent:wealth-advisor"
+        result = await WealthAdvisoryService(WealthService(session, balances, clock)).analyze(
+            USER, WealthAnalysisInput(needs="稳健", amount="5000")
+        )
+        result.source_task_id = task.task_id
+        await TaskRepository(session).transition(
+            task, TaskStatus.COMPLETED, output={"wealth_analysis": result.model_dump(mode="json")}
+        )
+        cid, other_id = conversation.conversation_id, other.conversation_id
+        await session.commit()
+    async with factory() as session:
+        saved = await latest_analysis(session, USER, cid, require_candidates=True)
+        assert saved and saved.candidates and saved.needs.amount == "5000"
+        assert await latest_analysis(session, "another-user", cid) is None
+        assert await latest_analysis(session, USER, other_id) is None
+
+
+async def test_accepted_order_settles_after_chat_soft_delete(pg_wealth):
+    from test_wealth import test_soft_delete_accepted_chat_keeps_original_order_recovery
+
+    await test_soft_delete_accepted_chat_keeps_original_order_recovery(pg_wealth)

@@ -113,3 +113,22 @@ TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_we
 `test_wealth_repairs.py`覆盖暂停后重新装配、未知恢复、首次受理关闭、数量单位、全部赎回快照、本次需求否定约束、HTTP/Agent一致性和订单说明。`wealth-interaction.test.mjs`使用真实React组件事件、状态与Effect测试交互，使用匹配React版本的react-test-renderer；它不是浏览器端到端验收。
 
 `scripts/smoke_wealth.py`另验证申购UNKNOWN和赎回受理后关闭开关、重装应用并完成原订单。浏览器验收可使用`scripts/wealth_browser_test_server.py`，必须指定文件名含test的独立SQLite库与测试控制文件，且在另一个端口使用指向该API的测试Web构建。私有控制文件内容为`{"now":"2026-10-09T09:00:00+08:00","enabled":true,"fault_mode":"SUCCESS"}`；更改文件注入业务时钟或重装测试应用，既不提供HTTP推进时间接口，也不修改产品授权TTL或安全保护规则。正式页面不得指向测试控制工具。测试端口关闭后保留验收库供核对，不重置演示库。
+
+## v0.11.2 顾问验证
+
+新增 test_wealth_advisory.py、wealth-analysis-interaction.test.mjs 和 PostgreSQL 快照隔离测试。检索 gold 位于 knowledge/content/wealth_retrieval_gold.json，维护方式见 [知识维护说明](../../apps/api/src/banking_api/knowledge/README.md)。
+
+只读连续对话 Smoke：PYTHONPATH=apps/api/src apps/api/.venv/bin/python scripts/smoke_wealth_advisor.py。默认 SQLite 路径包含 test；加 --real-model 使用已有模型配置，--output 指定输出。FakeLLM 契约测试不等同真实模型质量验证。
+
+浏览器使用 wealth_browser_test_server.py，独立 test SQLite、API 8011、Web 3011；--advisor-history 仅用于独立库的合成旧对话。控制文件只注入测试业务时钟，不提供产品端推进时间接口，不改变授权 TTL。不得在原演示用户测评、下单或 reset。实际执行结果保存在对应版本更新说明。
+
+选购入口回归位于 `test_wealth_advisory.py` 与 `wealth-analysis-interaction.test.mjs`：口头测评完成不能替代数据库记录；缺测评→实际测评→同对话完成消息须获得候选而无金融操作；指定简称须唯一介绍；点击购买先编辑，显式填写提交后才创建一次核对。旧版阻断意图读取需要本人+本对话双重范围，不能继承交易授权。隔离浏览器设施仍使用8011/3011和名称包含test的SQLite文件；资金最终提交只能在隔离环境验收。
+
+理财选购呈现补充回归覆盖：预算元/万/亿与符号、多个金额澄清、收益诉求不误路由为
+比较、历史预算主动重分析去重、已受理对话软删除后原订单继续结算及保留审计入口。
+2026-10-11本轮完整后端934项（SQLite及banking_wealth_v011_test）通过；最后正文限制
+补查顾问66项通过，前端98项交互通过。新推荐Skill不调用交易工具，检查事实/证据引用。
+
+目录意图回归（2026-10-11）：完整后端942项，隔离SQLite/test PostgreSQL；顾问73项；
+前端99项交互。实际浏览器在8011/3011先旧对话填5000元/进取/3个月，再新对话只问产品目录，
+验证八款客观结果、未携带旧条件、内部栏目隐藏及条款点击；Organizer为隔离测试模型。

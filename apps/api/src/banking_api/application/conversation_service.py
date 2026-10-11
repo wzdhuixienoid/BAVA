@@ -26,12 +26,15 @@ from banking_api.persistence.repositories.tasks import TaskRepository
 from banking_api.planning.models import PlanStatus
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
+from banking_api.wealth.models import WealthOrder
 
 BANKING_REQUEST_TASK_TYPE = "BANKING_REQUEST"
 
 
 class ConversationActiveError(Exception):
-    pass
+    def __init__(self, message="该对话正在处理消息或尚有待操作的业务，请先完成或取消相关流程。"):
+        super().__init__(message)
+        self.message = message
 
 
 class ConversationNotFoundError(Exception):
@@ -125,12 +128,43 @@ class ConversationService:
         scheduled_tasks = select(WorkflowModel.source_task_id).where(
             WorkflowModel.workflow_id.in_(independent_schedules)
         )
+        # A soft-deleted chat must not cancel an already accepted wealth order.
+        # Only durable matching order evidence exempts background reconciliation.
+        independent_wealth = (
+            select(WorkflowModel.workflow_id)
+            .join(
+                WealthOrder,
+                (WealthOrder.workflow_id == WorkflowModel.workflow_id),
+            )
+            .join(
+                OperationModel,
+                (OperationModel.operation_id == WealthOrder.operation_id)
+                & (OperationModel.workflow_id == WorkflowModel.workflow_id),
+            )
+            .where(
+                OperationModel.user_id == user_id,
+                WorkflowModel.user_id == user_id,
+                WorkflowModel.conversation_id == conversation_id,
+                WorkflowModel.workflow_type.in_(["WEALTH_PURCHASE", "WEALTH_REDEEM"]),
+                WorkflowModel.status == WorkflowStatus.COMMITTING,
+                WealthOrder.user_id == user_id,
+                WealthOrder.status.in_(["ACCEPTED", "CONFIRMED", "SETTLED"]),
+            )
+            .correlate(None)
+        )
+        wealth_tasks = select(WorkflowModel.source_task_id).where(
+            WorkflowModel.workflow_id.in_(independent_wealth)
+        )
         checks = [
             select(
                 exists().where(
                     TaskModel.conversation_id == conversation_id,
                     TaskModel.status.not_in(terminal_tasks),
                     TaskModel.task_id.not_in(scheduled_tasks),
+                    ~(
+                        (TaskModel.task_id.in_(wealth_tasks))
+                        & (TaskModel.status == TaskStatus.WAITING_EXTERNAL)
+                    ),
                 )
             ),
             select(
@@ -138,6 +172,7 @@ class ConversationService:
                     WorkflowModel.conversation_id == conversation_id,
                     WorkflowModel.status.not_in(terminal_workflows),
                     WorkflowModel.workflow_id.not_in(independent_schedules),
+                    WorkflowModel.workflow_id.not_in(independent_wealth),
                 )
             ),
             select(
@@ -153,6 +188,7 @@ class ConversationService:
                             WorkflowModel.conversation_id == conversation_id
                         )
                     ),
+                    OperationModel.workflow_id.not_in(independent_wealth),
                     OperationModel.status.not_in(
                         [OperationStatus.SUCCEEDED, OperationStatus.FAILED]
                     ),
@@ -161,7 +197,28 @@ class ConversationService:
         ]
         for statement in checks:
             if await self.session.scalar(statement):
-                raise ConversationActiveError
+                pending = await self.session.scalar(
+                    select(WorkflowModel)
+                    .where(
+                        WorkflowModel.conversation_id == conversation_id,
+                        WorkflowModel.status.not_in(terminal_workflows),
+                        WorkflowModel.workflow_id.not_in(independent_wealth),
+                        WorkflowModel.workflow_id.not_in(independent_schedules),
+                    )
+                    .limit(1)
+                )
+                if pending and pending.workflow_type.value.startswith("WEALTH_"):
+                    direction = (
+                        "申购" if pending.workflow_type.value == "WEALTH_PURCHASE" else "赎回"
+                    )
+                    if pending.status == WorkflowStatus.COMMITTING:
+                        raise ConversationActiveError(
+                            f"该对话的理财{direction}结果仍在确认，暂不能删除。请在理财中心查看处理进度。"
+                        )
+                    raise ConversationActiveError(
+                        f"该对话还有未提交的理财{direction}申请，请先在交易卡取消草稿，再删除对话。"
+                    )
+                raise ConversationActiveError()
         model.deleted_at = datetime.now(UTC)
         await self.publisher.persist(
             event_type="conversation.deleted",

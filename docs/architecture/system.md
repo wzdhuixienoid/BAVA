@@ -1,6 +1,6 @@
 # 系统架构
 
-本页描述 v0.11.1 的实现。长期设计约束见 [设计原则](design-principles.md)。
+本页描述 v0.11.2 的实现。长期设计约束见 [设计原则](design-principles.md)。
 
 ## 执行概念
 
@@ -76,3 +76,18 @@ Worker 由 API 进程托管，不是通用队列平台。EventBus 为进程内�
 新业务开关与执行能力注册分开。development/test始终注册理财只读和受控Operation查询/提交工具；关闭开关只阻止新的测评、草稿、授权和首次受理，已有订单幂等重放及恢复继续按原快照结算。production不注册Mock工具，Provider也校验执行环境。`GET /api/v1/wealth/status`返回开关及目录/问卷版本；页面静态资料按版本加载，动态资源统一刷新、禁止重叠并在隐藏时暂停。
 
 自然语言数量保留元/份单位并严格校验方向，歧义进入补全草稿；全部赎回在后端唯一确定持仓并绑定明确可用份额，提交不静默缩减数量。推荐通过共用的结构化需求约束解析器识别保本、否定偏好和流动性硬约束，HTTP和Agent使用同一服务与用户测评标记。订单说明投影由后端统一提供错误码、中文原因、下一步、最后阶段和预计处理时间。
+
+## v0.11.2 理财顾问分析
+
+WealthAdvisoryService 共用需求整理、确定性筛选、Decimal 费用情景、完整到账链路、统一历史窗口和证据。新增 POST /api/v1/wealth/analysis；原 compare 列表接口兼容，HTTP 与 Agent 都传本人 user_id 计算权限。
+
+LangGraph 对话先生成并保存 typed 最终分析，以 wealth_analysis 作为唯一展示来源。模型仅组织批准的段落，失败提供具体差异的确定性降级。Task.output 快照保存需求、顺序、资料/测评版本和参考时间；ContextBuilder 与 Router 使用 owner/conversation 校验后的精简快照进行追问路由，不依赖最近十条文本或进程字典。
+
+共享 WealthAnalysisCard 用于理财中心和对话，正文先于卡片，来源区分产品与教育资料；静态数据、动态轮询与金融工作流维持 v0.11.1 的分工。本轮无数据库迁移，不改写历史条款、金融账本或旧消息。
+
+
+理财对话复用WealthProductCard，理由、限制及费用/时间情景放在卡片外的正文。WealthEvidencePanel独立于分析容器，共用资料交互。持久订单受理事实投影到Workflow展示DTO，对话“申请已提交”与异步金融完成分离；成交/到账消息展示实际结果，Worker及账本状态机不变。
+
+`skill:wealth-recommendation` 将校验后的WealthAnalysis转换为客户呈现DTO，保留原事实、
+证据与后台需求字段，隔离展示文案和金融决策。对话软删除保留独立已受理理财链路；
+订单投影标记conversation_deleted，理财中心移除无效对话入口但保留审计和恢复状态。

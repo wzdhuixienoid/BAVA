@@ -1,3 +1,4 @@
+import { WealthAnalysisCard, WealthReanalyze } from "@/features/wealth/WealthAnalysisCard";
 import { wealthAnswer, isWealthOnlyAnswer } from "@/features/wealth/answer";
 import { WealthWorkflowCard, WealthResultCard } from "@/features/wealth/WealthCards";
 import type { components } from "@banking/api-client";
@@ -65,7 +66,8 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
     && !outputs.some((output) => output.payee_results)
     && !turn.plans.length && !turn.workflows.length && !turn.reports.length;
   const wealth = wealthAnswer(outputs);
-  const wealthOnlyAnswer = Boolean(wealth && isWealthOnlyAnswer(outputs) && !turn.plans.length && !turn.workflows.length && !turn.reports.length);
+  const wealthAnalysis = (outputs.findLast(output => output.wealth_analysis)?.wealth_analysis ?? wealth?.analysis) as components["schemas"]["WealthAnalysis"] | undefined;
+  const wealthOnlyAnswer = Boolean((wealthAnalysis || wealth) && isWealthOnlyAnswer(outputs) && !turn.plans.length && !turn.workflows.length && !turn.reports.length);
   const replies = needsHistoricalCorrection || accountOnlyAnswer || wealthOnlyAnswer
     ? turn.replies.filter((message) => message.role === "SYSTEM_NOTICE") : turn.replies;
   const subscriptionSnapshot = outputs.find(output => output.subscription_analysis_snapshot)?.subscription_analysis_snapshot as components["schemas"]["SubscriptionAnalysisSnapshot"] | undefined;
@@ -87,7 +89,7 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}
           {turn.tasks.filter(task => typeof task.output?.aa_request_id === "string").map(task => <AARequestCard key={task.task_id} requestId={String(task.output!.aa_request_id)} />)}
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
-          {wealth && <WealthResultCard result={wealth}/>}
+          {wealthAnalysis ? <WealthAnalysisCard analysis={wealthAnalysis} conversationId={turn.tasks[0]?.conversation_id} onRefresh={onRefresh}/> : wealth && <><WealthResultCard result={wealth}/>{turn.user && turn.tasks[0] && <WealthReanalyze conversationId={turn.tasks[0].conversation_id} request={turn.user.content} onRefresh={onRefresh}/>}</>}
           {accounts.length > 0 && <AccountAnswer results={accounts} />}
           {needsHistoricalCorrection && <p className="text-slate-600">这条历史回复误用了异常交易分析，未按你指定的消费范围执行。现在可按最近任意天数分析消费。</p>}
 

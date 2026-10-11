@@ -415,6 +415,7 @@ async def test_natural_bad_units_never_produce_complete_review(wealth, text):
     from banking_api.runtime.runtime_factory import AgentRuntimeFactory
     from banking_api.runtime.task_runner import InProcessTaskRunner
 
+    await assessment(wealth)  # Purchase drafts require valid assessment before unit completion.
     factory, _, _, _, engine, bus = wealth
     async with factory() as session:
         service = ConversationService(session, bus, runtime_backend=RuntimeBackend.LANGGRAPH)
