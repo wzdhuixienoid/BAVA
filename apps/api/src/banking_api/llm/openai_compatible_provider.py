@@ -97,6 +97,8 @@ class OpenAICompatibleProvider:
     @staticmethod
     def _message_to_wire(message: LLMMessage) -> dict[str, Any]:
         item: dict[str, Any] = {"role": message.role, "content": message.content}
+        if message.reasoning_content is not None:
+            item["reasoning_content"] = message.reasoning_content
         if message.tool_calls:
             item["tool_calls"] = [
                 {
@@ -134,6 +136,7 @@ class OpenAICompatibleProvider:
         usage = payload.get("usage") or {}
         return LLMResponse(
             content=message.get("content"),
+            reasoning_content=message.get("reasoning_content"),
             tool_calls=tool_calls,
             finish_reason=choice.get("finish_reason"),
             usage=LLMUsage(

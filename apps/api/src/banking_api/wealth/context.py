@@ -25,13 +25,26 @@ async def latest_analysis(
     statement = select(TaskModel).where(
         TaskModel.user_id == user_id,
         TaskModel.conversation_id == conversation_id,
-        TaskModel.status == "COMPLETED",
-        TaskModel.executor_id == "agent:wealth-advisor",
+        TaskModel.status.in_(["COMPLETED", "WAITING_USER", "WAITING_EXTERNAL"]),
+        TaskModel.executor_id.in_(
+            ["agent:wealth-advisor", "workflow:wealth-purchase", "workflow:wealth-redeem"]
+        ),
     )
     statement = statement.where(
         TaskModel.output_json["wealth_analysis"]["result_kind"]
         .as_string()
-        .in_(["RECOMMENDATION", "COMPARISON", "EXPLANATION", "PRODUCT_INTRO", "CATALOGUE"])
+        .in_(
+            [
+                "RECOMMENDATION",
+                "COMPARISON",
+                "EXPLANATION",
+                "PRODUCT_INTRO",
+                "PREPARE_PURCHASE",
+                "PREPARE_REDEEM",
+                "CATALOGUE",
+                "PRODUCT_OVERVIEW",
+            ]
+        )
     )
     if require_candidates:
         statement = statement.where(
@@ -43,8 +56,9 @@ async def latest_analysis(
         statement = statement.where(TaskModel.created_at < before)
     # Filter on the JSON key before limiting: unrelated later messages do not erase a snapshot.
     statement = statement.where(
-        TaskModel.output_json["wealth_analysis"]["schema_version"].as_string()
-        == "wealth-analysis-v1"
+        TaskModel.output_json["wealth_analysis"]["schema_version"]
+        .as_string()
+        .in_(["wealth-analysis-v1", "wealth-analysis-v2"])
     )
     rows = (
         await session.scalars(

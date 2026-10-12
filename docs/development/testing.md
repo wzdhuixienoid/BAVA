@@ -132,3 +132,13 @@ TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_we
 目录意图回归（2026-10-11）：完整后端942项，隔离SQLite/test PostgreSQL；顾问73项；
 前端99项交互。实际浏览器在8011/3011先旧对话填5000元/进取/3个月，再新对话只问产品目录，
 验证八款客观结果、未携带旧条件、内部栏目隐藏及条款点击；Organizer为隔离测试模型。
+
+## v0.11.3 语义与正文验证
+
+test_wealth_v0113覆盖数量、原文核验、需求更新、阶段、模型正文和Skill安全。自然表达集在apps/api/tests/data/wealth_v0113_expressions.json，开发40条、保留改写10条。scripts/evaluate_wealth_v0113.py仅允许名称含test的SQLite库，参数--database与--output指定隔离库和原始记录；--answers-only --independent评估独立场景。MODEL_GENERATED不等于语言质量满分，仍需人工核查。
+
+浏览器设施支持--real-model，独立8011/3011端口和本地test时钟文件，正式产品无推进时间接口。开发和生产构建不能同时写同一个.next目录。具体检查结果见v0.11.3发布说明，不复用旧数量。
+
+## v0.11.4 策略回归
+
+`test_wealth_strategy.py`覆盖增长目标改变候选、集合反馈、换一批、逐款定位、偏好更新、策略关系、版本时间、历史资料不覆盖和持久Task不产生Operation。真实模型可执行 `scripts/evaluate_wealth_v0113.py --strategy --answers-only --database /private/tmp/wealth_strategy_test.sqlite --output /private/tmp/wealth_strategy_test.json`。脚本只接受test数据库，使用本次发布时间后的测试时钟，并记录每次核验失败及模型原答。真实生成与FakeLLM回归分开统计，人工复核上一批概括、代码泄漏和收益暗示。

@@ -280,6 +280,7 @@ def create_app() -> FastAPI:
     application.state.skill_registry = skill_registry
     application.state.request_router = router
     application.state.runtime_factory = runtime_factory
+    application.state.llm_provider = provider
     application.state.transfer_workflow_engine = transfer_engine
     application.state.subscription_workflow_engine = subscription_engine
     transfer_engine.mock_scheduling_supported = isinstance(transfer_provider, MockTransferProvider)

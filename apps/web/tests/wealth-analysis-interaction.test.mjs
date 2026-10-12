@@ -217,3 +217,45 @@ test("catalogue displays objective introduction and shared product cards without
   for(const hidden of ["这次也","未确认信息与分析前提","已知条件与资料缺失","如何筛选","投资多少元","先供你参考"])assert.ok(!content.includes(hidden),hidden);
  });
 });
+
+test("v0.11.3 generated answer is visible and comparison is always direct",async()=>{
+ const product={product_id:"p",version_id:"p:v1",name:"演示A",risk:"R1",minimum_display:"100.00 元",open_display:"每日开放",fees_display:"无费用",nav_display:"1",nav_date:"2026-10-09",sources:["/api/v1/wealth/documents/p:v1:1"],purchase_allowed:false};
+ const candidate={fact_id:"fact:p:v1",product,timing:{earliest_cash_at:"2026-10-15T10:00:00+08:00",purchase:{},redeem_existing:{},earliest_redeem_new:{}},history:{},limitations:[],advantages:[],unsuitable_when:[],evidence_ids:[]};
+ const generated={headline:"模型解释了费用和用款安排的取舍。",paragraphs:[{block_id:"novel",text:"每日开放提供申请窗口，现金到账仍需等待。"}],questions:[],evidence_refs:["edu-nav","doc"]};
+ await render(WealthAnalysisCard,{analysis:{...analysis,schema_version:"wealth-analysis-v2",answer:generated,candidates:[candidate,{...candidate,fact_id:"b",product:{...product,product_id:"b",name:"演示B"}}],evidence:[evidence,{...evidence,evidence_id:"doc",scope:"PRODUCT",document_id:"p:v1:1",version:"v1",url:"/api/v1/wealth/documents/p:v1:1"}]}},async r=>{
+  assert.ok(text(r.toJSON()).includes(generated.headline));
+  assert.ok(text(r.toJSON()).includes(generated.paragraphs[0].text));
+  const table=r.root.findByType("table");assert.ok(table);
+  let parent=table.parent;while(parent){assert.notEqual(parent.type,"details");parent=parent.parent;}
+  const evidencePanel=r.root.findByType(WealthEvidencePanel);assert.deepEqual(evidencePanel.props.evidence.map(e=>e.evidence_id),["edu-nav"]);
+ });
+});
+
+test("strategy comparison exposes investment drivers and product overview asks no suitability questions",async()=>{
+ const profile={positioning:"债券底仓与分散权益增强",return_sources:["债券票息","权益分红和价格变化"],risk_drivers:["债券与权益共振下跌"],observation_label:"半年以上观察，非锁定期"};
+ const product={product_id:"p",name:"演示均衡优选",design_profile:profile,risk:"R3",minimum_display:"1,000.00 元",open_display:"每日开放",fees_display:"申购0.20%",sources:[],purchase_allowed:false};
+ const candidate={fact_id:"p",product,purchase_entry_key:"k",timing:{earliest_cash_at:"2026-10-15T10:00:00+08:00",purchase:{},redeem_existing:{},earliest_redeem_new:{}},history:{},limitations:[],advantages:[],unsuitable_when:[]};
+ const answer={headline:"先比较增长来源与波动承担。",paragraphs:[{block_id:"growth",title:"增长与代价",text:"债券搭配权益有多种收益来源，也会共同下跌。"}],questions:[],evidence_refs:[]};
+ await render(WealthAnalysisCard,{analysis:{...analysis,answer,candidates:[candidate,{...candidate,fact_id:"q",product:{...product,product_id:"q",name:"演示进取成长"}}]}},async r=>{
+  const table=text(r.root.findByType("table"));
+  for(const label of ["策略定位","收益从哪里来","主要波动风险","参考观察期",profile.positioning,profile.risk_drivers[0]])assert.ok(table.includes(label),label);
+  assert.ok(text(r.root.findByProps({"aria-label":"产品分析正文"})).includes("增长与代价"));
+ });
+ await render(WealthAnalysisCard,{analysis:{...analysis,result_kind:"PRODUCT_OVERVIEW",status:"EDUCATION",answer,candidates:[candidate],needs:{...analysis.needs,amount:"5000"}}},async r=>{
+  const content=text(r.toJSON());assert.ok(content.includes("产品定位"));assert.ok(content.includes(profile.positioning));
+  assert.ok(!content.includes("投资预算"));assert.ok(!content.includes("最早何时用钱"));
+  assert.equal(r.root.findAllByType("table").length,0);
+ });
+});
+
+test("v0.11.3 preparation opens transaction input and hides recommendation questions",async()=>{
+ const original=api.wealthAccounts;api.wealthAccounts=async()=>[{account_id:"a",display_name:"工资卡",balance_display:"10,000.00 元"}];
+ const product={product_id:"p",name:"演示A",risk:"R1",minimum_display:"100.00 元",open_display:"每日开放",fees_display:"无费用",nav_display:"1",nav_date:"2026-10-09",sources:[],purchase_allowed:true};
+ const candidate={fact_id:"a",product,timing:{earliest_cash_at:"2026-10-15T10:00:00+08:00",purchase:{},redeem_existing:{},earliest_redeem_new:{}},history:{},limitations:[],advantages:[],unsuitable_when:[]};
+ try{await render(WealthAnalysisCard,{analysis:{...analysis,result_kind:"PREPARE_PURCHASE",needs:{...analysis.needs,amount:"5000",clarification_questions:["投资期限？","最多亏多少？"]},answer:{headline:"已选演示A，请核对申购金额。",paragraphs:[],questions:[],evidence_refs:[]},candidates:[candidate]}},async r=>{
+  assert.ok(!text(r.toJSON()).includes("投资期限"));assert.ok(!text(r.toJSON()).includes("最多亏多少"));
+  assert.equal(r.root.findByType("input").props.value,"5000");
+  assert.ok(r.root.findByType("select"));
+  assert.ok(button(r,"下一步：核对申购"));
+ });}finally{api.wealthAccounts=original;}
+});

@@ -26,6 +26,10 @@ OFFICIAL_HOSTS = frozenset(
 
 
 def safe_source(url: str, scope: str) -> bool:
+    if scope == "DESIGN":
+        return bool(
+            re.fullmatch(r"/api/v1/wealth/product-profiles/mock-wealth-\d{2}/mock-design-v\d+", url)
+        )
     if scope == "PRODUCT":
         return bool(re.fullmatch(r"/api/v1/wealth/documents/[a-zA-Z0-9:_-]+", url))
     parsed = urlparse(url)
@@ -102,6 +106,28 @@ class KeywordWealthKnowledge:
         now = utc(self.service.clock()).isoformat()
         if product_id:
             version = await self.service.version(product_id, version_id)
+            if version_id is None:
+                from banking_api.wealth.design_profiles import design_evidence
+
+                product = await self.service.product(product_id)
+                design = design_evidence(product)
+                if design:
+                    relevance = score(
+                        query,
+                        design.title + design.content,
+                        [
+                            "策略",
+                            "定位",
+                            "收益来源",
+                            "投资方向",
+                            "风险",
+                            "收益",
+                            "增长",
+                            "亏损",
+                        ],
+                    )
+                    if relevance:
+                        ranked.append((20000 + relevance, design))
             docs = await self.service.documents(version, historical=version_id is not None)
             for document in docs:
                 if (

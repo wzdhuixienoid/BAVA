@@ -14,6 +14,7 @@ class LLMMessage(BaseModel):
     content: str | None = None
     tool_calls: list[LLMToolCall] = Field(default_factory=list)
     tool_call_id: str | None = None
+    reasoning_content: str | None = None
 
 
 class LLMToolDefinition(BaseModel):
@@ -34,6 +35,7 @@ class LLMUsage(BaseModel):
 
 
 class LLMResponse(BaseModel):
+    reasoning_content: str | None = None
     content: str | None = None
     tool_calls: list[LLMToolCall] = Field(default_factory=list)
     usage: LLMUsage = Field(default_factory=LLMUsage)

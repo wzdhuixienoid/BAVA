@@ -118,10 +118,20 @@ class LangGraphAgentRuntime:
                 "task_id": str(request.task_id),
                 "conversation_id": str(request.conversation_id),
                 "agent_id": agent.agent_id,
-                "runtime_messages": [],
+                "runtime_messages": [
+                    LLMMessage(
+                        role="assistant",
+                        tool_calls=list(request.initial_tool_calls),
+                        reasoning_content="",
+                    ).model_dump(mode="json")
+                ]
+                if request.initial_tool_calls
+                else [],
                 "step_count": 0,
                 "tool_call_count": 0,
-                "pending_tool_calls": [],
+                "pending_tool_calls": [
+                    c.model_dump(mode="json") for c in request.initial_tool_calls
+                ],
                 "successful_tool_results": [],
                 "financial_window": scope.window if scope else None,
                 "financial_clarification": scope.clarification if scope else None,
@@ -231,6 +241,7 @@ class LangGraphAgentRuntime:
                 role="assistant",
                 content=response.content,
                 tool_calls=response.tool_calls,
+                reasoning_content=response.reasoning_content,
             )
             return {
                 "step_count": step_count,
@@ -391,7 +402,7 @@ class LangGraphAgentRuntime:
         builder = StateGraph(BankingAgentGraphState)
         builder.add_node("llm", llm_node)
         builder.add_node("tool", tool_node)
-        builder.add_edge(START, "llm")
+        builder.add_edge(START, "tool" if request.initial_tool_calls else "llm")
         builder.add_conditional_edges("llm", after_llm, {"tool": "tool", "end": END})
         builder.add_conditional_edges("tool", after_tool, {"llm": "llm", "end": END})
         return builder.compile(

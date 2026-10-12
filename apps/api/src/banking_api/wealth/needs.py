@@ -2,7 +2,6 @@
 
 import re
 from datetime import timedelta
-from decimal import Decimal
 
 from banking_api.wealth.calculation import CN, quantity
 from banking_api.wealth.requirements import parse_requirements
@@ -13,33 +12,21 @@ def collect_needs(body, now, previous=None):
     text = body.needs or body.query if hasattr(body, "query") else body.needs
     result = previous.model_copy(deep=True) if previous else WealthNeeds()
     result.changed_fields = []
+    result.seek_alternatives = False
     result.raw = text if not previous else previous.raw + "；本次补充：" + text
-    # Budget units belong to the amount: 10000万 is one hundred million yuan.
-    money = re.compile(
-        r"(?<![\d.])(?P<prefix>[¥￥]\s*)?(?P<number>[+-]?\d+(?:,\d{3})*(?:\.\d+)?)"
-        r"\s*(?P<unit>亿元?|万元?|[wW]|元|人民币|块钱?)?(?![\d])"
-    )
-    matches = [m for m in money.finditer(text) if m["prefix"] or m["unit"]]
-    if not matches:
-        bare = re.search(r"预算\s*(?:是|为|有|约|大概|：|:)?\s*([\d,]+(?:\.\d+)?)(?![\d.])", text)
-        if bare:
-            matches = [bare]
+    from banking_api.wealth.quantity_parser import quantities
+
+    frame = getattr(body, "intent_frame", None)
+    matches = frame.quantity_mentions if frame else quantities(text)
+    budget_mentions = [m for m in matches if m.role not in {"RESERVE", "REDEEM"} and m.unit == "元"]
     supplied_amount = body.amount
-    if not supplied_amount and len(matches) == 1:
-        match = matches[0]
-        if "number" in match.groupdict():
-            value = Decimal(match["number"].replace(",", ""))
-            unit = match["unit"] or "元"
-            value *= Decimal(
-                "100000000"
-                if unit.startswith("亿")
-                else "10000"
-                if unit.startswith("万") or unit in "wW"
-                else "1"
-            )
-        else:
-            value = Decimal(match[1].replace(",", ""))
-        supplied_amount = format(value, "f")
+    if not supplied_amount and len(budget_mentions) == 1:
+        mention = budget_mentions[0]
+        if mention.error and not frame:
+            from banking_api.wealth.calculation import WealthError
+
+            raise WealthError("INVALID_QUANTITY", "金额必须为正数且不能超出精度或上限")
+        supplied_amount = mention.value if mention.exact and not mention.error else None
     if supplied_amount:
         result.amount = str(quantity(supplied_amount))
         result.changed_fields.append("amount")
@@ -47,8 +34,8 @@ def collect_needs(body, now, previous=None):
         result.account_id = body.account_id
         result.changed_fields.append("account_id")
     parsed_text = text
-    for match in reversed(matches):
-        parsed_text = parsed_text[: match.start()] + "预算" + parsed_text[match.end() :]
+    for match in matches:
+        parsed_text = parsed_text.replace(match.original, "预算")
     parsed_text = re.sub(r"如果买|预算为|打算买", "预算", parsed_text)
     # Naming a product for objective comparison is not a statement of risk preference.
     parsed_text = re.sub(
@@ -70,7 +57,9 @@ def collect_needs(body, now, previous=None):
             setattr(constraint, key, getattr(constraint, key) or getattr(old, key))
         if re.search(r"不要求保本|不需要保本", text):
             constraint.principal_guarantee = False
-        if re.search(r"(?:^|[，。；;])\s*(?:我)?(?:可以|愿意)?接受本金损失|可以亏本金", text):
+        if re.search(
+            r"(?:可以|愿意|可).{0,4}(?:接受|承担).{0,6}(?:本金损失|亏损)|可以亏本金", text
+        ):
             constraint.no_principal_loss = False
         if "不需要马上" in text:
             constraint.immediate_cash = False
@@ -80,7 +69,7 @@ def collect_needs(body, now, previous=None):
     result.constraints = constraint
     local = now.astimezone(CN)
     liquidity = re.search(
-        r"下周(?:可能)?(?:要)?用钱|一周内|随时(?:可能)?用钱|不需要马上用钱|(?:持有|投资|放)(?:\d+|一|三|半)(?:个月|年|天)|\d{4}-\d{2}-\d{2}(?:.{0,4}用钱)?",
+        r"下周(?:可能)?(?:要)?(?:用到钱|用钱)|一周内|随时(?:可能)?用钱|不需要马上用钱|(?:持有|投资|放)(?:\d+|一|三|半)(?:个月|年|天)|\d{4}-\d{2}-\d{2}(?:.{0,4}用钱)?",
         text,
     )
     if liquidity:
@@ -119,11 +108,72 @@ def collect_needs(body, now, previous=None):
         result.priority = "FEES"
     if "流动性优先" in text or "不能等周一" in text:
         result.priority = "LIQUIDITY"
-    if re.search(r"收益(?:更高|高一些|潜力)|(?:赚得|赚的|赚)(?:比较多|更多|多一些)", text):
-        result.return_goal = "HIGHER_POTENTIAL"
-    loss = re.search(r"(?:可以|愿意|能够|可)?接受(?:部分|一定|少量)亏损", text)
+    if re.search(
+        r"想要赚钱|想赚钱|希望有点收益|想获得收益|不想只放活期|收益(?:更高|高一些|潜力)|(?:赚得|赚的|赚)(?:比较多|更多|多一些)",
+        text,
+    ):
+        result.return_goal = (
+            "HIGHER_POTENTIAL"
+            if re.search(r"收益(?:更高|高一些|潜力)|(?:赚得|赚的|赚)(?:比较多|更多|多一些)", text)
+            else "GROWTH"
+        )
+    loss = re.search(
+        r"(?:可以|愿意|能够|可)?(?:接受|承担)(?:部分|一定|少量)(?:本金损失|亏损)|亏一点可以接受",
+        text,
+    )
     if loss:
         result.loss_tolerance_raw = loss[0]
+    if frame:
+        updates = {u.field: u for u in frame.field_updates if u.operation != "KEEP"}
+        for field, update in updates.items():
+            value = update.value if update.operation == "SET" else None
+            result.changed_fields.append(field)
+            if field == "loss_policy":
+                result.constraints.no_principal_loss = value == "NONE"
+                result.constraints.principal_guarantee = (
+                    value == "NONE" and "保本" in update.source_span
+                )
+                result.loss_tolerance_raw = (
+                    update.source_span if value in {"LIMITED", "ACCEPTED"} else None
+                )
+            elif field == "risk_preference":
+                result.constraints.preferred_risk = (
+                    int(value) if value in {"1", "2", "3", "4"} else None
+                )
+            elif field == "maximum_risk":
+                result.constraints.maximum_risk = (
+                    int(value) if value in {"1", "2", "3", "4", "5"} else 5
+                )
+            elif field == "excluded_risks":
+                result.constraints.excluded_risks = [
+                    int(v) for v in (value or "").split(",") if v in {"1", "2", "3", "4", "5"}
+                ]
+            elif field == "return_goal":
+                result.return_goal = (
+                    "HIGHER_POTENTIAL"
+                    if value == "HIGHER_POTENTIAL"
+                    else "GROWTH"
+                    if value
+                    else None
+                )
+            elif field == "priority" and value in {"RISK", "LIQUIDITY", "FEES"}:
+                result.priority = value
+            elif field == "liquidity":
+                result.liquidity_raw = update.source_span if value else None
+                result.constraints.immediate_cash = value == "IMMEDIATE"
+                result.constraints.within_week = value == "WITHIN_WEEK"
+                if not value or value == "DEFERRED":
+                    result.use_date_from = result.use_date_to = None
+                    result.constraints.avoid_weekly = False
+        result.constraints.ambiguous = bool(frame.ambiguities)
+        result.seek_alternatives = frame.seek_alternatives
+        if not result.constraints.ambiguous:
+            result.constraints.reasons = [
+                r for r in result.constraints.reasons if "无法可靠解释" not in r and "矛盾" not in r
+            ]
+        # Explicit hard constraints remain deterministic, even if a model misses them.
+        if re.search(r"必须保本|不能亏本金|不接受任何本金损失", text):
+            result.constraints.no_principal_loss = True
     result.missing_fields = [
         key
         for key, value in [
@@ -134,7 +184,7 @@ def collect_needs(body, now, previous=None):
         if not value
     ]
     result.assumptions = [
-        "未指定本次风险偏好时，参考问卷投资目标；测评等级只作为上限。",
+        "未指定本次风险偏好时，先比较较低风险和费用的产品；测评等级只作为上限。",
         "未提供账户时不判断可用余额。",
     ]
     result.clarification_questions = []
@@ -142,17 +192,18 @@ def collect_needs(body, now, previous=None):
         result.clarification_questions.append("这次计划投资多少元？")
     if not result.liquidity_raw:
         result.clarification_questions.append("这笔钱最早什么时候可能用到？")
-    if result.loss_tolerance_raw:
-        result.clarification_questions.append("你提到可以接受部分亏损，最多能接受本金损失多少？")
+
     if result.use_date_from and result.use_date_from != result.use_date_to:
         result.clarification_questions.insert(
             0, ("这段时间内最早哪一天可能需要现金？确认后可进一步判断到账是否来得及。")
         )
-    if len(matches) > 1 and not body.amount:
+    if len(budget_mentions) > 1 and not body.amount:
         result.amount = None
         result.constraints.ambiguous = True
         result.clarification_questions = ["出现多个金额，请明确本次预算。"]
-    if result.constraints.ambiguous and len(matches) <= 1:
+    if frame and frame.clarification:
+        result.clarification_questions = frame.clarification
+    if result.constraints.ambiguous and len(budget_mentions) <= 1:
         result.clarification_questions = ["请明确本次风险偏好和用款时间；有无法确定的条件。"]
     result.clarification_questions = result.clarification_questions[:2]
     return result

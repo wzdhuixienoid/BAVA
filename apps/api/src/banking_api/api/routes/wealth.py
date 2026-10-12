@@ -37,6 +37,7 @@ from banking_api.wealth.schemas import (
     WealthAssessmentResult,
     WealthDraftInput,
     WealthEditInput,
+    WealthEvidence,
     WealthFeatureStatus,
     WealthKnowledgeResult,
     WealthOrderResult,
@@ -116,6 +117,24 @@ async def compare(
     return await service(session, request).compare(body.product_ids, principal.user_id)
 
 
+@router.get("/product-profiles/{product_id}/{profile_version}", response_model=WealthEvidence)
+async def product_profile(
+    product_id: str,
+    profile_version: str,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    request: Request,
+):
+    from banking_api.wealth.design_profiles import design_evidence
+
+    evidence = design_evidence(
+        await service(session, request).product(product_id, principal.user_id)
+    )
+    if evidence is None or evidence.version != profile_version:
+        raise HTTPException(404, detail="未找到该版本的模拟设计资料")
+    return evidence
+
+
 @router.post("/analysis", response_model=WealthAnalysis)
 async def analysis(
     body: WealthAnalysisInput,
@@ -123,12 +142,10 @@ async def analysis(
     principal: PrincipalDependency,
     request: Request,
 ):
-    from banking_api.wealth.advisory import WealthAdvisoryService
+    from banking_api.wealth.generation import generate_analysis
 
     try:
-        return await WealthAdvisoryService(service(session, request)).analyze(
-            principal.user_id, body
-        )
+        return await generate_analysis(service(session, request), body, principal, request.app)
     except AccountNotFoundError:
         raise WealthError("NOT_FOUND", "未找到本人账户") from None
 

@@ -1,6 +1,6 @@
 # 系统架构
 
-本页描述 v0.11.2 的实现。长期设计约束见 [设计原则](design-principles.md)。
+本页描述 v0.11.4 的实现。长期设计约束见 [设计原则](design-principles.md)。
 
 ## 执行概念
 
@@ -91,3 +91,15 @@ LangGraph 对话先生成并保存 typed 最终分析，以 wealth_analysis 作�
 `skill:wealth-recommendation` 将校验后的WealthAnalysis转换为客户呈现DTO，保留原事实、
 证据与后台需求字段，隔离展示文案和金融决策。对话软删除保留独立已受理理财链路；
 订单投影标记conversation_deleted，理财中心移除无效对话入口但保留审计和恢复状态。
+
+## v0.11.3 理财意图和 Agent Skills
+
+WealthIntentFrame每轮持久化，校验原文与共享数量，再解析本人账户及本对话产品指代。TaskRunner使用同一帧路由和整理需求；HTTP和Agent共享事实服务。需求以SET/CLEAR/KEEP更新，测评和授权不可改变。Task.output保存wealth-analysis-v2与wealth-answer-v1，兼容v1；草稿按版本更新并失效旧授权。
+
+AgentSkillCatalog从可信包发现元数据，按动作激活技能并加载当前模式资源，LangGraph通过ToolExecutor/Policy执行只读查询。事件记录技能版本与资源hash。Python呈现类仅是确定性降级，不等于标准技能。
+
+模型生成新headline/paragraphs/questions以及引用、比较关系。后端检查关键数字占位符、关系、范围和资格，再渲染唯一WealthAnswer；旧展示字段由其映射。有限修复后失败则降级，不重新执行交易。有限校验不能证明任意自由文字的全部语义，仍需真实模型人工核查。
+
+## v0.11.4 策略画像与集合反馈
+
+WealthDesignProfile是独立的模拟设计来源，按产品原版本、画像版本及发布时间绑定，不覆盖v1条款或NAV。只读检索返回DESIGN来源，分析快照保留画像和内容摘要。收益目标影响策略候选，硬资格、预算、风险上限和用款约束先过滤；换一批排除此前介绍的候选，保留约束。PRODUCT_OVERVIEW独立于个性化筛选。模型通过已核验事实、策略资料与比较关系生成解释，数字仍从结构化事实插入，校验失败有限修复并降级。

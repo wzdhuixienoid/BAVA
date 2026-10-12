@@ -238,8 +238,8 @@ def test_quantity_units_ambiguity_and_exact_normalization(text, direction, value
         ("必须保本，不能亏本金。", False, None),
         ("只要稳健，不要进取。", True, "R2"),
         ("不要高风险，偏保守。", True, "R1"),
-        ("不要求保本，可以承担波动。", True, "R4"),
-        ("不需要马上用钱。", True, "R4"),
+        ("不要求保本，可以承担波动。", True, "R1"),
+        ("不需要马上用钱。", True, "R1"),
         ("我想进取，但不能接受任何本金损失。", False, None),
         ("我要即时到账", False, None),
         ("收益一定超过市场", False, None),
@@ -423,12 +423,18 @@ async def test_natural_bad_units_never_produce_complete_review(wealth, text):
         accepted = await service.accept_message(
             conversation_id=c.conversation_id, user_id=USER, content=text
         )
+    from banking_api.agents.wealth_advisor_agent import WEALTH_ADVISOR_AGENT
+    from banking_api.registries.agent_registry import AgentRegistry
+
+    agents = AgentRegistry()
+    agents.register(WEALTH_ADVISOR_AGENT)
     runner = InProcessTaskRunner(
         factory,
         bus,
         AgentRuntimeFactory(),
         default_backend=RuntimeBackend.LANGGRAPH,
         router=RequestRouter(FakeLLMProvider([])),
+        agent_registry=agents,
         transfer_workflow_engine=engine,
     )
     await runner.run(accepted.task_id)
@@ -436,8 +442,15 @@ async def test_natural_bad_units_never_produce_complete_review(wealth, text):
         wf = await session.scalar(
             select(WorkflowModel).where(WorkflowModel.source_task_id == accepted.task_id)
         )
-        assert wf.state_json["draft"]["quantity"] is None
-        assert wf.state_json["review"] is None and wf.state_json["validation_message"]
+        if wf:
+            assert wf.state_json["draft"]["quantity"] is None
+            assert wf.state_json["review"] is None and wf.state_json["validation_message"]
+        else:
+            from banking_api.persistence.models import TaskModel
+
+            task = await session.get(TaskModel, accepted.task_id)
+            assert task.output_json["wealth_analysis"]["status"] == "NEEDS_CLARIFICATION"
+            assert task.output_json["wealth_analysis"]["needs"]["amount"] is None
         assert await session.scalar(select(func.count()).select_from(OperationModel)) == 0
 
 

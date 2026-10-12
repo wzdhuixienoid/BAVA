@@ -290,3 +290,54 @@ async def test_accepted_order_settles_after_chat_soft_delete(pg_wealth):
     from test_wealth import test_soft_delete_accepted_chat_keeps_original_order_recovery
 
     await test_soft_delete_accepted_chat_keeps_original_order_recovery(pg_wealth)
+
+
+async def test_v2_snapshot_json_query_is_owner_and_conversation_scoped(pg_wealth):
+    from banking_api.persistence.models import ConversationModel, TaskModel
+    from banking_api.wealth.advisory import WealthAdvisoryService
+    from banking_api.wealth.context import latest_analysis
+    from banking_api.wealth.schemas import WealthAnalysisInput
+    from banking_api.wealth.service import WealthService
+
+    factory, clock, balances, *_ = pg_wealth
+    await assessment(pg_wealth)
+    cid, tid = uuid4(), uuid4()
+    async with factory() as session:
+        analysis = await WealthAdvisoryService(WealthService(session, balances, clock)).analyze(
+            USER, WealthAnalysisInput(query="预算五千，推荐理财", needs="预算五千，推荐理财")
+        )
+        analysis.source_task_id = tid
+        session.add(ConversationModel(conversation_id=cid, user_id=USER, title="PG scope"))
+        await session.flush()
+        session.add(
+            TaskModel(
+                task_id=tid,
+                user_id=USER,
+                conversation_id=cid,
+                task_type="WEALTH_ANALYSIS",
+                executor_id="agent:wealth-advisor",
+                status="COMPLETED",
+                output_json={"wealth_analysis": analysis.model_dump(mode="json")},
+            )
+        )
+        await session.commit()
+    # A new session models restart; later ordinary messages cannot erase this JSON snapshot.
+    async with factory() as session:
+        for _ in range(12):
+            session.add(
+                TaskModel(
+                    user_id=USER,
+                    conversation_id=cid,
+                    task_type="CHAT",
+                    executor_id="agent:chat",
+                    status="COMPLETED",
+                    output_json={},
+                )
+            )
+        await session.commit()
+    async with factory() as session:
+        loaded = await latest_analysis(session, USER, cid, require_candidates=True)
+        assert loaded is not None and loaded.source_task_id == tid
+        assert loaded.needs.amount == "5000"
+        assert await latest_analysis(session, "another-user", cid) is None
+        assert await latest_analysis(session, USER, uuid4()) is None

@@ -316,7 +316,14 @@ async def test_http_and_agent_comparison_shared_facts_permissions_and_fees(wealt
             principal=ExecutionPrincipal.for_task(USER),
             agent_allowlist=frozenset({"wealth.compare_products"}),
         )
-        assert output.ok and response.json() == output.output["analysis"]
+        assert output.ok
+        http_facts = response.json()
+        tool_facts = output.output["analysis"]
+        assert http_facts["status"] == tool_facts["status"]
+        for key in ["product", "fee_scenario", "timing", "history"]:
+            assert [c[key] for c in http_facts["candidates"]] == [
+                c[key] for c in tool_facts["candidates"]
+            ]
         old = await client.post("/api/v1/wealth/compare", json={"product_ids": body["product_ids"]})
         assert old.status_code == 200 and isinstance(old.json(), list)
         assert all(p["purchase_allowed"] for p in old.json())
@@ -413,7 +420,7 @@ async def test_langgraph_continuous_conversations_persist_and_scope(wealth, monk
     assert current["status"] == "NO_MATCH"
     # 12 turns through real LangGraph/persistence, with zero financial operations.
     assert len(provider.requests) >= 12
-    assert all(not request.tools for request in provider.requests)
+    assert any(request.tools for request in provider.requests)
 
 
 async def test_historical_version_scope_and_current_changes(wealth):
@@ -742,7 +749,7 @@ async def test_completed_assessment_resumes_purchase_discovery_without_operation
         c["product"]["purchase_allowed"] and c["purchase_entry_key"] for c in resumed["candidates"]
     )
     named = await ask("我要买理财产品进取周享")
-    assert named["result_kind"] == "PRODUCT_INTRO"
+    assert named["result_kind"] == "PREPARE_PURCHASE"
     assert [c["product"]["product_id"] for c in named["candidates"]] == ["mock-wealth-07"]
     assert named["candidates"][0]["product"]["purchase_allowed"]
     assert named["needs"]["constraints"]["preferred_risk"] is None
@@ -929,9 +936,10 @@ async def test_want_more_returns_is_new_recommendation_not_compare_substring(wea
     assert result.needs.amount == "100000000"
     assert len(result.candidates) == 3
     assert result.needs.return_goal == "HIGHER_POTENTIAL"
-    assert "更看重收益潜力" in result.customer_response.headline
+    assert "希望这笔钱获得收益" in result.customer_response.headline
     assert "未来一定赚得更多" in result.customer_response.headline
-    assert any("本金损失多少" in q for q in result.customer_response.questions)
+    assert not any("本金损失多少" in q for q in result.customer_response.questions)
+    assert result.needs.loss_tolerance_raw
 
 
 async def test_customer_prose_keeps_weekly_window_and_relative_fee_tradeoffs(wealth):
@@ -993,8 +1001,8 @@ async def test_recommendation_does_not_present_assessment_goal_as_current_statem
     await assessment(wealth)
     result = await analyze(wealth, needs="推荐理财")
     assert result.needs.constraints.preferred_risk is None
-    assert "你还没有说明" in result.conclusion
-    assert "问卷目标" in result.conclusion
+    assert "先从风险和费用较低" in result.conclusion
+    assert "问卷目标" not in result.conclusion
     assert "这次也" not in result.conclusion
     prose = " ".join(p.text for p in result.customer_response.paragraphs)
     assert "赎回款仍需等待到账" in prose

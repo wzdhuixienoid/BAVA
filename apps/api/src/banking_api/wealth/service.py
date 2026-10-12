@@ -248,6 +248,8 @@ class WealthService:
 
         if not feature_status()["new_business_allowed"]:
             allowed, reason = False, "已暂停新理财交易"
+        from banking_api.wealth.design_profiles import design_profile
+
         return WealthProductResult(
             purchase_allowed=allowed and tradable,
             purchase_block_reason=reason,
@@ -271,6 +273,7 @@ class WealthService:
             sources=[d.source for d in docs],
             tradable=tradable,
             terms=v.terms,
+            design_profile=design_profile(product_id, v.version_id, self.clock()),
         )
 
     async def products(self, user_id=None):
@@ -286,7 +289,17 @@ class WealthService:
             raise WealthError("COMPARE_LIMIT", "请选择1至4个不同产品")
         return [await self.product(pid, user_id) for pid in ids]
 
-    async def recommend(self, user_id, body, *, constraints=None, priority="RISK"):
+    async def recommend(
+        self,
+        user_id,
+        body,
+        *,
+        constraints=None,
+        priority="RISK",
+        return_goal=None,
+        exclude_products=(),
+        limit=3,
+    ):
         a = await self.require_assessment(user_id)
         from banking_api.wealth.calculation import quantity
 
@@ -313,6 +326,8 @@ class WealthService:
             if amount and funds is not None and amount > funds:
                 reasons.append("账户可用余额不足")
             risk = int(p.risk[1])
+            if p.product_id in exclude_products:
+                reasons.append("已在上次展示；本次优先寻找其他策略")
             if (
                 constraints.ambiguous
                 or constraints.principal_guarantee
@@ -331,11 +346,16 @@ class WealthService:
             if reasons:
                 excluded[p.product_id] = reasons
             else:
-                preferred = constraints.preferred_risk or a.answers[4]
+                preferred = constraints.preferred_risk or 1
                 risk = int(p.risk[1])
                 day = schedule(self.clock(), p.terms["weekdays"], "PURCHASE")["trade_date"]
                 fee = Decimal(p.terms["purchase_rate"]) + Decimal(p.terms["redeem_rate"])
                 rank = (abs(risk - preferred), risk, day, fee, p.product_id)
+                if return_goal and p.design_profile and not constraints.preferred_risk:
+                    # An explicit growth goal changes strategy fit, never the assessment cap.
+                    target = 60 if return_goal == "HIGHER_POTENTIAL" else 30
+                    exposure = p.design_profile.growth_exposure
+                    rank = (abs(exposure - target), risk, day, fee, p.product_id)
                 if priority == "FEES":
                     rank = (fee, *rank)
                 if priority == "LIQUIDITY":
@@ -356,12 +376,12 @@ class WealthService:
                     else ["已排除周开放产品；异步到账仍可能不满足短期用款"]
                 ),
             ]
-            for _, p in ranked[:3]
+            for _, p in ranked[:limit]
         }
         return WealthRecommendationResult(
             constraints=constraints,
             selected_reasons=selected,
-            products=[p for _, p in ranked[:3]],
+            products=[p for _, p in ranked[:limit]],
             reasons=constraints.reasons
             + ["已根据您的风险测评和本次需求筛选。产品不保证本金或收益。"]
             + ([] if ranked else ["暂无符合全部约束的产品，不放宽条件推荐"]),

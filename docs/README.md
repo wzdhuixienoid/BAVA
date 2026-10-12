@@ -1,6 +1,6 @@
 # 文档导航
 
-当前说明对应 **v0.11.0 / Alembic 0034**，整理日期为 2026-10-09。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
+当前说明对应 **v0.11.4 / Alembic 0034**，整理日期为 2026-10-12。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
 
 ## 使用 Agent
 
@@ -35,3 +35,10 @@
 
 - [v0.11.2 理财分析、知识与连续追问](releases/release-notes-v0.11.2.md)
 - [理财知识维护与检索评估](../apps/api/src/banking_api/knowledge/README.md)
+
+- [v0.11.3 语义、Agent Skills与模型正文](releases/release-notes-v0.11.3.md)
+- [应用Agent Skills](../apps/api/src/banking_api/agent_skills/README.md)
+
+- [v0.11.3 真实模型与隔离验收记录](development/wealth-v0.11.3-evaluation.md)
+
+- [v0.11.4 策略画像与推荐修复](releases/release-notes-v0.11.4.md)

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from banking_api.domain.wealth import ProductRiskGrade
 from banking_api.wealth.calculation import quantity
 from banking_api.wealth.requirements import RecommendationConstraints
+from banking_api.wealth.semantic import WealthIntentFrame
 
 
 class WealthInput(BaseModel):
@@ -89,6 +90,28 @@ class WealthRiskDecision(BaseModel):
     reasons: list[str] = []
 
 
+class WealthDesignProfile(BaseModel):
+    """Versioned fictional design, explicitly separate from trade terms and actual holdings."""
+
+    version: str
+    product_version_id: str
+    published_at: str
+    positioning: str
+    strategy: str
+    allocation: dict[str, int]
+    return_sources: list[str]
+    risk_drivers: list[str]
+    scenarios: dict[str, str]
+    suitable_for: str
+    unsuitable_for: str
+    observation_days: int
+    observation_label: str
+    growth_exposure: int
+    concentration: int
+    notice: str
+    content_hash: str
+
+
 class WealthProductResult(BaseModel):
     product_id: str
     version_id: str
@@ -107,6 +130,7 @@ class WealthProductResult(BaseModel):
     purchase_block_reason: str | None = None
     tradable: bool
     terms: dict
+    design_profile: WealthDesignProfile | None = None
 
 
 class WealthAssessmentResult(BaseModel):
@@ -174,7 +198,7 @@ class WealthNeeds(BaseModel):
     amount: str | None = None
     account_id: str | None = None
     liquidity_raw: str | None = None
-    return_goal: Literal["HIGHER_POTENTIAL"] | None = None
+    return_goal: Literal["HIGHER_POTENTIAL", "GROWTH"] | None = None
     loss_tolerance_raw: str | None = None
     use_date_from: str | None = None
     use_date_to: str | None = None
@@ -185,13 +209,14 @@ class WealthNeeds(BaseModel):
     assumptions: list[str] = []
     clarification_questions: list[str] = []
     changed_fields: list[str] = []
+    seek_alternatives: bool = False
 
 
 class WealthEvidence(BaseModel):
     evidence_id: str
     title: str
     section: str
-    scope: Literal["EDUCATION", "PRODUCT"]
+    scope: Literal["EDUCATION", "PRODUCT", "DESIGN"]
     source_type: str
     source_name: str
     url: str
@@ -284,12 +309,49 @@ class WealthCustomerResponse(BaseModel):
     liquidity_display: str | None = None
 
 
+class WealthAnswer(BaseModel):
+    schema_version: Literal["wealth-answer-v1"] = "wealth-answer-v1"
+    response_mode: str
+    status: str
+    headline: str
+    paragraphs: list[WealthAnalysisBlock] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
+    fact_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    selected_product_id: str | None = None
+    workflow_id: UUID | None = None
+    generated_at: datetime
+    source_task_id: UUID | None = None
+    model: str | None = None
+    skill_id: str
+    skill_version: str
+    generation_source: Literal["MODEL_GENERATED", "DETERMINISTIC_FALLBACK"]
+
+
+class WealthPreviousProductContext(BaseModel):
+    name: str
+    positioning: str | None = None
+    strategy: str | None = None
+    return_sources: list[str] = Field(default_factory=list)
+    risk_drivers: list[str] = Field(default_factory=list)
+
+
 class WealthAnalysis(BaseModel):
-    schema_version: Literal["wealth-analysis-v1"] = "wealth-analysis-v1"
+    schema_version: Literal["wealth-analysis-v1", "wealth-analysis-v2"] = "wealth-analysis-v2"
+    intent_frame: WealthIntentFrame | None = None
+    answer: WealthAnswer | None = None
     snapshot_id: UUID
     source_task_id: UUID | None = None
     result_kind: Literal[
-        "RECOMMENDATION", "COMPARISON", "EXPLANATION", "EDUCATION", "CATALOGUE", "PRODUCT_INTRO"
+        "RECOMMENDATION",
+        "COMPARISON",
+        "EXPLANATION",
+        "EDUCATION",
+        "CATALOGUE",
+        "PRODUCT_INTRO",
+        "PREPARE_PURCHASE",
+        "PREPARE_REDEEM",
+        "PRODUCT_OVERVIEW",
     ]
     status: Literal[
         "NEEDS_ASSESSMENT", "NEEDS_CLARIFICATION", "CONDITIONAL", "MATCHED", "NO_MATCH", "EDUCATION"
@@ -312,15 +374,31 @@ class WealthAnalysis(BaseModel):
     ranking_basis: list[str] = []
     previous_snapshot_id: UUID | None = None
     historical_reference: str | None = None
-    narrative_source: Literal["DETERMINISTIC", "MODEL_ORGANIZED", "FALLBACK"] = "DETERMINISTIC"
+    narrative_source: Literal[
+        "DETERMINISTIC", "MODEL_ORGANIZED", "FALLBACK", "MODEL_GENERATED", "DETERMINISTIC_FALLBACK"
+    ] = "DETERMINISTIC"
     degradation_reason: str | None = None
+    validation_error: str | None = Field(default=None, exclude=True)
     new_business_allowed: bool = True
+    considered_products: list[str] = Field(default_factory=list)
+    recommendation_basis: list[str] = Field(default_factory=list)
+    previous_product_names: list[str] = Field(default_factory=list)
+    previous_product_context: list[WealthPreviousProductContext] = Field(default_factory=list)
 
 
 class WealthAnalysisInput(RecommendationInput):
+    intent_frame: WealthIntentFrame | None = None
     product_ids: list[str] = Field(default_factory=list, max_length=4)
     intent: Literal[
-        "RECOMMENDATION", "COMPARISON", "EDUCATION", "EXPLANATION", "CATALOGUE", "PRODUCT_INTRO"
+        "RECOMMENDATION",
+        "COMPARISON",
+        "EDUCATION",
+        "EXPLANATION",
+        "CATALOGUE",
+        "PRODUCT_INTRO",
+        "PREPARE_PURCHASE",
+        "PREPARE_REDEEM",
+        "PRODUCT_OVERVIEW",
     ] = "RECOMMENDATION"
     query: str = Field(default="", max_length=500)
 

@@ -63,6 +63,32 @@ class RequestRouter:
         from banking_api.config.settings import get_settings
         from banking_api.wealth.context import ASSESSMENT_UPDATE, EDUCATION, FOLLOW_UP
 
+        # Complete explicit buys take precedence over contextual FOLLOW_UP keywords.
+        from banking_api.wealth.intent import extract_quantity
+
+        complete_buy = (
+            bool(re.search(r"申购|购买|买入|买", user_request))
+            and bool(re.search(r"(?:用|从).+(?:卡|账户)", user_request))
+            and bool(
+                re.search(
+                    r"稳享日日|稳享周周|稳健优选|均衡优选|均衡周享|进取成长|进取周享|高波动精选|第[一二1234]款",
+                    user_request,
+                )
+            )
+            and extract_quantity(user_request, "PURCHASE").quantity is not None
+        )
+        if (
+            complete_buy
+            and not has_conditional_control(user_request)
+            and not re.search(r"适合|如果|费用|自动|定投|调仓|各买|分别买|转账", user_request)
+            and get_settings().app_environment in {"development", "test"}
+            and get_settings().mock_wealth_enabled
+        ):
+            return RouteDecision(
+                route=RequestRoute.WEALTH_PURCHASE,
+                requested_output=RequestedOutput.WORKFLOW,
+                confidence=1,
+            )
         if get_settings().app_environment in {"development", "test"} and (
             (wealth_context and FOLLOW_UP.search(user_request))
             or EDUCATION.search(user_request)

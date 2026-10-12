@@ -1,0 +1,352 @@
+[
+  {
+    "id": "expr-01",
+    "split": "development",
+    "text": "预算5千，想要赚钱，可接受部分亏损，推荐理财",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-02",
+    "split": "development",
+    "text": "五千元想投资半年，给我推荐",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-03",
+    "split": "development",
+    "text": "预算5k，推荐理财",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-04",
+    "split": "development",
+    "text": "手里0.5万，想有些收益",
+    "action": "RECOMMEND",
+    "amount": "5000.0"
+  },
+  {
+    "id": "expr-05",
+    "split": "development",
+    "text": "￥5,000可以买哪些理财",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-06",
+    "split": "development",
+    "text": "两千元投资理财，怎么选",
+    "action": "RECOMMEND",
+    "amount": "2000"
+  },
+  {
+    "id": "expr-07",
+    "split": "development",
+    "text": "三千五百元想买理财",
+    "action": "RECOMMEND",
+    "amount": "3500"
+  },
+  {
+    "id": "expr-08",
+    "split": "development",
+    "text": "预算1.5万元，收益和流动性兼顾",
+    "action": "RECOMMEND",
+    "amount": "15000.0"
+  },
+  {
+    "id": "expr-09",
+    "split": "development",
+    "text": "不超过5000元，推荐理财",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-10",
+    "split": "development",
+    "text": "约五千到一万元，有什么产品",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-11",
+    "split": "development",
+    "text": "有哪些理财产品",
+    "action": "CATALOGUE",
+    "amount": null
+  },
+  {
+    "id": "expr-12",
+    "split": "development",
+    "text": "现在有什么模拟理财",
+    "action": "CATALOGUE",
+    "amount": null
+  },
+  {
+    "id": "expr-13",
+    "split": "development",
+    "text": "列出当前理财产品",
+    "action": "CATALOGUE",
+    "amount": null
+  },
+  {
+    "id": "expr-14",
+    "split": "development",
+    "text": "比较演示均衡优选和演示均衡周享",
+    "action": "COMPARE",
+    "amount": null
+  },
+  {
+    "id": "expr-15",
+    "split": "development",
+    "text": "演示稳享日日与演示稳健优选对比一下",
+    "action": "COMPARE",
+    "amount": null
+  },
+  {
+    "id": "expr-16",
+    "split": "development",
+    "text": "什么是最大回撤",
+    "action": "KNOWLEDGE",
+    "amount": null
+  },
+  {
+    "id": "expr-17",
+    "split": "development",
+    "text": "净值型理财为什么会亏钱",
+    "action": "KNOWLEDGE",
+    "amount": null
+  },
+  {
+    "id": "expr-18",
+    "split": "development",
+    "text": "业绩比较基准是保证收益吗",
+    "action": "KNOWLEDGE",
+    "amount": null
+  },
+  {
+    "id": "expr-19",
+    "split": "development",
+    "text": "每天开放是不是马上拿到钱",
+    "action": "KNOWLEDGE",
+    "amount": null
+  },
+  {
+    "id": "expr-20",
+    "split": "development",
+    "text": "理财和存款有什么区别",
+    "action": "KNOWLEDGE",
+    "amount": null
+  },
+  {
+    "id": "expr-21",
+    "split": "development",
+    "text": "我要购买演示均衡优选",
+    "action": "PREPARE_PURCHASE",
+    "amount": null
+  },
+  {
+    "id": "expr-22",
+    "split": "development",
+    "text": "从工资卡购买演示均衡优选5000元",
+    "action": "PREPARE_PURCHASE",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-23",
+    "split": "development",
+    "text": "用工资卡购买演示均衡优选5000元",
+    "action": "PREPARE_PURCHASE",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-24",
+    "split": "development",
+    "text": "预算5000元，从工资卡购买演示均衡优选",
+    "action": "PREPARE_PURCHASE",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-25",
+    "split": "development",
+    "text": "给我申购演示稳享日日五千元，用工资卡",
+    "action": "PREPARE_PURCHASE",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-26",
+    "split": "development",
+    "text": "我要买演示进取周享5k",
+    "action": "PREPARE_PURCHASE",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-27",
+    "split": "development",
+    "text": "申购演示稳健优选1000份",
+    "action": "PREPARE_PURCHASE",
+    "amount": null
+  },
+  {
+    "id": "expr-28",
+    "split": "development",
+    "text": "赎回演示稳健优选100份",
+    "action": "PREPARE_REDEEM",
+    "amount": null
+  },
+  {
+    "id": "expr-29",
+    "split": "development",
+    "text": "全部赎回工资卡的演示稳健优选",
+    "action": "PREPARE_REDEEM",
+    "amount": null
+  },
+  {
+    "id": "expr-30",
+    "split": "development",
+    "text": "赎回演示均衡优选100元",
+    "action": "PREPARE_REDEEM",
+    "amount": "100"
+  },
+  {
+    "id": "expr-31",
+    "split": "development",
+    "text": "我必须保本，不能亏本金，推荐理财",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-32",
+    "split": "development",
+    "text": "不要求保本，可以承担波动，有什么理财",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-33",
+    "split": "development",
+    "text": "不要进取，理财只看R2以下",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-34",
+    "split": "development",
+    "text": "希望有点收益，不想只放活期",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-35",
+    "split": "development",
+    "text": "想获得收益，亏一点可以接受",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-36",
+    "split": "development",
+    "text": "推荐理财，手续费低一点",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-37",
+    "split": "development",
+    "text": "随时可能用钱，理财适合吗",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-38",
+    "split": "development",
+    "text": "下周可能用钱，推荐理财",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-39",
+    "split": "development",
+    "text": "有5000元，其中1000元留作应急，推荐理财",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-40",
+    "split": "development",
+    "text": "收益一定不能亏，推荐理财",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-41",
+    "split": "heldout",
+    "text": "打算拿五千块做理财，愿意接受少量亏损",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-42",
+    "split": "heldout",
+    "text": "请介绍目前在售的模拟理财",
+    "action": "CATALOGUE",
+    "amount": null
+  },
+  {
+    "id": "expr-43",
+    "split": "heldout",
+    "text": "帮我把演示均衡周享和演示均衡优选放一起看看",
+    "action": "COMPARE",
+    "amount": null
+  },
+  {
+    "id": "expr-44",
+    "split": "heldout",
+    "text": "钱放在净值型产品里为什么本金会少",
+    "action": "KNOWLEDGE",
+    "amount": null
+  },
+  {
+    "id": "expr-45",
+    "split": "heldout",
+    "text": "替我准备购买演示稳健优选，用工资卡，金额为两千元",
+    "action": "PREPARE_PURCHASE",
+    "amount": "2000"
+  },
+  {
+    "id": "expr-46",
+    "split": "heldout",
+    "text": "我想办理演示均衡优选的申购，三千五百元从工资卡付",
+    "action": "PREPARE_PURCHASE",
+    "amount": "3500"
+  },
+  {
+    "id": "expr-47",
+    "split": "heldout",
+    "text": "把工资卡演示稳健优选的五十份赎回",
+    "action": "PREPARE_REDEEM",
+    "amount": null
+  },
+  {
+    "id": "expr-48",
+    "split": "heldout",
+    "text": "推荐理财，我的上限是0.5万元",
+    "action": "RECOMMEND",
+    "amount": null
+  },
+  {
+    "id": "expr-49",
+    "split": "heldout",
+    "text": "拿5K做理财，需要时能不能很快取回",
+    "action": "RECOMMEND",
+    "amount": "5000"
+  },
+  {
+    "id": "expr-50",
+    "split": "heldout",
+    "text": "我预算5xyz，推荐理财",
+    "action": "RECOMMEND",
+    "amount": null
+  }
+]

@@ -32,6 +32,7 @@ export function WealthSources({sources}: {sources: string[]}) {
 
 export function WealthProductCard({product, children}: {product: Product; children?: React.ReactNode}) {
   return <article className="rounded-xl border bg-white p-5"><h3 className="font-semibold">{product.name}（模拟）</h3>
+    {product.design_profile && <p className="mt-2 text-sm text-slate-600">{product.design_profile.positioning}</p>}
     <p className="mt-2 text-sm">{product.risk} · 起购 {product.minimum_display}</p><p className="mt-1 text-sm">{product.open_display}</p>
     <p className="mt-1 text-sm">净值 {product.nav_display ?? "暂无数据"} · {product.nav_date ?? "暂无日期"}</p>
     <p className="mt-1 text-xs text-slate-500">{product.fees_display} · 不另收持续管理费</p>

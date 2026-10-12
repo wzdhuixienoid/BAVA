@@ -11,7 +11,9 @@ import uvicorn
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
-async def run(database: Path, control: Path, port: int, advisor_history=False):
+async def run(
+    database: Path, control: Path, port: int, advisor_history=False, real_model=False
+):
     if "test" not in database.name.lower() or "test" not in control.name.lower():
         raise ValueError(
             "Browser acceptance requires explicitly named test database/control files"
@@ -139,18 +141,53 @@ async def run(database: Path, control: Path, port: int, advisor_history=False):
         from banking_api.runtime.task_execution_worker import TaskExecutionWorker
         from langgraph.checkpoint.memory import InMemorySaver
 
-        class TestOrganizer:
+        class TestAdvisor:
             async def generate(self, request):
                 instruction = request.messages[0].content
-                blocks = json.loads(instruction.split("段落：", 1)[1])
+                if "语义提取器" in instruction:
+                    from banking_api.wealth.semantic import fallback_frame
+
+                    data = json.loads(request.messages[1].content)
+                    return LLMResponse(
+                        content=fallback_frame(data["message"]).model_dump_json()
+                    )
+                data = json.loads(instruction.rsplit("\n\n", 1)[-1])
+                paragraph = []
+                if data["candidates"]:
+                    candidate = data["candidates"][0]
+                    paragraph = [
+                        {
+                            "block_id": "fresh-prose",
+                            "title": "产品取舍",
+                            "text": "{{"
+                            + candidate["fact_id"]
+                            + ".name}}提供净值投资的选择，但现金不能随申请立即到账。",
+                            "fact_ids": [candidate["fact_id"]],
+                            "evidence_ids": [],
+                        }
+                    ]
                 return LLMResponse(
-                    content=json.dumps({"block_ids": [b["block_id"] for b in blocks]})
+                    content=json.dumps(
+                        {
+                            "headline": data["hard_result"]
+                            or "你希望这笔钱获得收益，我们可以一起看清费用与用款安排的取舍。",
+                            "paragraphs": paragraph,
+                            "questions": []
+                            if data["action"].startswith("PREPARE_")
+                            else data["needs"]["clarification_questions"][:2],
+                            "relations": [],
+                        },
+                        ensure_ascii=False,
+                    )
                 )
 
+        selected_provider = app.state.llm_provider if real_model else TestAdvisor()
+        app.state.llm_provider = selected_provider
+        app.state.task_runner.router._provider = selected_provider
         app.state.runtime_factory.register(
             RuntimeBackend.LANGGRAPH,
             LangGraphAgentRuntime(
-                provider=TestOrganizer(),
+                provider=selected_provider,
                 registry=app.state.tool_registry,
                 executor=app.state.transfer_workflow_engine._executor,
                 context_builder=ContextBuilder(),
@@ -216,5 +253,14 @@ if __name__ == "__main__":
     parser.add_argument("--control", type=Path, required=True)
     parser.add_argument("--port", type=int, default=8011)
     parser.add_argument("--advisor-history", action="store_true")
+    parser.add_argument("--real-model", action="store_true")
     args = parser.parse_args()
-    asyncio.run(run(args.database, args.control, args.port, args.advisor_history))
+    asyncio.run(
+        run(
+            args.database,
+            args.control,
+            args.port,
+            args.advisor_history,
+            args.real_model,
+        )
+    )

@@ -22,6 +22,7 @@ from banking_api.wealth.schemas import (
     WealthExcludedProduct,
     WealthFeeScenario,
     WealthHistoryWindow,
+    WealthPreviousProductContext,
     WealthRecommendationResult,
     WealthTimingScenario,
 )
@@ -155,15 +156,20 @@ class WealthAdvisoryService:
         # A catalogue is an objective fresh query, not a renewed investment mandate.
         if body.intent == "CATALOGUE":
             previous = None
+        if body.intent_frame and body.intent_frame.new_plan:
+            previous = None
         needs = collect_needs(body, now, previous.needs if previous else None)
         query = body.query or body.needs
         kind = body.intent
         result = WealthAnalysis(
             snapshot_id=uuid5(
                 NAMESPACE_URL,
-                json.dumps([user_id, body.model_dump(), now.isoformat()], sort_keys=True),
+                json.dumps(
+                    [user_id, body.model_dump(mode="json"), now.isoformat()], sort_keys=True
+                ),
             ),
             result_kind=kind,
+            intent_frame=body.intent_frame,
             status="EDUCATION",
             generated_at=utc(now),
             reference_time=now,
@@ -173,6 +179,19 @@ class WealthAdvisoryService:
         )
         if previous:
             result.previous_snapshot_id = previous.snapshot_id
+            result.considered_products = list(previous.considered_products)
+            result.previous_product_names = [c.product.name for c in previous.candidates]
+            result.previous_product_context = [
+                WealthPreviousProductContext(
+                    name=c.product.name,
+                    positioning=c.product.design_profile.positioning,
+                    strategy=c.product.design_profile.strategy,
+                    return_sources=c.product.design_profile.return_sources,
+                    risk_drivers=c.product.design_profile.risk_drivers,
+                )
+                for c in previous.candidates
+                if c.product.design_profile
+            ]
         retriever = KeywordWealthKnowledge(self.service)
         if kind == "EDUCATION":
             result.evidence = await retriever.fragments(query)
@@ -200,6 +219,8 @@ class WealthAdvisoryService:
         if kind == "EXPLANATION" and previous:
             # Historical reason is immutable; suitability is never implied by a saved snapshot.
             result = previous.model_copy(deep=True)
+            result.intent_frame = body.intent_frame
+            result.answer = None
             result.snapshot_id, result.previous_snapshot_id = uuid4(), previous.snapshot_id
             result.result_kind = "EXPLANATION"
             result.generated_at = utc(now)
@@ -243,7 +264,14 @@ class WealthAdvisoryService:
                 if block.block_id == "conclusion":
                     block.text = result.conclusion
             return result
-        if kind in {"COMPARISON", "CATALOGUE", "PRODUCT_INTRO"}:
+        if kind in {
+            "COMPARISON",
+            "CATALOGUE",
+            "PRODUCT_OVERVIEW",
+            "PRODUCT_INTRO",
+            "PREPARE_PURCHASE",
+            "PREPARE_REDEEM",
+        }:
             products = (
                 await self.service.compare(body.product_ids, user_id)
                 if body.product_ids
@@ -262,6 +290,14 @@ class WealthAdvisoryService:
                     ),
                     constraints=needs.constraints,
                     priority=needs.priority,
+                    return_goal=needs.return_goal,
+                    exclude_products=(
+                        previous.considered_products
+                        or [c.product.product_id for c in previous.candidates]
+                    )
+                    if needs.seek_alternatives and previous
+                    else (),
+                    limit=8,
                 )
                 products = recommendation.products
                 result.excluded = recommendation.excluded
@@ -279,6 +315,11 @@ class WealthAdvisoryService:
                     result.conclusion = "没有符合已提供条件的产品。" + "；".join(
                         needs.constraints.reasons or recommendation.reasons
                     )
+                    if needs.seek_alternatives and not needs.constraints.ambiguous:
+                        result.conclusion = (
+                            "当前预算与风险测评范围内，暂没有尚未介绍且符合硬条件的新产品。"
+                            "可以继续比较已有候选的策略取舍；不能为了追求收益放宽风险或用款要求。"
+                        )
             except WealthError as exc:
                 products = []
                 if exc.code in {"ASSESSMENT_REQUIRED", "ASSESSMENT_EXPIRED"}:
@@ -287,14 +328,22 @@ class WealthAdvisoryService:
                 else:
                     result.status = "NO_MATCH"
                     result.conclusion = "根据你的风险测评，" + str(exc)
-        if kind == "PRODUCT_INTRO":
+        if kind in {"PRODUCT_INTRO", "PREPARE_PURCHASE", "PREPARE_REDEEM"}:
             if len(products) != 1:
                 result.status = "NEEDS_CLARIFICATION"
                 result.conclusion = "你想了解哪款产品？请先选定一款，再填写账户和申购金额。"
                 return result
             try:
                 await self.service.require_assessment(user_id)
-                result.status = "CONDITIONAL"
+                result.status = (
+                    "NEEDS_CLARIFICATION" if needs.constraints.ambiguous else "CONDITIONAL"
+                )
+                if needs.constraints.ambiguous:
+                    result.conclusion = "；".join(
+                        body.intent_frame.ambiguities
+                        if body.intent_frame
+                        else needs.clarification_questions
+                    )
             except WealthError as exc:
                 result.status = (
                     "NEEDS_ASSESSMENT"
@@ -302,6 +351,16 @@ class WealthAdvisoryService:
                     else "NO_MATCH"
                 )
                 result.conclusion = f"先为你介绍{products[0].name}。{exc}，暂不能购买。"
+        if kind.startswith("PREPARE_") and (
+            needs.constraints.no_principal_loss or needs.constraints.principal_guarantee
+        ):
+            result.status = "NO_MATCH"
+            result.conclusion = (
+                "你要求本金不能损失，这些净值型模拟产品不能满足，因此不能按该要求准备购买。"
+            )
+            for product in products:
+                product.purchase_allowed = False
+                product.purchase_block_reason = "本次要求本金不能损失，净值型产品无法满足"
         windows = await history_windows(self.service, products)
         for product in products:
             timing = timings(now, product.terms["weekdays"])
@@ -314,15 +373,6 @@ class WealthAdvisoryService:
                 result.excluded[product.product_id] = ["新申购后最早现金到账晚于可能用款的起点"]
                 continue
             matched = [f"已披露风险等级为{product.risk}，不是保本承诺。"]
-            if not needs.constraints.preferred_risk and kind == "RECOMMENDATION":
-                assessment = await self.service.current_assessment(user_id)
-                if assessment:
-                    label = {1: "保守", 2: "稳健", 3: "均衡", 4: "进取"}.get(
-                        assessment.answers[4], "未确定"
-                    )
-                    matched.append(
-                        f"问卷目标为{label}，本次偏好尚未确认，暂作参考；不意味着应购买最高风险。"
-                    )
             if needs.constraints.preferred_risk:
                 matched.append(
                     f"本次明确偏好参考R{needs.constraints.preferred_risk}；仍以测评承受能力为上限。"
@@ -366,7 +416,9 @@ class WealthAdvisoryService:
                     }
                 )
             evidence = await retriever.fragments(
-                "费用 开放日 风险 到账", product.product_id, include_education=False
+                "策略 定位 收益来源 风险 费用 开放日 到账",
+                product.product_id,
+                include_education=False,
             )
             result.evidence.extend(evidence)
             limits = ["净值可能下跌，无法保证本金或收益。", "申请赎回后仍需等待成交与现金到账。"]
@@ -404,7 +456,13 @@ class WealthAdvisoryService:
                     "需要即时取用这笔钱",
                     f"预算低于{product.minimum_display}",
                 ],
-                unknowns=[UNKNOWN]
+                unknowns=(
+                    [UNKNOWN]
+                    if product.design_profile is None
+                    else [
+                        "设计画像为模拟假设，不是实际仓位；没有未来收益预测、保证最大损失或真实发行人信用评级。"
+                    ]
+                )
                 + (["未选账户，未判断余额是否足够。"] if not needs.account_id else []),
                 fee_scenario=fee_scenario(needs.amount, product),
                 timing=timing,
@@ -412,10 +470,44 @@ class WealthAdvisoryService:
                 evidence_ids=[e.evidence_id for e in evidence],
             )
             result.candidates.append(candidate)
+        if kind == "RECOMMENDATION":
+            if needs.return_goal and any(c.product.design_profile for c in result.candidates):
+                selected, seen = [], set()
+                for c in result.candidates:
+                    p = c.product.design_profile
+                    exposure = p.growth_exposure if p else 0
+                    bucket = (
+                        "DEFENSIVE"
+                        if exposure == 0
+                        else "MIXED"
+                        if exposure < 50
+                        else "GROWTH"
+                        if exposure < 80
+                        else "THEME"
+                    )
+                    if bucket not in seen:
+                        selected.append(c)
+                        seen.add(bucket)
+                selected.extend(c for c in result.candidates if c not in selected)
+                result.candidates = selected[:3]
+            else:
+                result.candidates = result.candidates[:3]
+            result.considered_products = list(
+                dict.fromkeys(
+                    result.considered_products + [c.product.product_id for c in result.candidates]
+                )
+            )
+            result.recommendation_basis = [
+                "先核验测评风险上限、起购预算、用款安排和用户明确排除条件。",
+                "收益目标通过模拟设计的增长来源匹配，提供不同策略的取舍；不按短期模拟涨幅预测收益。",
+                "更高收益诉求改变比较重心，不代表自动提高风险权限或保证收益。",
+            ]
+            selected_ids = {c.product.product_id for c in result.candidates}
+            result.evidence = [e for e in result.evidence if e.product_id in selected_ids]
         self._differences(result)
         if kind == "RECOMMENDATION":
             result.ranking_basis = [
-                "优先接近本次明确风险偏好；未指定时参考问卷目标，不把承受能力上限当作目标。",
+                "优先接近本次明确风险偏好；未指定时先比较较低风险，不把承受能力上限当作目标。",
                 "再比较较低风险、下一申请窗口和已披露费率；不按短期模拟涨幅排名。",
             ]
             if needs.priority != "RISK":
@@ -436,8 +528,14 @@ class WealthAdvisoryService:
                 direction = (
                     f"你想偏{goal.get(preference, '稳健')}一些，"
                     if preference
-                    else "你还没有说明这笔钱的风险偏好。按已保存的问卷目标筛选，"
+                    else "先从风险和费用较低的候选看起，"
                 )
+                if needs.return_goal:
+                    direction = (
+                        "你希望增加增长来源，"
+                        if needs.return_goal == "HIGHER_POTENTIAL"
+                        else "你希望获得收益并愿意承担一定亏损，"
+                    )
                 result.conclusion = direction + f"可以先看{first.product.name}。"
                 if len(result.candidates) > 1:
                     other = result.candidates[1].product
@@ -464,7 +562,7 @@ class WealthAdvisoryService:
                     result.conclusion += " ".join(first.advantages)
                 if re.search(r"完成|做完|测完|重测", query) and "测评" in query:
                     result.conclusion = "测评已完成，可以继续选产品了。" + result.conclusion
-            elif kind == "PRODUCT_INTRO":
+            elif kind in {"PRODUCT_INTRO", "PREPARE_PURCHASE", "PREPARE_REDEEM"}:
                 result.conclusion = (
                     f"{names}{first.product.minimum_display}起购，"
                     f"{first.product.open_display}可申请，风险等级{first.product.risk}。"
@@ -490,6 +588,13 @@ class WealthAdvisoryService:
                     "既有每日开放的，也有每周固定开放的。"
                     "每日开放更方便安排申请，周开放则要留意固定日期；两类都不是随时提现。"
                     "可以先看下方产品的风险、起购金额和费用，再决定了解哪一款。"
+                )
+                result.needs.clarification_questions = []
+            if kind == "PRODUCT_OVERVIEW":
+                result.status = "EDUCATION"
+                result.conclusion = (
+                    "可以按防御型、债券型、混合增长、权益成长和主题集中五类理解这些模拟产品。"
+                    "定位来自新增的模拟设计画像，开放安排、费用和实际交易仍按原条款；不能将定位当收益预测。"
                 )
                 result.needs.clarification_questions = []
         if previous and "现在" in query:
@@ -522,9 +627,9 @@ class WealthAdvisoryService:
                     reasons=reasons,
                 )
             )
-        result.missing_data = [UNKNOWN] + (
-            ["未提供预算，不能计算本次费用情景。"] if not needs.amount else []
-        )
+        result.missing_data = (
+            [UNKNOWN] if any(c.product.design_profile is None for c in result.candidates) else []
+        ) + (["未提供预算，不能计算本次费用情景。"] if not needs.amount else [])
         result.blocks = [
             WealthAnalysisBlock(block_id="conclusion", title="分析结论", text=result.conclusion)
         ]

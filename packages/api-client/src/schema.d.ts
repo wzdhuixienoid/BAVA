@@ -1001,6 +1001,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wealth/product-profiles/{product_id}/{profile_version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Product Profile */
+        get: operations["product_profile_api_v1_wealth_product_profiles__product_id___profile_version__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/wealth/analysis": {
         parameters: {
             query?: never;
@@ -1775,6 +1792,24 @@ export interface components {
          * @enum {string}
          */
         ExecutorType: "AGENT" | "WORKFLOW";
+        /** FieldUpdate */
+        FieldUpdate: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "loss_policy" | "risk_preference" | "liquidity" | "priority" | "return_goal" | "maximum_risk" | "excluded_risks";
+            /**
+             * Operation
+             * @default SET
+             * @enum {string}
+             */
+            operation: "SET" | "CLEAR" | "KEEP";
+            /** Value */
+            value?: string | null;
+            /** Source Span */
+            source_span: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2148,6 +2183,27 @@ export interface components {
          * @enum {string}
          */
         ProductRiskGrade: "R1" | "R2" | "R3" | "R4" | "R5";
+        /** QuantityMention */
+        QuantityMention: {
+            /** Original */
+            original: string;
+            /** Value */
+            value?: string | null;
+            /** Unit */
+            unit?: string | null;
+            /**
+             * Role
+             * @default UNSPECIFIED
+             */
+            role: string;
+            /**
+             * Exact
+             * @default true
+             */
+            exact: boolean;
+            /** Error */
+            error?: string | null;
+        };
         /**
          * ReauthenticationMethod
          * @enum {string}
@@ -3279,10 +3335,12 @@ export interface components {
         WealthAnalysis: {
             /**
              * Schema Version
-             * @default wealth-analysis-v1
-             * @constant
+             * @default wealth-analysis-v2
+             * @enum {string}
              */
-            schema_version: "wealth-analysis-v1";
+            schema_version: "wealth-analysis-v1" | "wealth-analysis-v2";
+            intent_frame?: components["schemas"]["WealthIntentFrame"] | null;
+            answer?: components["schemas"]["WealthAnswer"] | null;
             /**
              * Snapshot Id
              * Format: uuid
@@ -3294,7 +3352,7 @@ export interface components {
              * Result Kind
              * @enum {string}
              */
-            result_kind: "RECOMMENDATION" | "COMPARISON" | "EXPLANATION" | "EDUCATION" | "CATALOGUE" | "PRODUCT_INTRO";
+            result_kind: "RECOMMENDATION" | "COMPARISON" | "EXPLANATION" | "EDUCATION" | "CATALOGUE" | "PRODUCT_INTRO" | "PREPARE_PURCHASE" | "PREPARE_REDEEM" | "PRODUCT_OVERVIEW";
             /**
              * Status
              * @enum {string}
@@ -3368,7 +3426,7 @@ export interface components {
              * @default DETERMINISTIC
              * @enum {string}
              */
-            narrative_source: "DETERMINISTIC" | "MODEL_ORGANIZED" | "FALLBACK";
+            narrative_source: "DETERMINISTIC" | "MODEL_ORGANIZED" | "FALLBACK" | "MODEL_GENERATED" | "DETERMINISTIC_FALLBACK";
             /** Degradation Reason */
             degradation_reason?: string | null;
             /**
@@ -3376,6 +3434,14 @@ export interface components {
              * @default true
              */
             new_business_allowed: boolean;
+            /** Considered Products */
+            considered_products?: string[];
+            /** Recommendation Basis */
+            recommendation_basis?: string[];
+            /** Previous Product Names */
+            previous_product_names?: string[];
+            /** Previous Product Context */
+            previous_product_context?: components["schemas"]["WealthPreviousProductContext"][];
         };
         /** WealthAnalysisBlock */
         WealthAnalysisBlock: {
@@ -3407,6 +3473,7 @@ export interface components {
             amount?: string | null;
             /** Account Id */
             account_id?: string | null;
+            intent_frame?: components["schemas"]["WealthIntentFrame"] | null;
             /** Product Ids */
             product_ids?: string[];
             /**
@@ -3414,12 +3481,57 @@ export interface components {
              * @default RECOMMENDATION
              * @enum {string}
              */
-            intent: "RECOMMENDATION" | "COMPARISON" | "EDUCATION" | "EXPLANATION" | "CATALOGUE" | "PRODUCT_INTRO";
+            intent: "RECOMMENDATION" | "COMPARISON" | "EDUCATION" | "EXPLANATION" | "CATALOGUE" | "PRODUCT_INTRO" | "PREPARE_PURCHASE" | "PREPARE_REDEEM" | "PRODUCT_OVERVIEW";
             /**
              * Query
              * @default
              */
             query: string;
+        };
+        /** WealthAnswer */
+        WealthAnswer: {
+            /**
+             * Schema Version
+             * @default wealth-answer-v1
+             * @constant
+             */
+            schema_version: "wealth-answer-v1";
+            /** Response Mode */
+            response_mode: string;
+            /** Status */
+            status: string;
+            /** Headline */
+            headline: string;
+            /** Paragraphs */
+            paragraphs?: components["schemas"]["WealthAnalysisBlock"][];
+            /** Questions */
+            questions?: string[];
+            /** Fact Refs */
+            fact_refs?: string[];
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            /** Selected Product Id */
+            selected_product_id?: string | null;
+            /** Workflow Id */
+            workflow_id?: string | null;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Source Task Id */
+            source_task_id?: string | null;
+            /** Model */
+            model?: string | null;
+            /** Skill Id */
+            skill_id: string;
+            /** Skill Version */
+            skill_version: string;
+            /**
+             * Generation Source
+             * @enum {string}
+             */
+            generation_source: "MODEL_GENERATED" | "DETERMINISTIC_FALLBACK";
         };
         /** WealthAssessmentResult */
         WealthAssessmentResult: {
@@ -3502,6 +3614,50 @@ export interface components {
             /** Liquidity Display */
             liquidity_display?: string | null;
         };
+        /**
+         * WealthDesignProfile
+         * @description Versioned fictional design, explicitly separate from trade terms and actual holdings.
+         */
+        WealthDesignProfile: {
+            /** Version */
+            version: string;
+            /** Product Version Id */
+            product_version_id: string;
+            /** Published At */
+            published_at: string;
+            /** Positioning */
+            positioning: string;
+            /** Strategy */
+            strategy: string;
+            /** Allocation */
+            allocation: {
+                [key: string]: number;
+            };
+            /** Return Sources */
+            return_sources: string[];
+            /** Risk Drivers */
+            risk_drivers: string[];
+            /** Scenarios */
+            scenarios: {
+                [key: string]: string;
+            };
+            /** Suitable For */
+            suitable_for: string;
+            /** Unsuitable For */
+            unsuitable_for: string;
+            /** Observation Days */
+            observation_days: number;
+            /** Observation Label */
+            observation_label: string;
+            /** Growth Exposure */
+            growth_exposure: number;
+            /** Concentration */
+            concentration: number;
+            /** Notice */
+            notice: string;
+            /** Content Hash */
+            content_hash: string;
+        };
         /** WealthDraftInput */
         WealthDraftInput: {
             /** Conversation Id */
@@ -3574,7 +3730,7 @@ export interface components {
              * Scope
              * @enum {string}
              */
-            scope: "EDUCATION" | "PRODUCT";
+            scope: "EDUCATION" | "PRODUCT" | "DESIGN";
             /** Source Type */
             source_type: string;
             /** Source Name */
@@ -3684,6 +3840,57 @@ export interface components {
              */
             notice: string;
         };
+        /** WealthIntentFrame */
+        WealthIntentFrame: {
+            /**
+             * Schema Version
+             * @default wealth-intent-v1
+             * @constant
+             */
+            schema_version: "wealth-intent-v1";
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "CATALOGUE" | "RECOMMEND" | "COMPARE" | "EXPLAIN" | "KNOWLEDGE" | "PREPARE_PURCHASE" | "PREPARE_REDEEM" | "ORDER_STATUS" | "PRODUCT_OVERVIEW";
+            /** Product Mentions */
+            product_mentions?: string[];
+            /** References */
+            references?: string[];
+            /** Quantity Mentions */
+            quantity_mentions?: components["schemas"]["QuantityMention"][];
+            /** Account Mention */
+            account_mention?: string | null;
+            /** Field Updates */
+            field_updates?: components["schemas"]["FieldUpdate"][];
+            /** Ambiguities */
+            ambiguities?: string[];
+            /** Clarification */
+            clarification?: string[];
+            /**
+             * New Plan
+             * @default false
+             */
+            new_plan: boolean;
+            /**
+             * Seek Alternatives
+             * @default false
+             */
+            seek_alternatives: boolean;
+            /**
+             * Source Text
+             * @default
+             */
+            source_text: string;
+            /** Source Message Id */
+            source_message_id?: string | null;
+            /**
+             * Generation Source
+             * @default MODEL_EXTRACTED
+             * @enum {string}
+             */
+            generation_source: "MODEL_EXTRACTED" | "DETERMINISTIC_FALLBACK";
+        };
         /** WealthKnowledgeResult */
         WealthKnowledgeResult: {
             /** Document Id */
@@ -3711,7 +3918,7 @@ export interface components {
             /** Liquidity Raw */
             liquidity_raw?: string | null;
             /** Return Goal */
-            return_goal?: "HIGHER_POTENTIAL" | null;
+            return_goal?: ("HIGHER_POTENTIAL" | "GROWTH") | null;
             /** Loss Tolerance Raw */
             loss_tolerance_raw?: string | null;
             /** Use Date From */
@@ -3747,6 +3954,11 @@ export interface components {
              * @default []
              */
             changed_fields: string[];
+            /**
+             * Seek Alternatives
+             * @default false
+             */
+            seek_alternatives: boolean;
         };
         /** WealthOrderResult */
         WealthOrderResult: {
@@ -3851,6 +4063,19 @@ export interface components {
             /** Pending Display */
             pending_display: string;
         };
+        /** WealthPreviousProductContext */
+        WealthPreviousProductContext: {
+            /** Name */
+            name: string;
+            /** Positioning */
+            positioning?: string | null;
+            /** Strategy */
+            strategy?: string | null;
+            /** Return Sources */
+            return_sources?: string[];
+            /** Risk Drivers */
+            risk_drivers?: string[];
+        };
         /** WealthProductResult */
         WealthProductResult: {
             /** Product Id */
@@ -3891,6 +4116,7 @@ export interface components {
             terms: {
                 [key: string]: unknown;
             };
+            design_profile?: components["schemas"]["WealthDesignProfile"] | null;
         };
         /** WealthReadResult */
         WealthReadResult: {
@@ -6204,6 +6430,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WealthProductResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_profile_api_v1_wealth_product_profiles__product_id___profile_version__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+                profile_version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WealthEvidence"];
                 };
             };
             /** @description Validation Error */

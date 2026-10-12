@@ -1,5 +1,5 @@
 "use client";
-import {useRef, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import type {components} from "@banking/api-client";
 import {api} from "@/lib/api/client";
 
@@ -7,14 +7,20 @@ type Product = components["schemas"]["WealthProductResult"];
 type Account = components["schemas"]["AccountBalanceResult"];
 
 /** Interest opens an editor; only explicit filled submission creates a review draft. */
-export function WealthPurchaseEntry({product,allowed,creationKey,conversationId,accounts,amount,accountId,onRefresh,loadAccounts}: {
-  product:Product; allowed:boolean; creationKey?:string|null; conversationId?:string;
+export function WealthPurchaseEntry({product,allowed,creationKey,conversationId,accounts,amount,accountId,onRefresh,loadAccounts,initiallyOpen=false}: {
+  product:Product; allowed:boolean; initiallyOpen?:boolean; creationKey?:string|null; conversationId?:string;
   accounts?:Account[]; amount?:string|null; accountId?:string|null; onRefresh?:()=>Promise<void>; loadAccounts?:()=>Promise<Account[]>;
 }) {
-  const [open,setOpen]=useState(false), [available,setAvailable]=useState<Account[]>(accounts ?? []);
+  const [open,setOpen]=useState(initiallyOpen), [available,setAvailable]=useState<Account[]>(accounts ?? []);
   const [quantity,setQuantity]=useState(amount ?? ""), [account,setAccount]=useState(accountId ?? "");
   const [error,setError]=useState(""), [busy,setBusy]=useState(false), [created,setCreated]=useState<string|null>(null);
   const pending=useRef(false), key=useRef<string|null>(creationKey ?? null);
+  const initialized=useRef(false);
+  useEffect(()=>{
+    if(!initiallyOpen || initialized.current || accounts)return;
+    initialized.current=true;
+    void (loadAccounts?.() ?? api.wealthAccounts()).then(setAvailable).catch(()=>setError("账户暂时无法加载，请点击购买入口重试。"));
+  },[initiallyOpen,accounts,loadAccounts]);
   async function begin() {
     if(pending.current)return;
     setOpen(true);setError("");
