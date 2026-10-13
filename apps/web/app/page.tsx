@@ -96,29 +96,25 @@ export default function HomePage() {
         >
           + 新建对话
         </button>
-        <Link
-          href="/dashboard"
-          className="mb-3 block rounded-lg bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-cyan-100 hover:bg-slate-700"
-        >金融总览 Dashboard</Link>
-        <Link
-          href="/reports"
-          className="mb-6 block w-full rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
-        >
-          查看历史报告
-        </Link>
-        <Link
-          href="/wealth"
-          className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
+        <nav aria-label="功能导航" className="mb-5 space-y-3">
+          <Link
+            href="/dashboard"
+            className="block rounded-lg bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-cyan-100 hover:bg-slate-700"
+          >金融总览 Dashboard</Link>
+          <Link
+            href="/reports"
+            className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
+          >历史消费报告</Link>
+          <Link
+            href="/wealth"
+            className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
           >理财中心</Link>
-          <Link href="/subscriptions"
-          className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm"
-        >
-          订阅管理
-        </Link>
+          <Link
+            href="/subscriptions"
+            className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
+          >订阅管理</Link>
+        </nav>
         {!auth.development && <button className="mb-5 text-sm text-cyan-300 hover:text-cyan-200" onClick={() => void auth.logout()}>登出</button>}
-        <Link href="/scheduled-transfers" className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">预约与周期转账</Link>
-        <Link href="/aa" className="mb-3 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">AA 收款与付款</Link>
-        <Link href="/payees" className="mb-5 block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm">收款人管理</Link>
         {deleteError && <p role="alert" className="mb-3 text-xs text-red-300">{deleteError}</p>}
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">最近对话</p>
         <nav className="space-y-2">

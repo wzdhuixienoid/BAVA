@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal, localcontext
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
 from banking_api.financial.models import (
@@ -11,6 +12,7 @@ from banking_api.financial.models import (
     CategorySpending,
     SpendingPeriodComparison,
     SpendingSummary,
+    SpendingTransactions,
     TopTransaction,
     TopTransactions,
 )
@@ -195,6 +197,92 @@ class FinancialAnalyticsService:
                 )
                 for item in ordered[:limit]
             ],
+        )
+
+    def recent_spending(
+        self, *, user_id: str, as_of: datetime, limit: int = 100
+    ) -> list[TopTransaction]:
+        return self.spending_transactions(user_id=user_id, as_of=as_of, limit=limit).transactions
+
+    def spending_transactions(
+        self,
+        *,
+        user_id: str,
+        as_of: datetime,
+        month: str | None = None,
+        year: int | None = None,
+        month_number: int | None = None,
+        category: str | None = None,
+        account_id: str | None = None,
+        offset: int = 0,
+        limit: int = 100,
+    ) -> SpendingTransactions:
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be between 1 and 100")
+        if offset < 0:
+            raise ValueError("offset must be non-negative")
+        if month:
+            self._period_bounds(month)
+        if year is not None and not 1 <= year <= 9998:
+            raise ValueError("year must be between 1 and 9998")
+        if month_number is not None and not 1 <= month_number <= 12:
+            raise ValueError("month_number must be between 1 and 12")
+        if account_id:
+            self._selected_account_ids([account_id], user_id=user_id)
+        accounts = {
+            str(account["account_id"]): str(account["display_name"])
+            for account in self._bank.list_accounts(user_id=user_id)
+        }
+        spending = [
+            item
+            for item in self._bank.list_transactions(user_id=user_id)
+            if str(item.get("status")) in VALID_TRANSACTION_STATUSES
+            and str(item.get("account_id")) in accounts
+            and self._is_spending(item)
+            and self._occurred_at(item) <= as_of
+        ]
+        beijing = ZoneInfo("Asia/Shanghai")
+
+        def displayed_month(item: dict[str, Any]) -> str:
+            return self._occurred_at(item).astimezone(beijing).strftime("%Y-%m")
+
+        filtered = [
+            item
+            for item in spending
+            if (not month or displayed_month(item) == month)
+            and (year is None or self._occurred_at(item).astimezone(beijing).year == year)
+            and (
+                month_number is None
+                or self._occurred_at(item).astimezone(beijing).month == month_number
+            )
+            and (not category or item["category"] == category)
+            and (not account_id or item["account_id"] == account_id)
+        ]
+        ordered = sorted(
+            filtered,
+            key=lambda item: (self._occurred_at(item), str(item["transaction_id"])),
+            reverse=True,
+        )
+        transactions = [
+            TopTransaction(
+                transaction_id=str(item["transaction_id"]),
+                occurred_at=self._occurred_at(item),
+                merchant=str(item["merchant"]),
+                description=str(item["description"]),
+                category=str(item["category"]),
+                amount=self._amount(item),
+                currency=str(item["currency"]),
+                account_id=str(item["account_id"]),
+                account_display=accounts[str(item["account_id"])],
+            )
+            for item in ordered[offset : offset + limit]
+        ]
+        return SpendingTransactions(
+            transactions=transactions,
+            total_count=len(filtered),
+            offset=offset,
+            available_months=sorted({displayed_month(item) for item in spending}, reverse=True),
+            available_categories=sorted({str(item["category"]) for item in spending}),
         )
 
     def _period_transactions(

@@ -139,3 +139,11 @@ class TopTransactions(BaseModel):
     period: str
     currency: str
     transactions: list[TopTransaction]
+
+
+class SpendingTransactions(BaseModel):
+    transactions: list[TopTransaction]
+    total_count: int
+    offset: int
+    available_months: list[str]
+    available_categories: list[str]

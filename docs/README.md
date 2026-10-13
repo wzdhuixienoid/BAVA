@@ -1,6 +1,6 @@
 # 文档导航
 
-当前说明对应 **v0.11.4 / Alembic 0034**，整理日期为 2026-10-12。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
+当前版本为 **v0.12.1 / Alembic 0034**，整理日期为 2026-10-12。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
 
 ## 使用 Agent
 
@@ -41,4 +41,5 @@
 
 - [v0.11.3 真实模型与隔离验收记录](development/wealth-v0.11.3-evaluation.md)
 
+- [v0.12.1 工作台导航与消费筛选](releases/release-notes-v0.12.1.md)
 - [v0.11.4 策略画像与推荐修复](releases/release-notes-v0.11.4.md)

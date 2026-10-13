@@ -11,3 +11,7 @@ export function queryTime(value: string): string {
 }
 
 export const transactionTime = queryTime;
+
+export function currentMonth(date = new Date()): string {
+  return queryTime(date.toISOString()).slice(0, 7);
+}

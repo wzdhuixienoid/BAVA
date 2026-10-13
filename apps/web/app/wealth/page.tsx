@@ -1,6 +1,6 @@
 "use client";
 import { WealthPurchaseEntry } from "@/features/wealth/WealthPurchaseEntry";
-import { WealthAnalysisCard } from "@/features/wealth/WealthAnalysisCard";
+import { wealthConversationRequest } from "@/features/wealth/conversation-request";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { components } from "@banking/api-client";
@@ -18,8 +18,6 @@ export default function WealthPage() {
   const resources = useMemo(() => ({products, accounts, positions, newBusinessAllowed:canNew}), [products, accounts, positions, canNew]);
   const [answers, setAnswers] = useState<string[]>(Array(8).fill(""));
   const [selected, setSelected] = useState<string[]>([]);
-  const [comparison, setComparison] = useState<components["schemas"]["WealthAnalysis"] | null>(null);
-  const [recommended, setRecommended] = useState<components["schemas"]["WealthAnalysis"] | null>(null);
   const [needs, setNeeds] = useState("");
   const [amount, setAmount] = useState("");
   const [account, setAccount] = useState("");
@@ -29,6 +27,7 @@ export default function WealthPage() {
   const pending = useRef(false);
   const draftKeys = useRef(new Map<string, string>());
   const completedDrafts = useRef(new Map<string, string>());
+  const analysisConversations = useRef(new Map<string, string>());
   useEffect(() => {
     for (const [key, id] of completedDrafts.current) {
       if (workflows.some(w => w.workflow_id === id && ["SUCCEEDED", "FAILED", "CANCELLED"].includes(w.status))) {
@@ -41,6 +40,28 @@ export default function WealthPage() {
     pending.current = true; setBusy(true); setError("");
     try {await action(); await refresh();} catch(e) {setError(e instanceof Error ? e.message : "操作失败");}
     finally {pending.current = false; setBusy(false);}
+  }
+  async function analyzeInConversation(intent: "RECOMMENDATION" | "COMPARISON") {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError("");
+    const content = wealthConversationRequest({
+      intent, needs, amount,
+      accountName: accounts.find(a => a.account_id === account)?.display_name,
+      productNames: selected.map(id => products.find(p => p.product_id === id)?.name).filter((name): name is string => !!name),
+    });
+    try {
+      let conversationId = analysisConversations.current.get(content);
+      if (!conversationId) {
+        const created = await api.createConversation({ title: intent === "COMPARISON" ? "理财产品对比" : "个性化理财推荐" });
+        conversationId = created.conversation_id;
+        analysisConversations.current.set(content, conversationId);
+      }
+      await api.postMessage(conversationId, content);
+      window.location.assign(`/?conversation=${encodeURIComponent(conversationId)}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "暂时无法发起分析，请重试。");
+      pending.current = false; setBusy(false);
+    }
   }
   async function draft(direction: "PURCHASE" | "REDEEM", product_id: string, account_id?: string, redeem_all = false) {
     if (direction === "PURCHASE" && (!assessment || assessment.expired || !assessment.suitable)) {
@@ -71,11 +92,9 @@ export default function WealthPage() {
       </details>
     </section>
     <section aria-label="模拟产品"><h2 className="text-xl font-semibold">模拟产品</h2>
-      <div className="my-4 flex flex-wrap gap-3"><label className="text-sm">本人账户<select aria-label="推荐账户" value={account} onChange={e => setAccount(e.target.value)} className="ml-2 rounded border p-2"><option value="">可选账户</option>{accounts.map(a => <option key={a.account_id} value={a.account_id}>{a.display_name} · {a.balance_display}</option>)}</select></label><input aria-label="投资需求" placeholder="需求，例如稳健，一周内可能用钱" value={needs} onChange={e => setNeeds(e.target.value)} className="rounded border p-2"/><input aria-label="推荐金额" placeholder="可选金额（元）" value={amount} onChange={e => setAmount(e.target.value)} className="rounded border p-2"/><button disabled={busy || !assessment || assessment.expired || !assessment.suitable} onClick={() => void act(async () => setRecommended(await api.wealthAnalyze({intent:"RECOMMENDATION", query:needs, needs,amount:amount || undefined,account_id:account || undefined})))} className="rounded bg-cyan-700 px-3 py-2 text-white">个性化推荐</button></div>
-      {recommended && <WealthAnalysisCard analysis={recommended} accounts={accounts} onRefresh={refresh}/>}
+      <div className="my-4 flex flex-wrap gap-3"><label className="text-sm">本人账户<select aria-label="推荐账户" value={account} onChange={e => setAccount(e.target.value)} className="ml-2 rounded border p-2"><option value="">可选账户</option>{accounts.map(a => <option key={a.account_id} value={a.account_id}>{a.display_name} · {a.balance_display}</option>)}</select></label><input aria-label="投资需求" placeholder="需求，例如稳健，一周内可能用钱" value={needs} onChange={e => setNeeds(e.target.value)} className="rounded border p-2"/><input aria-label="推荐金额" placeholder="可选金额（元）" value={amount} onChange={e => setAmount(e.target.value)} className="rounded border p-2"/><button disabled={busy || !assessment || assessment.expired || !assessment.suitable} onClick={() => void analyzeInConversation("RECOMMENDATION")} className="rounded bg-cyan-700 px-3 py-2 text-white">个性化推荐</button></div>
       <div className="grid gap-4 md:grid-cols-2">{products.map(p => <WealthProductCard key={p.product_id} product={p}><div className="mt-3 flex items-center gap-3"><label className="text-sm"><input type="checkbox" checked={selected.includes(p.product_id)} disabled={!selected.includes(p.product_id) && selected.length >= 4} onChange={e => setSelected(s => e.target.checked ? [...s,p.product_id] : s.filter(id => id !== p.product_id))}/> 加入对比</label><WealthPurchaseEntry product={{...p,purchase_allowed:p.purchase_allowed && !!assessment && !assessment.expired && assessment.suitable,purchase_block_reason:!assessment || assessment.expired ? "请先完成有效风险测评" : p.purchase_block_reason}} allowed={canNew} accounts={accounts} amount={amount} accountId={account} onRefresh={refresh}/></div></WealthProductCard>)}</div>
-      <button disabled={busy || !selected.length} onClick={() => void act(async () => setComparison(await api.wealthAnalyze({intent:"COMPARISON", query:needs, product_ids:selected,needs,amount:amount || undefined,account_id:account || undefined})))} className="my-3 rounded border bg-white px-4 py-2">对比所选产品（最多4个）</button>
-      {comparison && <WealthAnalysisCard analysis={comparison} accounts={accounts} onRefresh={refresh}/>}
+      <button disabled={busy || !selected.length} onClick={() => void analyzeInConversation("COMPARISON")} className="my-3 rounded border bg-white px-4 py-2">对比所选产品（最多4个）</button>
     </section>
     <section aria-label="我的持仓"><h2 className="text-xl font-semibold">我的持仓</h2>{!positions.length && <p className="mt-3 text-sm text-slate-500">暂无持仓，申购成交后显示份额。</p>}{positions.map(p => <div key={p.position_id} className="mt-3 rounded-xl border bg-white p-4"><h3 className="font-semibold">{p.name} · 原付款账户 {accounts.find(a => a.account_id === p.account_id)?.display_name ?? "本人账户"}</h3><p className="mt-2 text-sm">总份额 {p.shares_display} · 冻结 {p.frozen_display} · 可赎回 {p.available_display}</p><p className="text-sm">最新估值 {p.value_display ?? "暂无数据"} · {p.valued_at ? queryTime(p.valued_at) : "缺少已发布净值"}</p><p className="text-sm">待到账资金 {p.pending_display}（未计入可用余额或持仓估值）</p><button disabled={!canNew || busy || /^0\.0+$/.test(p.available_display)} onClick={() => void draft("REDEEM",p.product_id,p.account_id)} className="mt-2 rounded border px-3 py-1 text-sm">部分赎回并核对</button><button disabled={!canNew || busy || !p.available_quantity || /^0\.0+$/.test(p.available_quantity)} onClick={() => void draft("REDEEM",p.product_id,p.account_id,true)} className="ml-2 mt-2 rounded border px-3 py-1 text-sm">全部赎回</button></div>)}</section>
     <section aria-label="交易核对"><h2 className="text-xl font-semibold">交易核对与授权</h2>{workflows.filter(w => !orders.some(o => o.workflow_id === w.workflow_id && o.conversation_deleted) && w.status !== "SUCCEEDED" && w.status !== "CANCELLED" && (w.status !== "FAILED" || !orders.some(o => o.workflow_id === w.workflow_id))).map(w => <WealthWorkflowCard key={w.workflow_id} workflow={w} onRefresh={refresh} resources={resources}/>)}</section>

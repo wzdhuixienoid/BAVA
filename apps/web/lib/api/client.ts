@@ -85,6 +85,13 @@ export const api = {
   getDashboard: (month: string) => request<components["schemas"]["DashboardSnapshot"]>(
     `/api/v1/dashboard?month=${encodeURIComponent(month)}`,
   ),
+  getDashboardTransactions: (filters: { month?: string; year?: string; month_number?: string; category?: string; account_id?: string; offset?: number } = {}) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== "") params.set(key, String(value));
+    }
+    return request<components["schemas"]["DashboardTransactionPage"]>(`/api/v1/dashboard/transactions?${params}`);
+  },
   listPlans: (conversationId: string) => request<components["schemas"]["Plan"][]>(
     `/api/v1/plans?conversation_id=${encodeURIComponent(conversationId)}`,
   ),

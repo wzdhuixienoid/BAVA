@@ -14,6 +14,54 @@ from banking_api.domain.principal import Principal
 from banking_api.planning.models import ConditionDecision, ConditionPredicate
 
 
+async def test_dashboard_transaction_filters_pagination_and_principal_scope(app, client):
+    response = await client.get("/api/v1/dashboard/transactions", params={"limit": 5})
+    assert response.status_code == 200
+    page = response.json()
+    assert len(page["transactions"]) == 5
+    assert page["total_count"] > 100
+    assert "2026-08" in page["available_months"]
+    second = (
+        await client.get("/api/v1/dashboard/transactions", params={"offset": 5, "limit": 5})
+    ).json()
+    assert not {row["transaction_id"] for row in page["transactions"]} & {
+        row["transaction_id"] for row in second["transactions"]
+    }
+    accounts = app.state.mock_bank.list_accounts(user_id="dev-user-001")
+    travel_id = next(
+        account["account_id"] for account in accounts if account["display_name"] == "旅行卡"
+    )
+    filtered = await client.get(
+        "/api/v1/dashboard/transactions",
+        params={"year": 2026, "month_number": 8, "category": "TRAVEL", "account_id": travel_id},
+    )
+    assert filtered.status_code == 200
+    rows = filtered.json()["transactions"]
+    assert len(rows) == 6
+    assert all(
+        row["category"] == "TRAVEL" and row["account_id"] == travel_id and row["amount_display"]
+        for row in rows
+    )
+    assert all(row["occurred_at"].startswith("2026-08") for row in rows)
+    for params in (
+        {"month": "2026-13"},
+        {"year": 0},
+        {"month_number": 13},
+        {"offset": -1},
+        {"limit": 101},
+        {"account_id": "not-owned"},
+    ):
+        assert (
+            await client.get("/api/v1/dashboard/transactions", params=params)
+        ).status_code == 422
+    app.dependency_overrides[get_current_principal] = lambda: Principal(
+        user_id="other-user", issuer="test", subject="other-user"
+    )
+    isolated = (await client.get("/api/v1/dashboard/transactions")).json()
+    assert isolated["transactions"] == [] and isolated["total_count"] == 0
+    assert isolated["available_months"] == [] and isolated["available_categories"] == []
+
+
 async def test_dashboard_reuses_existing_analysis_and_scoped_live_balance(app, client):
     bank, provider, _, engine = operation_runtime(app)
     app.state.mock_bank = bank
@@ -26,6 +74,15 @@ async def test_dashboard_reuses_existing_analysis_and_scoped_live_balance(app, c
     assert snapshot["spending"]["overview"]["total_spending_display"]
     assert snapshot["spending"]["category_breakdown"]
     assert snapshot["spending"]["top_transactions"]
+    recent = snapshot["recent_transactions"]
+    assert 5 < len(recent) <= 100
+    assert all(item["amount_display"] and item["currency"] for item in recent)
+    assert all(
+        item["account_id"] in {a["account_id"] for a in snapshot["accounts"]} for item in recent
+    )
+    assert [item["occurred_at"] for item in recent] == sorted(
+        (item["occurred_at"] for item in recent), reverse=True
+    )
     for item in snapshot["subscriptions"]["subscriptions"]:
         assert item["monthly_cost_display"]
         assert item["annual_projected_cost_display"]

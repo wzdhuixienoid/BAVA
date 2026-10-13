@@ -48,6 +48,26 @@ test("all redemption copies server Decimal string and duplicate clicks create on
  await act(async()=>button(r,"全部赎回").props.onClick());assert.equal(calls.length,1);
 }));
 
+test("product comparison sends selected names to the workbench and retries reuse the conversation",async()=>environment(async({mount})=>{
+ const oldWindow=globalThis.window;let destination;globalThis.window={location:{assign:url=>{destination=url;}}};
+ let created=0,calls=[];
+ api.wealthProducts=async()=>[product,{...product,product_id:"p2",name:"演示稳享周周"}];
+ api.createConversation=async()=>{created++;return {conversation_id:"compare/c"};};
+ api.postMessage=async(...args)=>{calls.push(args);if(calls.length===1)throw Error("发送失败，请重试");return {task_id:"t-compare"};};
+ api.wealthAnalyze=()=>assert.fail("comparison should run in the conversation");
+ try{
+  const r=await mount();
+  for(const checkbox of r.root.findAllByType("input").filter(n=>n.props.type==="checkbox"))await act(async()=>checkbox.props.onChange({target:{checked:true}}));
+  await act(async()=>button(r,"对比所选产品（最多4个）").props.onClick());
+  assert.equal(destination,undefined);assert.ok(text(r.toJSON()).includes("发送失败"));
+  await act(async()=>button(r,"对比所选产品（最多4个）").props.onClick());
+  assert.equal(created,1);assert.equal(calls.length,2);assert.equal(calls[1][0],"compare/c");
+  assert.equal(calls[0][1],calls[1][1]);
+  for(const value of ["对比",product.name,"演示稳享周周","只读分析"])assert.ok(calls[1][1].includes(value));
+  assert.equal(destination,"/?conversation=compare%2Fc");
+ }finally{globalThis.window=oldWindow;}
+}));
+
 test("refresh failures retain old data, static resources load once, polling hides and never overlaps",async()=>environment(async({mount,poll,hide,show})=>{
  let calls=0, statics=0;let blocked;
  api.wealthPositions=()=>{calls++;return blocked ? blocked.promise : Promise.resolve([position]);};

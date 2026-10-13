@@ -57,21 +57,27 @@ test("historical reanalysis only submits on user click, suppresses rapid duplica
  });}finally{api.postMessage=original;}
 });
 
-test("page updates shared analysis from budget events, without polling model generation or overlap",async()=>{
+test("page sends recommendation to the workbench with input context and suppresses duplicate clicks",async()=>{
  const original={...api};const oldDocument=globalThis.document,oldSet=globalThis.setInterval,oldClear=globalThis.clearInterval;
+ const oldWindow=globalThis.window;let destination;globalThis.window={location:{assign:url=>{destination=url;}}};
  globalThis.document={visibilityState:"visible",addEventListener:()=>{},removeEventListener:()=>{}};
  let poll;globalThis.setInterval=fn=>{poll=fn;return 1;};globalThis.clearInterval=()=>{};
- let calls=[];const pending=deferred();
- Object.assign(api,{wealthStatus:async()=>({new_business_allowed:true}),wealthProducts:async()=>[],wealthPositions:async()=>[],wealthOrders:async()=>[],wealthAssessment:async()=>({grade_display:"C5",expired:false,suitable:true,reasons:[]}),wealthAccounts:async()=>[],wealthWorkflows:async()=>[],wealthQuestionnaire:async()=>({version:"mock-v1",questions:[]}),wealthAnalyze:body=>{calls.push(body);return pending.promise;}});
+ let calls=[],created=0;const pending=deferred();
+ Object.assign(api,{wealthStatus:async()=>({new_business_allowed:true}),wealthProducts:async()=>[],wealthPositions:async()=>[],wealthOrders:async()=>[],wealthAssessment:async()=>({grade_display:"C5",expired:false,suitable:true,reasons:[]}),wealthAccounts:async()=>[{account_id:"a",display_name:"储蓄卡",balance_display:"¥10,000.00"}],wealthWorkflows:async()=>[],wealthQuestionnaire:async()=>({version:"mock-v1",questions:[]}),wealthAnalyze:()=>assert.fail("analysis should run in the conversation"),createConversation:async()=>{created++;return {conversation_id:"c-analysis"};},postMessage:(...args)=>{calls.push(args);return pending.promise;}});
  try{await render(WealthPage,{},async r=>{
   assert.equal(calls.length,0);
   await act(async()=>r.root.findByProps({"aria-label":"推荐金额"}).props.onChange({target:{value:"5000"}}));
+  await act(async()=>r.root.findByProps({"aria-label":"投资需求"}).props.onChange({target:{value:"稳健，一周内可能用钱"}}));
+  await act(async()=>r.root.findByProps({"aria-label":"推荐账户"}).props.onChange({target:{value:"a"}}));
   await act(async()=>{button(r,"个性化推荐").props.onClick();button(r,"个性化推荐").props.onClick();});
-  assert.equal(calls.length,1);assert.equal(calls[0].amount,"5000");
-  await act(async()=>pending.resolve({...analysis,needs:{...analysis.needs,amount:"5000"}}));
-  assert.ok(text(r.toJSON()).includes(analysis.conclusion));
+  assert.equal(created,1);assert.equal(calls.length,1);assert.equal(calls[0][0],"c-analysis");
+  for(const value of ["5000元","稳健，一周内可能用钱","储蓄卡","只读分析"])assert.ok(calls[0][1].includes(value));
+  assert.equal(destination,undefined);
+  await act(async()=>pending.resolve({task_id:"t-analysis"}));
+  assert.equal(destination,"/?conversation=c-analysis");
+  assert.equal(r.root.findAllByType(WealthAnalysisCard).length,0);
   await act(async()=>poll());assert.equal(calls.length,1);
- });}finally{Object.assign(api,original);globalThis.document=oldDocument;globalThis.setInterval=oldSet;globalThis.clearInterval=oldClear;}
+ });}finally{Object.assign(api,original);globalThis.document=oldDocument;globalThis.setInterval=oldSet;globalThis.clearInterval=oldClear;globalThis.window=oldWindow;}
 });
 
 

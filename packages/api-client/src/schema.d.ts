@@ -75,6 +75,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transactions */
+        get: operations["get_transactions_api_v1_dashboard_transactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard": {
         parameters: {
             query?: never;
@@ -1695,6 +1712,8 @@ export interface components {
         DashboardSnapshot: {
             /** Accounts */
             accounts: components["schemas"]["AccountBalanceResult"][];
+            /** Recent Transactions */
+            recent_transactions?: components["schemas"]["DashboardTransaction"][];
             spending: components["schemas"]["MonthlySpendingReportCore"];
             subscriptions: components["schemas"]["SubscriptionAnalysisSnapshot"];
             anomalies: components["schemas"]["TransactionAnomalySnapshot"];
@@ -1705,6 +1724,43 @@ export interface components {
              * Format: date-time
              */
             as_of: string;
+        };
+        /** DashboardTransaction */
+        DashboardTransaction: {
+            /** Transaction Id */
+            transaction_id: string;
+            /** Merchant */
+            merchant: string;
+            /** Description */
+            description: string;
+            /** Category */
+            category: string;
+            /** Amount */
+            amount: string;
+            /** Amount Display */
+            amount_display: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Account Id */
+            account_id: string;
+            /** Currency */
+            currency: string;
+        };
+        /** DashboardTransactionPage */
+        DashboardTransactionPage: {
+            /** Transactions */
+            transactions: components["schemas"]["DashboardTransaction"][];
+            /** Total Count */
+            total_count: number;
+            /** Offset */
+            offset: number;
+            /** Available Months */
+            available_months: string[];
+            /** Available Categories */
+            available_categories: string[];
         };
         /**
          * DataQualityStatus
@@ -4600,6 +4656,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_transactions_api_v1_dashboard_transactions_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+                year?: number | null;
+                month_number?: number | null;
+                category?: string | null;
+                account_id?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardTransactionPage"];
                 };
             };
             /** @description Validation Error */

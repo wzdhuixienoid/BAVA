@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -12,6 +13,96 @@ from banking_api.financial.errors import FinancialDomainError, FinancialErrorCod
 from banking_api.mock_bank.service import MockBankService
 
 USER_ID = "dev-user-001"
+
+
+def test_recent_spending_is_latest_posted_owned_spending_with_an_as_of_boundary(tmp_path):
+    service = write_bank_data(
+        tmp_path,
+        [
+            transaction("older", "8000", occurred_at="2026-08-01T00:00:00Z"),
+            transaction("latest-a", "1.10", occurred_at="2026-10-12T00:00:00Z"),
+            transaction("latest-b", "2.20", occurred_at="2026-10-12T00:00:00Z"),
+            transaction("future", "500", occurred_at="2026-10-13T00:00:00Z"),
+            transaction("pending", "100", status="PENDING"),
+            transaction("income", "100", direction="CREDIT"),
+            transaction("transfer", "100", category="TRANSFER"),
+            transaction("unknown-account", "100", account_id="not-owned"),
+            {**transaction("other-user", "100"), "user_id": "other-user"},
+        ],
+    )
+    rows = service.recent_spending(user_id=USER_ID, as_of=datetime(2026, 10, 12, tzinfo=UTC))
+    assert [row.transaction_id for row in rows] == ["latest-b", "latest-a", "older"]
+    assert rows[0].amount == Decimal("2.20")
+    assert rows[0].currency == "CNY"
+    assert (
+        len(
+            service.recent_spending(
+                user_id=USER_ID, as_of=datetime(2026, 10, 12, tzinfo=UTC), limit=2
+            )
+        )
+        == 2
+    )
+    assert (
+        service.recent_spending(user_id="other-user", as_of=datetime(2026, 10, 12, tzinfo=UTC))
+        == []
+    )
+
+
+def test_spending_filters_cover_full_history_before_pagination_and_use_beijing_month(tmp_path):
+    service = write_bank_data(
+        tmp_path,
+        [
+            *[
+                transaction(f"recent-{i:03d}", "10", occurred_at="2026-10-01T00:00:00Z")
+                for i in range(120)
+            ],
+            transaction(
+                "old-health",
+                "12.34",
+                occurred_at="2025-06-01T00:00:00Z",
+                category="HEALTH",
+                account_id="acc_savings",
+            ),
+            transaction("beijing-january", "2", occurred_at="2025-12-31T16:30:00Z"),
+        ],
+        account_currencies={"acc_test": "CNY", "acc_savings": "CNY"},
+    )
+    now = datetime(2026, 10, 12, tzinfo=UTC)
+    first = service.spending_transactions(user_id=USER_ID, as_of=now)
+    assert first.total_count == 122 and len(first.transactions) == 100
+    rest = service.spending_transactions(user_id=USER_ID, as_of=now, offset=100)
+    assert len(rest.transactions) == 22
+    assert not set(row.transaction_id for row in first.transactions) & set(
+        row.transaction_id for row in rest.transactions
+    )
+    filtered = service.spending_transactions(
+        user_id=USER_ID,
+        as_of=now,
+        month="2025-06",
+        category="HEALTH",
+        account_id="acc_savings",
+    )
+    assert [row.transaction_id for row in filtered.transactions] == ["old-health"]
+    assert filtered.total_count == 1
+    assert filtered.available_months == ["2026-10", "2026-01", "2025-06"]
+    assert filtered.available_categories == ["FOOD", "HEALTH"]
+    january = service.spending_transactions(user_id=USER_ID, as_of=now, month="2026-01")
+    assert [row.transaction_id for row in january.transactions] == ["beijing-january"]
+    assert service.spending_transactions(user_id=USER_ID, as_of=now, year=2025).total_count == 1
+    independent_month = service.spending_transactions(user_id=USER_ID, as_of=now, month_number=1)
+    assert [row.transaction_id for row in independent_month.transactions] == ["beijing-january"]
+    assert (
+        service.spending_transactions(
+            user_id=USER_ID, as_of=now, year=2026, month_number=10
+        ).total_count
+        == 120
+    )
+    assert (
+        service.spending_transactions(user_id=USER_ID, as_of=now, month="2025-12").total_count == 0
+    )
+    assert service.spending_transactions(user_id="other-user", as_of=now).available_months == []
+    with pytest.raises(FinancialDomainError):
+        service.spending_transactions(user_id=USER_ID, as_of=now, account_id="not-owned")
 
 
 def test_yearly_summary_and_comparison_use_year_boundaries(tmp_path: Path) -> None:
