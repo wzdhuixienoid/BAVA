@@ -381,6 +381,7 @@ def test_application_registers_monthly_report_skill() -> None:
     assert [skill.skill_id for skill in skills.all()] == [
         "skill:monthly-spending-report",
         "skill:wealth-recommendation",
+        "skill:transaction-anomaly-analysis",
     ]
     wealth = skills.get("skill:wealth-recommendation")
     assert wealth.allowed_tools == ()

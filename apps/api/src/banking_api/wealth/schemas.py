@@ -325,6 +325,7 @@ class WealthAnswer(BaseModel):
     model: str | None = None
     skill_id: str
     skill_version: str
+    skill_resource_hashes: dict[str, str] = Field(default_factory=dict)
     generation_source: Literal["MODEL_GENERATED", "DETERMINISTIC_FALLBACK"]
 
 
@@ -374,6 +375,7 @@ class WealthAnalysis(BaseModel):
     ranking_basis: list[str] = []
     previous_snapshot_id: UUID | None = None
     historical_reference: str | None = None
+    # MODEL_ORGANIZED/FALLBACK remain readable for historical saved snapshots only.
     narrative_source: Literal[
         "DETERMINISTIC", "MODEL_ORGANIZED", "FALLBACK", "MODEL_GENERATED", "DETERMINISTIC_FALLBACK"
     ] = "DETERMINISTIC"

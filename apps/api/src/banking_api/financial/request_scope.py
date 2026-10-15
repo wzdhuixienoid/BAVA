@@ -194,4 +194,5 @@ def restrict_financial_agent(agent: AgentDefinition, text: str) -> AgentDefiniti
         instructions=agent.instructions
         + "\n本次用户没有要求异常交易分析，不得调用异常识别工具或改做异常分析。",
         allowed_capabilities=agent.allowed_capabilities - {"transaction.detect_anomalies"},
+        skills=agent.skills,
     )

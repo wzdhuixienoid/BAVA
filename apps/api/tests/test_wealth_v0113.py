@@ -188,9 +188,9 @@ async def test_tampered_contract_falls_back_without_write(wealth, bad):
 
 def test_skill_modes_resources_and_path_boundary(tmp_path):
     c = AgentSkillCatalog()
-    assert len(c.discover()) == 2
+    assert len(c.discover()) == 8
     activated = c.activate("COMPARE")
-    assert activated.version == "0.11.4" and "references/comparison.md" in activated.resources
+    assert activated.version == "0.12.3" and "references/comparison.md" in activated.resources
     assert "references/recommendation.md" not in activated.resources
     assert c.activate("PREPARE_PURCHASE").skill_id == "wealth-trade-assistance"
     with pytest.raises(ValueError):

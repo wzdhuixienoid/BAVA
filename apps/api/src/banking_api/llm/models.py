@@ -1,11 +1,11 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class LLMToolCall(BaseModel):
-    id: str
-    name: str
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
     arguments: Any = Field(default_factory=dict)
 
 
@@ -18,7 +18,7 @@ class LLMMessage(BaseModel):
 
 
 class LLMToolDefinition(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
     description: str
     input_schema: dict[str, Any]
 
@@ -40,3 +40,9 @@ class LLMResponse(BaseModel):
     tool_calls: list[LLMToolCall] = Field(default_factory=list)
     usage: LLMUsage = Field(default_factory=LLMUsage)
     finish_reason: str | None = None
+
+    @model_validator(mode="after")
+    def unique_tool_call_ids(self):
+        if len({call.id for call in self.tool_calls}) != len(self.tool_calls):
+            raise ValueError("Tool call IDs must be unique within a response")
+        return self

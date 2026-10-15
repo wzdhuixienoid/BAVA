@@ -106,7 +106,9 @@ class OpenAICompatibleProvider:
                     "type": "function",
                     "function": {
                         "name": call.name,
-                        "arguments": json.dumps(call.arguments, ensure_ascii=False),
+                        "arguments": call.arguments
+                        if isinstance(call.arguments, str)
+                        else json.dumps(call.arguments, ensure_ascii=False),
                     },
                 }
                 for call in message.tool_calls

@@ -6,9 +6,18 @@ from banking_api.financial.models import TopTransactions, TopTransactionsInput
 from banking_api.tools.models import ToolExecutionContext, ToolSpec
 
 
-def build_get_top_transactions_tool(analytics: FinancialAnalyticsService) -> ToolSpec:
-    def handler(context: ToolExecutionContext, arguments: TopTransactionsInput) -> TopTransactions:
-        return analytics.top_transactions(
+def build_get_top_transactions_tool(
+    analytics: FinancialAnalyticsService, *, bank_reader=None
+) -> ToolSpec:
+    async def handler(
+        context: ToolExecutionContext, arguments: TopTransactionsInput
+    ) -> TopTransactions:
+        source = (
+            FinancialAnalyticsService(await bank_reader(context.principal.user_id))
+            if bank_reader is not None
+            else analytics
+        )
+        return source.top_transactions(
             arguments.resolve_period(reference_now()),
             arguments.limit,
             arguments.account_ids,

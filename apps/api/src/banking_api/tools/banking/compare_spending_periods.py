@@ -6,11 +6,18 @@ from banking_api.financial.models import FinancialPeriodInput, SpendingPeriodCom
 from banking_api.tools.models import ToolExecutionContext, ToolSpec
 
 
-def build_compare_spending_periods_tool(analytics: FinancialAnalyticsService) -> ToolSpec:
-    def handler(
+def build_compare_spending_periods_tool(
+    analytics: FinancialAnalyticsService, *, bank_reader=None
+) -> ToolSpec:
+    async def handler(
         context: ToolExecutionContext, arguments: FinancialPeriodInput
     ) -> SpendingPeriodComparison:
-        return analytics.compare_periods(
+        source = (
+            FinancialAnalyticsService(await bank_reader(context.principal.user_id))
+            if bank_reader is not None
+            else analytics
+        )
+        return source.compare_periods(
             arguments.resolve_period(reference_now()),
             arguments.account_ids,
             user_id=context.principal.user_id,

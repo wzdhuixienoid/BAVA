@@ -5,6 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel
 
+from banking_api.agent_skills import packaged_catalog
 from banking_api.financial.anomaly_models import TransactionAnomalySnapshot
 from banking_api.financial.presentation import CHINA_TIME
 from banking_api.financial.presentation import transaction_time as date_text
@@ -34,6 +35,9 @@ def cell(value: str) -> str:
 
 
 class TransactionAnomalyAnalysisSkill:
+    def __init__(self):
+        self.active_skill = packaged_catalog().bind_business_skill(self.definition)
+
     def review(self, snapshot: TransactionAnomalySnapshot) -> SpendingReview:
         priority = {
             "RAPID_DUPLICATE": 0,
@@ -109,6 +113,7 @@ class TransactionAnomalyAnalysisSkill:
 
     definition = SkillDefinition(
         skill_id="skill:transaction-anomaly-analysis",
+        agent_skill_name="transaction-anomaly-analysis",
         version=1,
         description="根据异常检测快照组织统一的中文说明、交易表格及核对建议。",
         input_schema=TransactionAnomalySnapshot,

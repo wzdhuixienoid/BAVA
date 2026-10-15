@@ -152,7 +152,17 @@ async def test_unrequested_anomaly_call_never_executes_and_model_can_recover(mon
     def forbidden(*args, **kwargs):
         raise AssertionError("异常工具不应执行")
 
-    runtime.registry.get_by_name("detect_transaction_anomalies").handler = forbidden
+    from banking_api.registries.tool_registry import ToolRegistry
+
+    registry = ToolRegistry()
+    for spec in runtime.registry.all():
+        registry.register(
+            spec.model_copy(update={"handler": forbidden})
+            if spec.name == "detect_transaction_anomalies"
+            else spec
+        )
+    runtime.registry = registry
+    runtime.executor.registry = registry
     result = await runtime.run(financial_request("分析我最近15天的消费"))
     assert [item.capability_id for item in result.state.successful_tool_results] == [
         "transaction.spending_summary"

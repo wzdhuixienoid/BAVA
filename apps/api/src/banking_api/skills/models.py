@@ -11,3 +11,4 @@ class SkillDefinition:
     input_schema: type[BaseModel]
     output_schema: type[BaseModel]
     allowed_tools: tuple[str, ...] = ()
+    agent_skill_name: str = ""

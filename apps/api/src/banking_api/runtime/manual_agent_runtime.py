@@ -3,6 +3,7 @@ from typing import Any
 
 from banking_api.agents.minimal_banking_agent import AgentDefinition
 from banking_api.context.builder import ContextBuilder
+from banking_api.financial.request_scope import restrict_financial_agent
 from banking_api.llm.models import LLMMessage
 from banking_api.llm.provider import LLMProvider, LLMProviderError
 from banking_api.registries.tool_registry import ToolRegistry
@@ -42,14 +43,25 @@ class ManualAgentRuntime:
         self.max_tool_calls = max_tool_calls
 
     async def run(self, request: AgentRunRequest) -> AgentRunResult:
+        agent = request.agent or self.agent
+        try:
+            agent.validate_skills()
+        except ValueError as exc:
+            raise AgentRuntimeError(
+                "AGENT_SKILL_BINDING_INVALID", "Agent requires a valid standard skill binding"
+            ) from exc
+        agent = restrict_financial_agent(agent, request.current_task)
+        if request.caller is not None and request.caller != agent.agent_id:
+            raise AgentRuntimeError("TOOL_NOT_ALLOWED", "Agent cannot impersonate another caller")
         state = AgentRunState(task_id=request.task_id, conversation_id=request.conversation_id)
         sink = request.event_sink or ignore_runtime_event
-        effective_caller = request.caller or self.agent.agent_id
-        allowed_tools = self.registry.resolve(self.agent.allowed_capabilities)
+        effective_caller = agent.agent_id
+        allowed_tools = self.registry.resolve(agent.allowed_capabilities)
         await sink(
             "agent.run.started",
             {
-                "agent_id": self.agent.agent_id,
+                "agent_id": agent.agent_id,
+                "skills": [skill.metadata() for skill in agent.skills],
                 "max_steps": self.max_steps,
                 "max_tool_calls": self.max_tool_calls,
             },
@@ -62,7 +74,7 @@ class ManualAgentRuntime:
                     )
                 state.step_count += 1
                 llm_request = self.context_builder.build(
-                    agent=self.agent,
+                    agent=agent,
                     current_task=request.current_task,
                     conversation_messages=request.conversation_messages,
                     runtime_messages=state.runtime_messages,
@@ -112,6 +124,7 @@ class ManualAgentRuntime:
                         role="assistant",
                         content=response.content,
                         tool_calls=response.tool_calls,
+                        reasoning_content=response.reasoning_content,
                     )
                 )
                 for call in response.tool_calls:
@@ -137,7 +150,7 @@ class ManualAgentRuntime:
                         arguments=call.arguments,
                         caller=effective_caller,
                         principal=request.principal,
-                        agent_allowlist=self.agent.allowed_capabilities,
+                        agent_allowlist=agent.allowed_capabilities,
                     )
                     event_type = "tool.call.completed" if result.ok else "tool.call.failed"
                     metadata: dict[str, Any] = {

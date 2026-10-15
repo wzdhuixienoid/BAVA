@@ -26,6 +26,8 @@ from banking_api.persistence.models import (
 )
 from banking_api.runtime.schedule_worker import ScheduleWorker
 
+pytestmark = pytest.mark.postgres
+
 
 @pytest.fixture
 async def pg_app(app, postgres_factory):

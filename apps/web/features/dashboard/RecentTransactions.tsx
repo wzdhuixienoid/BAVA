@@ -38,7 +38,7 @@ export function RecentTransactions({ transactions, accountNames, refreshKey, onA
       onAvailableMonths?.(next.available_months);
       if (scroller.current) scroller.current.scrollTop = 0;
     }).catch(reason => {
-      if (version === requestVersion.current) setError(reason instanceof Error ? reason.message : "消费明细加载失败，请重试。");
+      if (version === requestVersion.current) setError(reason instanceof Error ? reason.message : "账单明细加载失败，请重试。");
     }).finally(() => {
       if (version === requestVersion.current) setLoading(false);
     });
@@ -53,25 +53,25 @@ export function RecentTransactions({ transactions, accountNames, refreshKey, onA
       const next = await api.getDashboardTransactions({ year, month_number: month, category, account_id: account, offset: page.transactions.length });
       if (version === requestVersion.current) setPage(current => ({ ...next, transactions: [...current.transactions, ...next.transactions] }));
     } catch (reason) {
-      if (version === requestVersion.current) setMoreError(reason instanceof Error ? reason.message : "更多消费加载失败，请重试。");
+      if (version === requestVersion.current) setMoreError(reason instanceof Error ? reason.message : "更多账单加载失败，请重试。");
     } finally {
       if (version === requestVersion.current) { morePending.current = false; setLoadingMore(false); }
     }
   }
 
-  return <section aria-label="消费明细" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+  return <section aria-label="账单明细" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-5">
-      <div><h2 className="text-lg font-semibold text-slate-950">消费明细</h2><p className="mt-1 text-sm text-slate-500">按时间倒序展示消费，可筛选年月、类别和账户，下滑查看更多。</p></div>
-      {filtered && <button className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50" onClick={() => { setYear(""); setMonth(""); setCategory(""); setAccount(""); }}>清除筛选</button>}
+      <div><h2 className="text-lg font-semibold text-slate-950">账单明细</h2><p className="mt-1 text-sm text-slate-500">按时间倒序展示已入账收支，含理财、订阅及转账。可筛选年月、类别和账户，下滑查看更多。</p></div>
+      <div className="flex items-center gap-2">{filtered && <button className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50" onClick={() => { setYear(""); setMonth(""); setCategory(""); setAccount(""); }}>清除筛选</button>}<button disabled={loading} className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50" onClick={() => setRetry(value => value + 1)}>刷新账单</button></div>
     </div>
-      <div ref={scroller} role="region" aria-label="消费明细列表" aria-busy={loading} tabIndex={0} className="max-h-[24.5rem] overflow-auto overscroll-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-600">
-        <table aria-label="消费明细表" className="w-full min-w-[840px] table-fixed text-left text-sm">
+      <div ref={scroller} role="region" aria-label="账单明细列表" aria-busy={loading} tabIndex={0} className="max-h-[24.5rem] overflow-auto overscroll-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-600">
+        <table aria-label="账单明细表" className="w-full min-w-[840px] table-fixed text-left text-sm">
           <thead className="sticky top-0 z-10 h-[4.5rem] bg-slate-50 text-xs text-slate-500">
             <tr>
-              <th scope="col" className="w-[28%] px-6 py-2 font-medium"><span className="block">时间</span><div className="mt-1 flex gap-2"><select aria-label="筛选消费年份" value={year} onChange={event => setYear(event.target.value)} className="h-7 min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部年份</option>{[...new Set(page.available_months.map(value => value.slice(0, 4)))].map(value => <option key={value} value={value}>{value}年</option>)}</select><select aria-label="筛选消费月份" value={month} onChange={event => setMonth(event.target.value)} className="h-7 w-20 rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部月份</option>{Array.from({length:12}, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}月</option>)}</select></div></th>
-              <th scope="col" className="w-[24%] px-4 font-medium">商户 / 描述</th>
-              <th scope="col" className="w-[14%] px-4 py-2 font-medium"><label className="block">分类<select aria-label="筛选消费类别" value={category} onChange={event => setCategory(event.target.value)} className="mt-1 block h-7 w-full rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部类别</option>{page.available_categories.map(value => <option key={value} value={value}>{categoryLabel(value)}</option>)}</select></label></th>
-              <th scope="col" className="w-[16%] px-4 py-2 font-medium"><label className="block">账户<select aria-label="筛选消费账户" value={account} onChange={event => setAccount(event.target.value)} className="mt-1 block h-7 w-full rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部账户</option>{Object.entries(accountNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label></th>
+              <th scope="col" className="w-[28%] px-6 py-2 font-medium"><span className="block">时间</span><div className="mt-1 flex gap-2"><select aria-label="筛选账单年份" value={year} onChange={event => setYear(event.target.value)} className="h-7 min-w-0 flex-1 rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部年份</option>{[...new Set(page.available_months.map(value => value.slice(0, 4)))].map(value => <option key={value} value={value}>{value}年</option>)}</select><select aria-label="筛选账单月份" value={month} onChange={event => setMonth(event.target.value)} className="h-7 w-20 rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部月份</option>{Array.from({length:12}, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}月</option>)}</select></div></th>
+              <th scope="col" className="w-[24%] px-4 font-medium">交易 / 描述</th>
+              <th scope="col" className="w-[14%] px-4 py-2 font-medium"><label className="block">分类<select aria-label="筛选账单类别" value={category} onChange={event => setCategory(event.target.value)} className="mt-1 block h-7 w-full rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部类别</option>{page.available_categories.map(value => <option key={value} value={value}>{categoryLabel(value)}</option>)}</select></label></th>
+              <th scope="col" className="w-[16%] px-4 py-2 font-medium"><label className="block">账户<select aria-label="筛选账单账户" value={account} onChange={event => setAccount(event.target.value)} className="mt-1 block h-7 w-full rounded border border-slate-200 bg-white px-2 text-xs font-normal text-slate-700"><option value="">全部账户</option>{Object.entries(accountNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label></th>
               <th scope="col" className="w-[18%] px-6 text-right font-medium">金额</th>
             </tr>
           </thead>
@@ -81,12 +81,12 @@ export function RecentTransactions({ transactions, accountNames, refreshKey, onA
               <td className="px-4 py-2"><p className="truncate font-medium text-slate-900" title={item.merchant}>{item.merchant}</p><p className="mt-0.5 truncate text-xs text-slate-400" title={item.description}>{item.description}</p></td>
               <td className="px-4 py-2 text-slate-600">{categoryLabel(item.category)}</td>
               <td className="whitespace-nowrap px-4 py-2 text-slate-600">{accountNames[item.account_id] ?? "账户"}</td>
-              <td className="whitespace-nowrap px-6 py-2 text-right font-semibold tabular-nums text-slate-950">{item.amount_display}<span className="ml-1 text-xs font-normal text-slate-400">{item.currency}</span></td>
+              <td className={`whitespace-nowrap px-6 py-2 text-right font-semibold tabular-nums ${item.direction === "CREDIT" ? "text-emerald-700" : "text-slate-950"}`}>{item.amount_display}<span className="ml-1 text-xs font-normal text-slate-400">{item.currency}</span></td>
             </tr>)}
-            {rows.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-sm text-slate-500">{loading ? "正在查询消费明细…" : error ? <div role="alert">{error} <button className="ml-2 text-cyan-700 underline" onClick={() => setRetry(value => value + 1)}>重试</button></div> : filtered ? "没有符合筛选条件的消费记录。" : "暂无消费记录。"}</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={5} className="px-6 py-8 text-sm text-slate-500">{loading ? "正在查询账单明细…" : error ? <div role="alert">{error} <button className="ml-2 text-cyan-700 underline" onClick={() => setRetry(value => value + 1)}>重试</button></div> : filtered ? "没有符合筛选条件的账单记录。" : "暂无账单记录。"}</td></tr>}
           </tbody>
         </table>
-        {!loading && !error && rows.length < page.total_count && <div className="border-t border-slate-100 p-3 text-center text-xs">{moreError && <p role="alert" className="mb-2 text-red-700">{moreError}</p>}<button disabled={loadingMore} className="rounded-lg border px-4 py-2 text-slate-600 hover:bg-slate-50 disabled:opacity-50" onClick={() => void loadMore()}>{loadingMore ? "正在加载…" : "加载更多消费"}</button></div>}
+        {!loading && !error && rows.length < page.total_count && <div className="border-t border-slate-100 p-3 text-center text-xs">{moreError && <p role="alert" className="mb-2 text-red-700">{moreError}</p>}<button disabled={loadingMore} className="rounded-lg border px-4 py-2 text-slate-600 hover:bg-slate-50 disabled:opacity-50" onClick={() => void loadMore()}>{loadingMore ? "正在加载…" : "加载更多账单"}</button></div>}
       </div>
   </section>;
 }

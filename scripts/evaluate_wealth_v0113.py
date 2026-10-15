@@ -14,7 +14,7 @@ os.environ.update(
     APP_ENVIRONMENT="test", MOCK_WEALTH_ENABLED="true", AUTH_MODE="development"
 )
 
-from banking_api.agent_skills import AgentSkillCatalog
+from banking_api.agent_skills import packaged_catalog
 from banking_api.agents.models import AgentDefinition
 from banking_api.agents.wealth_advisor_agent import WEALTH_ADVISOR_AGENT
 from banking_api.config.settings import get_settings
@@ -165,7 +165,7 @@ async def run(args):
             analysis = await WealthAdvisoryService(svc).analyze(
                 "dev-user-001", body, previous
             )
-        skill = AgentSkillCatalog().activate(frame.action, text)
+        skill = packaged_catalog().activate(frame.action, text)
         events = []
 
         async def sink(event, data, events=events):
@@ -191,6 +191,7 @@ async def run(args):
                             agent_id=WEALTH_ADVISOR_AGENT.agent_id,
                             allowed_capabilities=WEALTH_ADVISOR_AGENT.allowed_capabilities,
                             instructions=answer_prompt(analysis, skill),
+                            skills=(skill,),
                         ),
                         initial_tool_calls=initial_fact_calls(analysis),
                         event_sink=sink,
@@ -198,7 +199,9 @@ async def run(args):
                 )
                 raw = output.answer
                 analysis = apply_answer(analysis, raw, skill, model=settings.llm_model)
-                attempts.append({"raw": raw, "validation_error": analysis.validation_error})
+                attempts.append(
+                    {"raw": raw, "validation_error": analysis.validation_error}
+                )
                 if analysis.answer.generation_source == "MODEL_GENERATED":
                     break
             except (ValueError, TimeoutError, RuntimeError, AgentRuntimeError) as exc:
@@ -243,9 +246,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--independent", action="store_true")
     parser.add_argument("--answers-only", action="store_true")
-    parser.add_argument("--strategy", action="store_true", help="Evaluate the v0.11.4 dialogue")
+    parser.add_argument(
+        "--strategy", action="store_true", help="Evaluate the v0.11.4 dialogue"
+    )
     parser.add_argument("--scene", action="append", help="Evaluate a selected message")
-    parser.add_argument("--unassessed", action="store_true", help="Do not seed a risk assessment")
+    parser.add_argument(
+        "--unassessed", action="store_true", help="Do not seed a risk assessment"
+    )
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     asyncio.run(run(parser.parse_args()))

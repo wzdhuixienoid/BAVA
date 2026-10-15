@@ -4,8 +4,10 @@ from uuid import UUID
 from pydantic import Field
 
 from banking_api.domain.enums import RiskLevel
+from banking_api.domain.operation import OperationProviderResult, OperationType
 from banking_api.knowledge.wealth import KeywordWealthKnowledge
 from banking_api.tools.models import ToolSpec
+from banking_api.tools.operation_authority import authorized_operation
 from banking_api.wealth.schemas import (
     CompareInput,
     RecommendationInput,
@@ -16,6 +18,24 @@ from banking_api.wealth.schemas import (
 from banking_api.wealth.service import WealthService
 
 CALLER = "agent:wealth-advisor"
+READ_DESCRIPTIONS = {
+    "list_products": "列出当前可查询的模拟理财产品及本人购买资格；不创建交易。",
+    "get_product": "按 product_id 查询模拟理财产品的版本化条款、风险、费用和本人购买资格。",
+    "compare_products": (
+        "按 product_ids 比较最多四款模拟产品的风险、费用和到账安排；"
+        "可传本次需求、金额和本人账户。"
+    ),
+    "recommend": (
+        "按本次需求、金额、本人账户和有效测评生成有依据的模拟理财候选；"
+        "缺失条件返回澄清，不下单。"
+    ),
+    "search_knowledge": (
+        "按 query 检索有效理财资料；可限定产品或版本，"
+        "order_id 仅允许本人订单绑定的历史版本。"
+    ),
+    "list_positions": "查询本人已确认的模拟理财持仓、份额和可赎回情况；不把待成交订单当作持仓。",
+    "get_orders": "查询本人模拟理财申请与订单的当前状态；纯读取，不推进成交或到账。",
+}
 READS = frozenset(
     f"wealth.{name}"
     for name in (
@@ -45,11 +65,7 @@ class OperationInput(WealthInput):
     operation_id: UUID
 
 
-class ProviderOutput(WealthInput):
-    outcome: str | None = None
-    status: str | None = None
-    provider_reference: str | None = None
-    error_code: str | None = None
+class ProviderOutput(OperationProviderResult):
     next_reconcile_at: datetime | None = None
 
 
@@ -135,7 +151,7 @@ def build_wealth_tools(factory, balances, provider):
         return ToolSpec(
             capability_id=f"wealth.{name}",
             name=f"wealth_{name}",
-            description=f"模拟理财只读：{name}。数字及排序以工具结果为准。",
+            description=READ_DESCRIPTIONS[name] + "数字及排序以工具结果为准。",
             input_model=input_model,
             output_model=WealthReadResult,
             risk_level=RiskLevel.R1_PRIVATE_READ,
@@ -160,6 +176,20 @@ def build_wealth_tools(factory, balances, provider):
         name = f"wealth_{direction.lower()}_{'status' if query else 'submit'}"
 
         async def handler(context, args):
+            async with factory() as session:
+                operation = await authorized_operation(
+                    session,
+                    args.operation_id,
+                    context.principal.user_id,
+                    (OperationType("WEALTH_" + direction),),
+                )
+            if operation is None:
+                return ProviderOutput(
+                    **{
+                        "status" if query else "outcome": "UNKNOWN" if query else "FAILED",
+                        "error_code": "OPERATION_NOT_FOUND",
+                    }
+                )
             output = await (provider.query if query else provider.submit)(
                 args.operation_id, context.principal.user_id, direction
             )
@@ -168,11 +198,13 @@ def build_wealth_tools(factory, balances, provider):
         return ToolSpec(
             capability_id=f"wealth.{direction.lower()}.{'status' if query else 'submit'}",
             name=name,
-            description="只处理已持久化且授权的理财 Operation",
+            description="对账并推进已受理理财订单的成交与到账"
+            if query
+            else "提交已持久化且授权的理财 Operation",
             input_model=OperationInput,
             output_model=ProviderOutput,
-            risk_level=RiskLevel.R1_PRIVATE_READ if query else RiskLevel.R4_FINANCIAL_COMMIT,
-            side_effect=not query,
+            risk_level=RiskLevel.R3_FINANCIAL_RECONCILE if query else RiskLevel.R4_FINANCIAL_COMMIT,
+            side_effect=True,
             allowed_callers=frozenset({caller}),
             handler=handler,
         )

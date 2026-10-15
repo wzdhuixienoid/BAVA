@@ -1748,6 +1748,18 @@ export interface components {
             account_id: string;
             /** Currency */
             currency: string;
+            /**
+             * Direction
+             * @default DEBIT
+             * @enum {string}
+             */
+            direction: "DEBIT" | "CREDIT";
+            /**
+             * Source
+             * @default BANK
+             * @enum {string}
+             */
+            source: "BANK" | "SUBSCRIPTION" | "WEALTH" | "TRANSFER";
         };
         /** DashboardTransactionPage */
         DashboardTransactionPage: {
@@ -3583,6 +3595,10 @@ export interface components {
             skill_id: string;
             /** Skill Version */
             skill_version: string;
+            /** Skill Resource Hashes */
+            skill_resource_hashes?: {
+                [key: string]: string;
+            };
             /**
              * Generation Source
              * @enum {string}

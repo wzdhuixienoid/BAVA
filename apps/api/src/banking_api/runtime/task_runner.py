@@ -7,6 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from banking_api.agent_skills import ActivatedSkill, SkillSelectionError, packaged_catalog
 from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
 from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.models import AgentDefinition
@@ -89,16 +90,6 @@ TRANSFER_WORKFLOW_ID = "workflow:transfer"
 SUBSCRIPTION_WORKFLOW_ID = "workflow:subscription-cancel"
 SUBSCRIPTION_RESUME_WORKFLOW_ID = "workflow:subscription-resume"
 
-REPORT_SOURCE_INSTRUCTIONS = """
-本次请求的产品输出是月度消费报告数据源。
-必须成功获取 spending_summary 和 category_breakdown。
-优先同时获取 period_comparison 和 top_transactions。
-如果先查询了账户，剩余三个工具名额必须优先汇总、分类，再选一项可选数据。
-任何必需查询返回没有账单时立即结束，不补查可选数据或猜测其他期间。
-top_transactions 使用 limit=5，以保持报告 Artifact 的有界展示范围。
-不得固定 Tool 调用顺序，也不得自行计算数值。
-中间自然语言回答不会展示给用户；只需在数据收集完成后简短结束。
-""".strip()
 
 logger = logging.getLogger(__name__)
 
@@ -510,7 +501,6 @@ class InProcessTaskRunner:
                 and self.transfer_workflow_engine
                 and not any(w in current_task for w in ("持仓", "订单"))
             ):
-                from banking_api.agent_skills import AgentSkillCatalog
                 from banking_api.wealth.advisory import WealthAdvisoryService
                 from banking_api.wealth.answer import answer_prompt
                 from banking_api.wealth.context import analysis_input
@@ -537,7 +527,7 @@ class InProcessTaskRunner:
                             NAMESPACE_URL,
                             f"{task_id}:{candidate.product.product_id}:purchase-entry",
                         )
-                active_skill = AgentSkillCatalog().activate(
+                active_skill = packaged_catalog().activate(
                     wealth_frame.action if wealth_frame else "RECOMMEND", current_task
                 )
                 await event_sink("agent_skill.activated", active_skill.metadata())
@@ -545,6 +535,7 @@ class InProcessTaskRunner:
                     agent_id=agent.agent_id,
                     allowed_capabilities=agent.allowed_capabilities,
                     instructions=answer_prompt(wealth_analysis, active_skill),
+                    skills=(active_skill,),
                 )
             try:
                 runtime = self.runtime_factory.get(runtime_backend)
@@ -598,6 +589,7 @@ class InProcessTaskRunner:
                                     agent_id=agent.agent_id,
                                     allowed_capabilities=agent.allowed_capabilities,
                                     instructions=answer_prompt(wealth_analysis, active_skill),
+                                    skills=(active_skill,),
                                 ),
                                 event_sink=event_sink,
                                 wealth_context=wealth_context,
@@ -687,6 +679,13 @@ class InProcessTaskRunner:
                     data={"message_id": str(assistant.message_id), "role": assistant.role.value},
                 )
                 await session.commit()
+        except SkillSelectionError as exc:
+            await self._complete_without_agent(
+                claim=claim,
+                conversation_id=conversation_id,
+                answer=str(exc),
+                route=RequestRoute.WEALTH_ANALYSIS,
+            )
         except RoutingError:
             await self._fail(
                 claim,
@@ -931,12 +930,11 @@ class InProcessTaskRunner:
                     draft["quantity_unit"] = "元" if draft["quantity"] else numeric.unit
             from sqlalchemy import select
 
-            from banking_api.agent_skills import AgentSkillCatalog
             from banking_api.persistence.models import WorkflowModel
             from banking_api.wealth.calculation import WealthError
             from banking_api.wealth.schemas import WealthEditInput
 
-            skill = AgentSkillCatalog().activate("PREPARE_" + direction, request)
+            skill = packaged_catalog().activate("PREPARE_" + direction, request)
             await EventPublisher(session).persist(
                 event_type="agent_skill.activated",
                 conversation_id=conversation_id,
@@ -962,6 +960,8 @@ class InProcessTaskRunner:
                         conversation_id=conversation_id,
                         answer="这笔申请已经提交，不能修改金额或账户。请在理财订单中查看成交和到账进度；如果要另做一笔，请明确开始新的交易。",
                         route=RequestRoute.WEALTH_ANALYSIS,
+                        failed_skill=skill,
+                        skill_error_code="WORKFLOW_ALREADY_SUBMITTED",
                     )
                     return
                 existing = await session.scalar(
@@ -1021,6 +1021,8 @@ class InProcessTaskRunner:
                     answer=f"{guidance}\n\n[前往理财中心查看并完成风险测评](/wealth)"
                     "\n\n你仍可先了解产品和风险。完成有效测评后，再按测评结果判断是否适合购买。",
                     route=RequestRoute.WEALTH_ANALYSIS,
+                    failed_skill=skill,
+                    skill_error_code=exc.code,
                 )
                 return
             output_analysis = None
@@ -1150,12 +1152,24 @@ class InProcessTaskRunner:
         conversation_id: UUID,
         answer: str,
         route: RequestRoute,
+        failed_skill: ActivatedSkill | None = None,
+        skill_error_code: str | None = None,
     ) -> None:
         async with self.session_factory() as session:
             tasks = TaskRepository(session)
             messages = MessageRepository(session)
             publisher = EventPublisher(session)
             task = await self._get_owned(tasks, claim, for_update=True)
+            # Trade preparation rolls back its transaction when blocked. Retain the
+            # attempted package and outcome in the committed user-facing response.
+            if failed_skill is not None:
+                for event_type in ("agent_skill.activated", "agent_skill.failed"):
+                    await publisher.persist(
+                        event_type=event_type,
+                        conversation_id=conversation_id,
+                        task_id=claim.task_id,
+                        data=failed_skill.metadata() | {"error_code": skill_error_code},
+                    )
             assistant = await messages.create(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
@@ -1369,10 +1383,15 @@ class InProcessTaskRunner:
 
     @staticmethod
     def _report_source_agent(agent: AgentDefinition) -> AgentDefinition:
+        skill = packaged_catalog().activate_named(
+            "financial-analysis",
+            references=("references/analysis-rules.md", "references/report-source.md"),
+        )
         return AgentDefinition(
             agent_id=agent.agent_id,
-            instructions=f"{agent.instructions}\n\n{REPORT_SOURCE_INSTRUCTIONS}",
+            instructions=skill.instructions,
             allowed_capabilities=agent.allowed_capabilities,
+            skills=(skill,),
         )
 
     async def _run_report_pipeline(
@@ -1500,6 +1519,7 @@ class InProcessTaskRunner:
                         "analysis_snapshot": snapshot.model_dump(mode="json"),
                         "skill_id": skill.skill_id,
                         "skill_version": skill.version,
+                        "skill_package": packaged_catalog().bind_business_skill(skill).metadata(),
                         "report_id": str(artifact.report_id),
                         "report_type": ReportType.MONTHLY_SPENDING.value,
                         "assistant_message_id": str(assistant.message_id),
@@ -1553,6 +1573,9 @@ class InProcessTaskRunner:
                 data={
                     "skill_id": skill_id,
                     "skill_version": skill_version,
+                    "skill_package": packaged_catalog()
+                    .bind_business_skill(self.skill_registry.get(skill_id))
+                    .metadata(),
                     "task_id": str(claim.task_id),
                 },
             )

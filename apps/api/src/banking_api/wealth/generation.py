@@ -2,13 +2,14 @@
 
 from uuid import uuid4
 
-from banking_api.agent_skills import AgentSkillCatalog
+from banking_api.agent_skills import SkillSelectionError, packaged_catalog
 from banking_api.agents.models import AgentDefinition
 from banking_api.agents.wealth_advisor_agent import WEALTH_ADVISOR_AGENT
 from banking_api.domain.enums import RuntimeBackend
 from banking_api.runtime.base import AgentRunRequest
 from banking_api.wealth.advisory import WealthAdvisoryService
 from banking_api.wealth.answer import answer_prompt, apply_answer, initial_fact_calls
+from banking_api.wealth.calculation import WealthError
 from banking_api.wealth.coordination import analysis_request
 from banking_api.wealth.semantic import interpret
 
@@ -33,7 +34,10 @@ async def generate_analysis(service, body, principal, app):
     if body.account_id:
         resolved.account_id = body.account_id
     analysis = await WealthAdvisoryService(service).analyze(principal.user_id, resolved)
-    skill = AgentSkillCatalog().activate(frame.action, frame.source_text)
+    try:
+        skill = packaged_catalog().activate(frame.action, frame.source_text)
+    except SkillSelectionError as exc:
+        raise WealthError("INVALID_SKILL_SELECTION", str(exc)) from exc
     try:
         runtime = app.state.runtime_factory.get(RuntimeBackend.LANGGRAPH)
     except ValueError:
@@ -57,6 +61,7 @@ async def generate_analysis(service, body, principal, app):
                         agent_id=WEALTH_ADVISOR_AGENT.agent_id,
                         allowed_capabilities=WEALTH_ADVISOR_AGENT.allowed_capabilities,
                         instructions=answer_prompt(analysis, skill),
+                        skills=(skill,),
                     ),
                 )
             )

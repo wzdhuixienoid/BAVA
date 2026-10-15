@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from banking_api.domain.operation import OperationProviderResult
 from banking_api.financial.report_formatter import ReportFormatter
 
 
@@ -122,9 +123,5 @@ class SubscriptionCancelOperationInput(BaseModel):
     operation_id: str
 
 
-class SubscriptionProviderOutput(BaseModel):
-    outcome: str | None = None
-    status: str | None = None
-    provider_reference: str | None = None
-    error_code: str | None = None
-    error_message: str | None = None
+class SubscriptionProviderOutput(OperationProviderResult):
+    pass

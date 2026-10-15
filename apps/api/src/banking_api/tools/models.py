@@ -2,10 +2,10 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from banking_api.domain.account import AccountListResult
 from banking_api.domain.enums import RiskLevel
@@ -68,14 +68,14 @@ class TransferOperationInput(BaseModel):
 
 
 class TransferCommitOutput(BaseModel):
-    outcome: str
+    outcome: Literal["ACCEPTED", "FAILED", "UNKNOWN"]
     provider_reference: str | None = None
     error_code: str | None = None
     error_message: str | None = None
 
 
 class TransferStatusOutput(BaseModel):
-    status: str
+    status: Literal["SUCCEEDED", "FAILED", "PENDING", "UNKNOWN"]
     provider_reference: str | None = None
     error_code: str | None = None
     error_message: str | None = None
@@ -90,11 +90,13 @@ ToolHandler = Callable[[ToolExecutionContext, BaseModel], BaseModel | Awaitable[
 
 
 class ToolSpec(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True, extra="forbid", frozen=True, revalidate_instances="always"
+    )
 
-    capability_id: str
-    name: str
-    description: str
+    capability_id: str = Field(min_length=1, max_length=128, pattern=r"^[a-z0-9_.-]+$")
+    name: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
+    description: str = Field(min_length=1)
     input_model: type[BaseModel]
     output_model: type[BaseModel]
     risk_level: RiskLevel
@@ -102,13 +104,38 @@ class ToolSpec(BaseModel):
     allowed_callers: frozenset[str]
     handler: ToolHandler
 
+    @model_validator(mode="after")
+    def validate_contract(self):
+        if not self.description.strip() or not self.allowed_callers:
+            raise ValueError("Tools require a description and explicit callers")
+        if self.input_model is BaseModel or self.output_model is BaseModel:
+            raise ValueError("Tools require concrete argument and output model classes")
+        schema = self.input_schema
+        if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+            raise ValueError("Tool arguments require an object schema rejecting unknown fields")
+        if self.output_schema.get("type") != "object":
+            raise ValueError("Tools require structured object output schemas")
+        if self.risk_level is RiskLevel.R1_PRIVATE_READ:
+            if self.side_effect:
+                raise ValueError("Read tools cannot have side effects")
+        elif self.risk_level in {RiskLevel.R3_FINANCIAL_RECONCILE, RiskLevel.R4_FINANCIAL_COMMIT}:
+            if not self.side_effect or any(
+                not c.startswith("workflow:") for c in self.allowed_callers
+            ):
+                raise ValueError(
+                    "Financial mutations require workflow-only callers and side effects"
+                )
+        else:
+            raise ValueError("Unsupported tool risk classification")
+        return self
+
     @property
     def input_schema(self) -> dict[str, Any]:
         return self.input_model.model_json_schema()
 
     @property
     def output_schema(self) -> dict[str, Any]:
-        return self.output_model.model_json_schema()
+        return self.output_model.model_json_schema(mode="serialization")
 
 
 class ToolErrorCode(StrEnum):

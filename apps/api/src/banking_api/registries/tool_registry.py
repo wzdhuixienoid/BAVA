@@ -7,6 +7,7 @@ class ToolRegistry:
         self._by_name: dict[str, ToolSpec] = {}
 
     def register(self, spec: ToolSpec) -> None:
+        spec = ToolSpec.model_validate(spec)
         if spec.capability_id in self._by_capability or spec.name in self._by_name:
             raise ValueError(f"Tool already registered: {spec.capability_id}/{spec.name}")
         self._by_capability[spec.capability_id] = spec

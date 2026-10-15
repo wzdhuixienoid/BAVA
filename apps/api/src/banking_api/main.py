@@ -44,6 +44,7 @@ from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.security.authentication import AuthenticationService
 from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
+from banking_api.skills.transaction_anomaly_analysis import TransactionAnomalyAnalysisSkill
 from banking_api.skills.wealth_recommendation import WealthRecommendationSkill
 from banking_api.subscriptions.provider import MockSubscriptionProvider
 from banking_api.tools.banking import (
@@ -214,11 +215,25 @@ def create_app() -> FastAPI:
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
     registry.register(build_get_balance_tool(bank, transfer_provider.effective_balance))
-    registry.register(build_get_spending_summary_tool(analytics))
-    registry.register(build_get_category_breakdown_tool(analytics))
-    registry.register(build_compare_spending_periods_tool(analytics))
-    registry.register(build_get_top_transactions_tool(analytics))
-    registry.register(build_detect_anomalies_tool(anomaly_detector))
+
+    async def posted_bank(user_id):
+        from banking_api.application.account_statement_service import (
+            AccountStatementService,
+            PostedAnalysisBank,
+        )
+
+        async with session_factory() as session:
+            rows = await AccountStatementService(bank, session).posted_transactions(
+                user_id=user_id,
+                as_of=reference_now(),
+            )
+        return PostedAnalysisBank(bank, user_id, rows)
+
+    registry.register(build_get_spending_summary_tool(analytics, bank_reader=posted_bank))
+    registry.register(build_get_category_breakdown_tool(analytics, bank_reader=posted_bank))
+    registry.register(build_compare_spending_periods_tool(analytics, bank_reader=posted_bank))
+    registry.register(build_get_top_transactions_tool(analytics, bank_reader=posted_bank))
+    registry.register(build_detect_anomalies_tool(anomaly_detector, bank_reader=posted_bank))
     registry.register(build_search_payees_tool(bank, session_factory))
     registry.register(build_list_payees_tool(bank, session_factory))
     registry.register(build_commit_transfer_tool(session_factory, transfer_provider))
@@ -262,6 +277,7 @@ def create_app() -> FastAPI:
     skill_registry = SkillRegistry()
     skill_registry.register(MonthlySpendingReportSkill.definition)
     skill_registry.register(WealthRecommendationSkill.definition)
+    skill_registry.register(TransactionAnomalyAnalysisSkill.definition)
     router = RequestRouter(provider)
     manual_runtime = ManualAgentRuntime(
         provider=provider,

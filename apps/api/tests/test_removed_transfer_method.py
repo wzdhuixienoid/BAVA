@@ -22,6 +22,7 @@ async def test_removed_endpoints_and_intent_are_unavailable(app, client):
         TransferIntent(recipient_phone="13800138000", amount="1")
 
 
+@pytest.mark.postgres
 async def test_retirement_migration_cancels_unsubmitted_and_keeps_bank_workflows(
     app, postgres_factory
 ):

@@ -2,13 +2,47 @@
 
 from decimal import Decimal
 
+from banking_api.agent_skills import packaged_catalog
 from banking_api.skills.models import SkillDefinition
+from banking_api.wealth.intent import extract_quantity
 from banking_api.wealth.schemas import WealthAnalysis, WealthAnalysisBlock, WealthCustomerResponse
 
 
-class WealthCustomerPresenter:
+def trade_input_status(analysis: WealthAnalysis) -> dict:
+    """Missing trade fields come from verified inputs, never from model prose."""
+    redeem = analysis.result_kind == "PREPARE_REDEEM"
+    questions = []
+    if len(analysis.candidates) != 1:
+        questions.append("请选择要赎回的产品。" if redeem else "请选择要申购的产品。")
+    quantity = extract_quantity(
+        analysis.intent_frame.source_text if analysis.intent_frame else analysis.needs.raw,
+        "REDEEM" if redeem else "PURCHASE",
+    )
+    known_quantity = bool(
+        quantity.quantity or quantity.redeem_all if redeem else analysis.needs.amount
+    )
+    if not known_quantity:
+        questions.append(
+            quantity.message or ("赎回份额是多少份？" if redeem else "申购金额是多少元？")
+        )
+    if not analysis.needs.account_id:
+        questions.append("请选择本人持仓账户。" if redeem else "请选择本人付款账户。")
+    return {
+        "product_selected": len(analysis.candidates) == 1,
+        "account_selected": bool(analysis.needs.account_id),
+        "quantity_provided": known_quantity,
+        "quantity_unit": "份" if redeem else "元",
+        "missing_field_questions": questions,
+    }
+
+
+class WealthRecommendationSkill:
+    def __init__(self):
+        self.active_skill = packaged_catalog().bind_business_skill(self.definition)
+
     definition = SkillDefinition(
         skill_id="skill:wealth-recommendation",
+        agent_skill_name="wealth-recommendation",
         version=1,
         description="结合本次预算、期限与产品事实，用简明正文解释推荐和取舍。",
         input_schema=WealthAnalysis,
@@ -42,6 +76,7 @@ class WealthCustomerPresenter:
             "NO_MATCH",
             "NEEDS_CLARIFICATION",
         }:
+            redeem = analysis.result_kind == "PREPARE_REDEEM"
             response.headline = (
                 "已选定"
                 + (
@@ -49,11 +84,15 @@ class WealthCustomerPresenter:
                     if len(analysis.candidates) == 1
                     else "待选择的产品"
                 )
-                + "，请核对金额并选择本人付款账户。"
+                + (
+                    "，请核对赎回份额与本人持仓账户。"
+                    if redeem
+                    else "，请核对金额与本人付款账户。"
+                )
             )
-            response.questions = (["申购金额是多少元？"] if not analysis.needs.amount else []) + (
-                ["请选择本人付款账户。"] if not analysis.needs.account_id else []
-            )
+            if redeem:
+                response.budget_display = None
+            response.questions = trade_input_status(analysis)["missing_field_questions"]
             return response
         if analysis.result_kind == "EDUCATION":
             response.paragraphs = list(analysis.blocks)
@@ -63,17 +102,20 @@ class WealthCustomerPresenter:
         for candidate in analysis.candidates:
             profile = candidate.product.design_profile
             if profile and analysis.result_kind != "CATALOGUE":
-                response.paragraphs.append(WealthAnalysisBlock(
-                    block_id=candidate.fact_id,
-                    title=candidate.product.name,
-                    text=(
-                        f"{candidate.product.name}：{profile.positioning}。"
-                        f"收益来源是{'、'.join(profile.return_sources)}；"
-                        f"主要承担{'、'.join(profile.risk_drivers)}。"
-                        f"{profile.observation_label}。{candidate.product.open_display}。"
-                    ),
-                    fact_ids=[candidate.fact_id], evidence_ids=candidate.evidence_ids,
-                ))
+                response.paragraphs.append(
+                    WealthAnalysisBlock(
+                        block_id=candidate.fact_id,
+                        title=candidate.product.name,
+                        text=(
+                            f"{candidate.product.name}：{profile.positioning}。"
+                            f"收益来源是{'、'.join(profile.return_sources)}；"
+                            f"主要承担{'、'.join(profile.risk_drivers)}。"
+                            f"{profile.observation_label}。{candidate.product.open_display}。"
+                        ),
+                        fact_ids=[candidate.fact_id],
+                        evidence_ids=candidate.evidence_ids,
+                    )
+                )
                 continue
             advantages = [
                 a
@@ -114,7 +156,3 @@ class WealthCustomerPresenter:
                 )
             )
         return response
-
-
-class WealthRecommendationSkill(WealthCustomerPresenter):
-    """Compatibility wrapper for the pre-v0.11.3 deterministic presenter."""

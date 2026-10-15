@@ -1,14 +1,14 @@
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.domain.enums import RiskLevel
-from banking_api.persistence.models import OperationModel
+from banking_api.domain.operation import OperationType
 from banking_api.tools.models import (
     ToolExecutionContext,
     ToolSpec,
     TransferCommitOutput,
     TransferOperationInput,
 )
+from banking_api.tools.operation_authority import authorized_operation
 from banking_api.transfers.provider import (
     TransferProvider,
     TransferProviderAmbiguousError,
@@ -25,13 +25,12 @@ def build_commit_transfer_tool(
         context: ToolExecutionContext, arguments: TransferOperationInput
     ) -> TransferCommitOutput:
         async with session_factory() as session:
-            result = await session.execute(
-                select(OperationModel).where(
-                    OperationModel.operation_id == arguments.operation_id,
-                    OperationModel.user_id == context.principal.user_id,
-                )
+            operation = await authorized_operation(
+                session,
+                arguments.operation_id,
+                context.principal.user_id,
+                (OperationType.TRANSFER,),
             )
-            operation = result.scalar_one_or_none()
         if operation is None:
             return TransferCommitOutput(
                 outcome="FAILED",

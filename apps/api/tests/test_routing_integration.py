@@ -363,6 +363,7 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
     assert task.output["requested_output"] == "MONTHLY_REPORT"
     assert task.output["skill_id"] == "skill:monthly-spending-report"
     assert task.output["skill_version"] == 1
+    assert task.output["skill_package"] == MonthlySpendingReportSkill().active_skill.metadata()
     assert task.output["report_type"] == "MONTHLY_SPENDING"
     assert UUID(task.output["report_id"])
     assert task.output["analysis_snapshot"]["spending_summary"]["total_spending"] == "16547.30"
@@ -389,6 +390,7 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
         assert skill_event.data_json == {
             "skill_id": "skill:monthly-spending-report",
             "skill_version": 1,
+            "skill_package": task.output["skill_package"],
             "task_id": str(accepted.task_id),
         }
 

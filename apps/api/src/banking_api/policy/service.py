@@ -48,12 +48,26 @@ class PolicyService:
             and spec.risk_level is RiskLevel.R4_FINANCIAL_COMMIT
             and spec.side_effect
         )
-        if read_allowed or commit_allowed:
+        reconcile_allowed = (
+            common
+            and spec is not None
+            and (caller, spec.capability_id)
+            in {
+                ("workflow:transfer", "transfer.get_status"),
+                ("workflow:wealth-purchase", "wealth.purchase.status"),
+                ("workflow:wealth-redeem", "wealth.redeem.status"),
+            }
+            and spec.risk_level is RiskLevel.R3_FINANCIAL_RECONCILE
+            and spec.side_effect
+        )
+        if read_allowed or commit_allowed or reconcile_allowed:
             return PolicyResult(
                 decision=PolicyDecision.ALLOW,
                 reason=(
-                    "transfer financial commit allowed"
+                    "authorized financial commit allowed"
                     if commit_allowed
+                    else "authorized operation reconciliation allowed"
+                    if reconcile_allowed
                     else "read-only capability allowed"
                 ),
                 business_risk_level=(BusinessRiskLevel.GREEN if read_allowed else None),

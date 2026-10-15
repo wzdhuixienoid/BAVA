@@ -77,10 +77,13 @@ class LangGraphAgentRuntime:
     ) -> BankingAgentGraphState:
         sink = request.event_sink or ignore_runtime_event
         agent = self._resolve_agent(request)
+        if request.caller is not None and request.caller != agent.agent_id:
+            raise AgentRuntimeError("TOOL_NOT_ALLOWED", "Agent cannot impersonate another caller")
         await sink(
             "agent.run.started",
             {
                 "agent_id": agent.agent_id,
+                "skills": [skill.metadata() for skill in agent.skills],
                 "max_steps": self.max_steps,
                 "max_tool_calls": self.max_tool_calls,
             },
@@ -118,6 +121,7 @@ class LangGraphAgentRuntime:
                 "task_id": str(request.task_id),
                 "conversation_id": str(request.conversation_id),
                 "agent_id": agent.agent_id,
+                "skills": [skill.metadata() for skill in agent.skills],
                 "runtime_messages": [
                     LLMMessage(
                         role="assistant",
@@ -468,6 +472,7 @@ class LangGraphAgentRuntime:
             metadata = {
                 "skill_id": skill.definition.skill_id,
                 "skill_version": skill.definition.version,
+                "skill_package": skill.active_skill.metadata(),
             }
             await sink("skill.run.started", metadata)
             detailed_answer = skill.execute(snapshot).answer
@@ -493,6 +498,7 @@ class LangGraphAgentRuntime:
                     "skill_id": "skill:transaction-anomaly-analysis",
                     "skill_version": 1,
                     "presentation": "brief",
+                    "skill_package": TransactionAnomalyAnalysisSkill().active_skill.metadata(),
                 }
                 await sink("skill.run.started", metadata)
                 graph_state["final_answer"] += "\n\n" + review["answer"]
@@ -511,6 +517,12 @@ class LangGraphAgentRuntime:
                 "AGENT_NOT_SELECTED",
                 "LangGraph runtime requires an AgentDefinition",
             )
+        try:
+            agent.validate_skills()
+        except ValueError as exc:
+            raise AgentRuntimeError(
+                "AGENT_SKILL_BINDING_INVALID", "Agent requires a valid standard skill binding"
+            ) from exc
         return restrict_financial_agent(agent, request.current_task)
 
     @staticmethod

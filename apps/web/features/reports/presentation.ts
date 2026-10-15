@@ -12,6 +12,12 @@ export const categoryLabels: Record<string, string> = {
   HEALTH: "健康",
   ENTERTAINMENT: "娱乐",
   OTHER: "其他",
+  SALARY: "工资收入",
+  BONUS: "奖金收入",
+  INCOME: "收入",
+  TRANSFER: "转账",
+  WEALTH: "理财",
+  REFUND: "退款",
 };
 
 export function categoryLabel(category: string): string {

@@ -118,7 +118,7 @@ TEST_DATABASE_URL=postgresql+asyncpg://banking:banking@localhost:5432/banking_we
 
 新增 test_wealth_advisory.py、wealth-analysis-interaction.test.mjs 和 PostgreSQL 快照隔离测试。检索 gold 位于 knowledge/content/wealth_retrieval_gold.json，维护方式见 [知识维护说明](../../apps/api/src/banking_api/knowledge/README.md)。
 
-只读连续对话 Smoke：PYTHONPATH=apps/api/src apps/api/.venv/bin/python scripts/smoke_wealth_advisor.py。默认 SQLite 路径包含 test；加 --real-model 使用已有模型配置，--output 指定输出。FakeLLM 契约测试不等同真实模型质量验证。
+旧段落重排 Smoke 已删除。当前只读真实模型评估使用 `PYTHONPATH=apps/api/src apps/api/.venv/bin/python scripts/evaluate_wealth_v0113.py --answers-only --database /private/tmp/wealth_skills_test.sqlite --output /private/tmp/wealth_skills_test.json`，加载应用相同的标准技能与正文核验入口。脚本名称保留语义数据集版本，实际运行当前契约；只接受名称包含 test 的隔离库。
 
 浏览器使用 wealth_browser_test_server.py，独立 test SQLite、API 8011、Web 3011；--advisor-history 仅用于独立库的合成旧对话。控制文件只注入测试业务时钟，不提供产品端推进时间接口，不改变授权 TTL。不得在原演示用户测评、下单或 reset。实际执行结果保存在对应版本更新说明。
 
@@ -142,3 +142,7 @@ test_wealth_v0113覆盖数量、原文核验、需求更新、阶段、模型正
 ## v0.11.4 策略回归
 
 `test_wealth_strategy.py`覆盖增长目标改变候选、集合反馈、换一批、逐款定位、偏好更新、策略关系、版本时间、历史资料不覆盖和持久Task不产生Operation。真实模型可执行 `scripts/evaluate_wealth_v0113.py --strategy --answers-only --database /private/tmp/wealth_strategy_test.sqlite --output /private/tmp/wealth_strategy_test.json`。脚本只接受test数据库，使用本次发布时间后的测试时钟，并记录每次核验失败及模型原答。真实生成与FakeLLM回归分开统计，人工复核上一批概括、代码泄漏和收益暗示。
+
+## Tool 契约专项
+
+`uv run --project apps/api pytest apps/api/tests/test_tool_contract_audit.py apps/api/tests/test_release_version.py` 检查 26 个登记契约、风险分类、权限和金额错误、推理续接、持久授权及动态订阅入账。仍须运行全量套件与隔离 PostgreSQL 测试；专项不能替代并发、租约与恢复验证。清单和边界见 [工具审计](../architecture/tools.md)。

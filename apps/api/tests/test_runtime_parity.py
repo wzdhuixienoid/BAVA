@@ -176,7 +176,7 @@ async def test_policy_denial_is_fatal(backend: Backend) -> None:
     with pytest.raises(AgentRuntimeError) as caught:
         await runtime.run(request(caller="agent:unknown"))
     assert caught.value.code == "TOOL_NOT_ALLOWED"
-    assert len(provider.requests) == 1
+    assert provider.requests == []  # Caller impersonation is rejected before model/tool execution.
 
 
 @pytest.mark.parametrize("backend", ["manual", "langgraph"])

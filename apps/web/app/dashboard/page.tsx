@@ -31,7 +31,7 @@ export default function DashboardPage() {
   return <main className="min-h-screen min-w-0 bg-slate-50">
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-8 sm:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-semibold tracking-wider text-cyan-700">AI BANKING AGENT · v{APP_VERSION}</p><h1 className="mt-2 text-3xl font-semibold text-slate-950">金融总览</h1><p className="mt-2 text-sm text-slate-500">账户与消费事实由银行服务提供，金额按币种展示。</p></div>
+        <div><p className="text-xs font-semibold tracking-wider text-cyan-700">AI BANKING AGENT · v{APP_VERSION}</p><h1 className="mt-2 text-3xl font-semibold text-slate-950">金融总览</h1><p className="mt-2 text-sm text-slate-500">账户与账单事实由银行服务提供，金额按币种展示。</p></div>
         <nav aria-label="金融服务" className="flex flex-wrap gap-2 text-sm"><Link className="rounded-lg border bg-white px-3 py-2" href="/">对话工作台</Link><Link className="rounded-lg border bg-white px-3 py-2" href="/scheduled-transfers">预约与周期转账</Link><Link className="rounded-lg border bg-white px-3 py-2" href="/aa">AA 收款与付款</Link><Link className="rounded-lg border bg-white px-3 py-2" href="/payees">收款人管理</Link></nav>
       </header>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}

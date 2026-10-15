@@ -1,7 +1,7 @@
 import inspect
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel
 
 from banking_api.domain.enums import PolicyDecision
 from banking_api.domain.principal import ExecutionPrincipal, Principal
@@ -14,6 +14,7 @@ from banking_api.tools.models import (
     ToolExecutionContext,
     ToolExecutionResult,
 )
+from banking_api.wealth.calculation import WealthError
 
 
 class ToolExecutor:
@@ -37,15 +38,18 @@ class ToolExecutor:
         decision = self.policy.evaluate(
             spec=spec,
             caller=caller,
-            authenticated=principal is not None,
+            authenticated=isinstance(principal, (Principal, ExecutionPrincipal))
+            and bool(principal.user_id.strip()),
             agent_allowlist=agent_allowlist,
         )
         if decision.decision is not PolicyDecision.ALLOW:
             return self._error(ToolErrorCode.TOOL_NOT_ALLOWED, decision.reason)
 
         try:
+            if isinstance(arguments, BaseModel):
+                arguments = arguments.model_dump(round_trip=True, warnings="error")
             validated_input = spec.input_model.model_validate(arguments)
-        except ValidationError:
+        except (ValueError, WealthError, TypeError):
             return self._error(
                 ToolErrorCode.TOOL_ARGUMENT_VALIDATION_FAILED,
                 "Tool arguments do not match the input schema",
@@ -77,8 +81,11 @@ class ToolExecutor:
             )
 
         try:
+            if isinstance(raw_output, BaseModel):
+                raw_output = raw_output.model_dump(round_trip=True, warnings="error")
             output = spec.output_model.model_validate(raw_output)
-        except ValidationError:
+            serialized = output.model_dump(mode="json", warnings="error")
+        except (ValueError, TypeError):
             return self._error(
                 ToolErrorCode.TOOL_OUTPUT_VALIDATION_FAILED,
                 "Tool output does not match the output schema",
@@ -87,7 +94,7 @@ class ToolExecutor:
         return ToolExecutionResult(
             ok=True,
             capability_id=spec.capability_id,
-            output=output.model_dump(mode="json"),
+            output=serialized,
         )
 
     @staticmethod

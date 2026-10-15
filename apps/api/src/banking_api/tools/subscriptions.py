@@ -1,13 +1,11 @@
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.domain.enums import RiskLevel
 from banking_api.domain.operation import OperationType
 from banking_api.mock_bank.service import MockBankService
-from banking_api.persistence.models import OperationModel
 from banking_api.subscriptions.models import (
     SubscriptionAnalysisInput,
     SubscriptionListOutput,
@@ -20,6 +18,7 @@ from banking_api.subscriptions.provider import (
 )
 from banking_api.subscriptions.service import SubscriptionAnalysisService
 from banking_api.tools.models import ToolExecutionContext, ToolSpec
+from banking_api.tools.operation_authority import authorized_operation
 
 SUBSCRIPTION_AGENT_CALLER = "agent:subscription-analysis"
 SUBSCRIPTION_WORKFLOW_CALLER = "workflow:subscription-cancel"
@@ -66,20 +65,16 @@ def build_subscription_cancel_tool(
         context: ToolExecutionContext, arguments: SubscriptionOperationInput
     ) -> SubscriptionProviderOutput:
         async with session_factory() as session:
-            operation = (
-                await session.execute(
-                    select(OperationModel).where(
-                        OperationModel.operation_id == arguments.operation_id,
-                        OperationModel.user_id == context.principal.user_id,
-                        OperationModel.operation_type
-                        == (
-                            OperationType.SUBSCRIPTION_RESUME
-                            if resume
-                            else OperationType.SUBSCRIPTION_CANCEL
-                        ),
-                    )
-                )
-            ).scalar_one_or_none()
+            operation = await authorized_operation(
+                session,
+                arguments.operation_id,
+                context.principal.user_id,
+                (
+                    OperationType.SUBSCRIPTION_RESUME
+                    if resume
+                    else OperationType.SUBSCRIPTION_CANCEL,
+                ),
+            )
         if operation is None:
             return SubscriptionProviderOutput(outcome="FAILED", error_code="OPERATION_NOT_FOUND")
         try:
@@ -116,17 +111,12 @@ def build_subscription_status_tool(
         context: ToolExecutionContext, arguments: SubscriptionOperationInput
     ) -> SubscriptionProviderOutput:
         async with session_factory() as session:
-            operation = (
-                await session.execute(
-                    select(OperationModel).where(
-                        OperationModel.operation_id == arguments.operation_id,
-                        OperationModel.user_id == context.principal.user_id,
-                        OperationModel.operation_type.in_(
-                            [OperationType.SUBSCRIPTION_CANCEL, OperationType.SUBSCRIPTION_RESUME]
-                        ),
-                    )
-                )
-            ).scalar_one_or_none()
+            operation = await authorized_operation(
+                session,
+                arguments.operation_id,
+                context.principal.user_id,
+                (OperationType.SUBSCRIPTION_CANCEL, OperationType.SUBSCRIPTION_RESUME),
+            )
         if operation is None:
             return SubscriptionProviderOutput(status="UNKNOWN", error_code="OPERATION_NOT_FOUND")
         result = await provider.get_status(

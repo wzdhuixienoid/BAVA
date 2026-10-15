@@ -15,7 +15,6 @@ from banking_api.llm.models import LLMMessage, LLMRequest
 from banking_api.llm.provider import LLMProvider, LLMProviderError
 from banking_api.skills.models import SkillDefinition
 from banking_api.skills.monthly_spending_report import (
-    MONTHLY_SPENDING_REPORT_INSTRUCTIONS,
     MonthlySpendingReportSkill,
     ReportInputError,
 )
@@ -120,6 +119,7 @@ class SkillExecutor:
         if (
             definition.skill_id != expected.skill_id
             or definition.version != expected.version
+            or definition.agent_skill_name != expected.agent_skill_name
             or definition.input_schema is not expected.input_schema
             or definition.output_schema is not expected.output_schema
             or definition.allowed_tools
@@ -152,7 +152,7 @@ class SkillExecutor:
             messages=[
                 LLMMessage(
                     role="system",
-                    content=MONTHLY_SPENDING_REPORT_INSTRUCTIONS
+                    content=self.skill.active_skill.instructions
                     + (
                         "\n当前报告期间是自然年，使用年度措辞，比较数据为同比。"
                         if len(core.period) == 4

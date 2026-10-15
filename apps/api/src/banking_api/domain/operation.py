@@ -1,9 +1,9 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from banking_api.domain.enums import OperationStatus
 
@@ -14,6 +14,41 @@ class OperationType(StrEnum):
     TRANSFER = "TRANSFER"
     SUBSCRIPTION_CANCEL = "SUBSCRIPTION_CANCEL"
     SUBSCRIPTION_RESUME = "SUBSCRIPTION_RESUME"
+
+
+class OperationProviderResult(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "oneOf": [
+                {
+                    "required": ["outcome"],
+                    "properties": {
+                        "outcome": {"type": "string"},
+                        "status": {"type": "null"},
+                    },
+                },
+                {
+                    "required": ["status"],
+                    "properties": {
+                        "status": {"type": "string"},
+                        "outcome": {"type": "null"},
+                    },
+                },
+            ],
+        },
+    )
+    outcome: Literal["ACCEPTED", "FAILED", "UNKNOWN"] | None = None
+    status: Literal["SUCCEEDED", "FAILED", "PENDING", "UNKNOWN"] | None = None
+    provider_reference: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+
+    @model_validator(mode="after")
+    def require_result(self):
+        if (self.outcome is None) == (self.status is None):
+            raise ValueError("Provider must return exactly one submission outcome or status")
+        return self
 
 
 class Operation(BaseModel):

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +12,8 @@ from banking_api.subscriptions.models import SubscriptionAnalysisSnapshot
 
 class DashboardTransaction(ReportTopTransaction):
     currency: str
+    direction: Literal["DEBIT", "CREDIT"] = "DEBIT"
+    source: Literal["BANK", "SUBSCRIPTION", "WEALTH", "TRANSFER"] = "BANK"
 
 
 class DashboardTransactionPage(BaseModel):

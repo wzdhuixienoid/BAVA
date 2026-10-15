@@ -96,6 +96,8 @@ async def main() -> None:
     golden_core = json.loads(
         (DATA_DIR / "golden_monthly_report_core.json").read_text(encoding="utf-8")
     )["report_core"]
+    # Parse historical fixtures through the current schema to add only default fields.
+    golden_core = MonthlySpendingReportCore.model_validate(golden_core).model_dump(mode="json")
     snapshot = build_snapshot(metrics)
     skill = MonthlySpendingReportSkill()
     actual_core = skill.build_core(snapshot).model_dump(mode="json")

@@ -88,7 +88,12 @@ def test_application_registry_adds_financial_tools_with_read_only_payee_access()
         for action in ("submit", "status"):
             spec = registry.get(f"wealth.{direction}.{action}")
             assert spec.allowed_callers == frozenset({f"workflow:wealth-{direction}"})
-            assert spec.side_effect is (action == "submit")
+            assert spec.side_effect is True
+            assert spec.risk_level == (
+                RiskLevel.R4_FINANCIAL_COMMIT
+                if action == "submit"
+                else RiskLevel.R3_FINANCIAL_RECONCILE
+            )
             assert set(spec.input_schema["properties"]) == {"operation_id"}
     assert [
         spec.capability_id for spec in registry.resolve(MINIMAL_BANKING_AGENT.allowed_capabilities)

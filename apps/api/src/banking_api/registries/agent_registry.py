@@ -8,6 +8,7 @@ class AgentRegistry:
     def register(self, agent: AgentDefinition) -> None:
         if agent.agent_id in self._items:
             raise ValueError(f"Agent already registered: {agent.agent_id}")
+        agent.validate_skills()
         self._items[agent.agent_id] = agent
 
     def get(self, agent_id: str) -> AgentDefinition | None:

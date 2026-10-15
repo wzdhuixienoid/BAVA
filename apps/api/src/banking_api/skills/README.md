@@ -21,7 +21,7 @@ FinancialAnalysisSnapshot
 `skill:wealth-recommendation` 已注册到应用 SkillRegistry，输入为通过校验的
 `WealthAnalysis`，输出为 `WealthCustomerResponse`；工具白名单为空。它只组织
 后端已经确定的候选、优势和限制，不改变排序、适当性或交易权限，不计算金融费用。
-HTTP 与顾问路径共用这个呈现步骤；模型仍按既有受限分析块契约组织解释，失败则降级。
+HTTP 与顾问路径共用这个呈现步骤；模型按事实引用的正文契约生成解释，失败则降级。
 
 写作顺序为：回应本次用途与预算 → 说明一个实际产品差异 → 说明影响选择的限制
 → 提出最有影响的少量问题。不要把缺少预算当作冲突，不把风险承受等级当作购买目标，
@@ -37,3 +37,9 @@ HTTP 与顾问路径共用这个呈现步骤；模型仍按既有受限分析块
 产品目录与推荐分开：目录不使用问卷目标筛选或排名，不继承历史投资需求；
 推荐引用问卷目标时说明来源，不用“这次也想……”暗示新的授权或已确认偏好。
 呈现具体优势时同时保留产品限制和费用，不能只赞扬第一名。未来收益未知，客户自行选择。
+
+## 类型与完整调用清单
+
+本目录保存三个标准 Agent Skills 包的 Python 绑定实现，分别对应 agent_skills 下的 monthly-spending-report、transaction-anomaly-analysis 和 wealth-recommendation。每个包具有 SKILL.md 与 scripts/run.py，实例通过统一 Catalog 校验绑定契约。三个业务 Skill 均登记在应用 SkillRegistry；报告专用 SkillExecutor 只执行报告契约，其他呈现步骤由业务服务调用。`skill:transaction-anomaly-analysis` 基于已核验异常快照组织消费核对提示与完整说明，无模型和工具调用。
+
+实际调用位置、八个标准 Agent Skills 包及修复记录见 [Skill 使用与审计](../../../../../docs/architecture/skills.md)。

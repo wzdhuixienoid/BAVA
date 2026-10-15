@@ -104,6 +104,10 @@ async def test_dashboard_reuses_existing_analysis_and_scoped_live_balance(app, c
     fresh = (await client.get("/api/v1/dashboard")).json()
     assert fresh["accounts"][0]["balance"] == "23364.52"
     assert fresh["accounts"][0]["balance_display"] == "¥23,364.52"
+    posted = [r for r in fresh["recent_transactions"] if r["source"] == "TRANSFER"]
+    assert len(posted) == 1
+    assert posted[0]["amount_display"] == "-¥500.00"
+    assert posted[0]["direction"] == "DEBIT"
     app.dependency_overrides[get_current_principal] = lambda: Principal(
         user_id="other-user", issuer="test", subject="other-user"
     )

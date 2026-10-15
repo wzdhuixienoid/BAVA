@@ -11,12 +11,13 @@ from test_wealth import ACCOUNT, USER
 from test_wealth import wealth as wealth
 from test_wealth_repairs import assessment, reassemble
 
+from banking_api.agent_skills import packaged_catalog
 from banking_api.knowledge.wealth import KeywordWealthKnowledge, education_entries, safe_source
 from banking_api.wealth.advisory import (
     WealthAdvisoryService,
-    apply_organization,
     timings,
 )
+from banking_api.wealth.answer import apply_answer
 from banking_api.wealth.calculation import CN, purchase, redeem, utc
 from banking_api.wealth.catalog import digest
 from banking_api.wealth.context import latest_analysis
@@ -252,8 +253,8 @@ async def test_hash_conflict_and_actual_matching_late_passage(wealth):
 async def test_model_invention_order_and_injection_fall_back(wealth, raw):
     await assessment(wealth)
     result = await analyze(wealth, needs="稳健", amount="5000")
-    applied = apply_organization(result, raw)
-    assert applied.narrative_source == "FALLBACK" and applied.candidates
+    applied = apply_answer(result, raw, packaged_catalog().activate("RECOMMEND"))
+    assert applied.narrative_source == "DETERMINISTIC_FALLBACK" and applied.candidates
     assert "保证赚" not in applied.model_dump_json()
     assert all(e.scope == "PRODUCT" for e in applied.evidence if e.product_id)
 
@@ -544,14 +545,11 @@ async def test_snapshot_http_is_owner_scoped_and_not_a_transaction(wealth, monke
         assert (await client.get(f"/api/v1/wealth/snapshots/{tid}")).status_code == 404
 
 
-async def test_valid_model_contract_and_trade_reference_keep_quantity_units(wealth):
+async def test_trade_reference_keeps_quantity_units(wealth):
     from banking_api.wealth.context import trade_reference
 
     await assessment(wealth)
     result = await analyze(wealth, needs="稳健", amount="5000")
-    raw = json.dumps({"block_ids": [b.block_id for b in result.blocks]})
-    applied = apply_organization(result, raw)
-    assert applied.narrative_source == "MODEL_ORGANIZED"
     text = trade_reference("从工资卡买第一款1000份", result)
     assert result.candidates[0].product.name in text and "1000份" in text
     assert trade_reference("买这个1000元", result) is None

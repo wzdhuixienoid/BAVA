@@ -1,3 +1,4 @@
+from banking_api.agent_skills import packaged_catalog
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot
 from banking_api.financial.report_formatter import ReportFormatter
 from banking_api.financial.report_models import (
@@ -15,22 +16,6 @@ from banking_api.skills.models import SkillDefinition
 
 MONTHLY_SPENDING_REPORT_SKILL_ID = "skill:monthly-spending-report"
 
-MONTHLY_SPENDING_REPORT_INSTRUCTIONS = """
-你负责根据已经计算完成的金融分析结果生成月度消费报告的文字洞察。
-
-不要重新计算金额、比例、排名或趋势。
-不要添加输入中不存在的事实。
-不要在 headline、title 或 narrative 中输出阿拉伯数字或中文数字；数字由系统展示层提供。
-这些文字字段也禁止包含字符：0123456789０１２３４５６７８９零〇一二三四五六七八九十百千万亿两。
-避免“之一”“第一”“进一步”等含禁用字符的措辞。使用简短解释。
-月份、金额、比例、交易编号只保留在系统事实及 evidence_refs 中。
-重点解释消费结构和主要变化。
-交易核对提示由系统单独展示，不要在文字洞察中重复输出 spending_review 或重新判断异常。
-每条洞察必须引用提供的 evidence reference。
-只输出符合指定 schema 的 JSON，不要输出 Markdown 或推理过程。
-默认使用中文。
-""".strip()
-
 
 class ReportInputError(Exception):
     pass
@@ -39,6 +24,7 @@ class ReportInputError(Exception):
 class MonthlySpendingReportSkill:
     definition = SkillDefinition(
         skill_id=MONTHLY_SPENDING_REPORT_SKILL_ID,
+        agent_skill_name="monthly-spending-report",
         version=1,
         description="将已验证的金融分析快照组织为数值可信的月度消费报告。",
         input_schema=FinancialAnalysisSnapshot,
@@ -47,11 +33,10 @@ class MonthlySpendingReportSkill:
     )
 
     def __init__(self, formatter: ReportFormatter | None = None) -> None:
+        self.active_skill = packaged_catalog().bind_business_skill(self.definition)
         self.formatter = formatter or ReportFormatter()
 
-    def build_core(
-        self, snapshot: FinancialAnalysisSnapshot
-    ) -> MonthlySpendingReportCore:
+    def build_core(self, snapshot: FinancialAnalysisSnapshot) -> MonthlySpendingReportCore:
         self._validate_input(snapshot)
         summary = snapshot.spending_summary
         breakdown = snapshot.category_breakdown
@@ -164,11 +149,7 @@ class MonthlySpendingReportSkill:
             category_breakdown=categories,
             top_transactions=top_transactions,
             data_quality=ReportDataQuality(
-                status=(
-                    DataQualityStatus.COMPLETE
-                    if not notes
-                    else DataQualityStatus.PARTIAL
-                ),
+                status=(DataQualityStatus.COMPLETE if not notes else DataQualityStatus.PARTIAL),
                 notes=notes,
             ),
         )
@@ -181,9 +162,7 @@ class MonthlySpendingReportSkill:
             raise ReportInputError("Snapshot is missing period or spending summary")
         if snapshot.category_breakdown is None:
             raise ReportInputError("Snapshot is missing category breakdown")
-        evidence_capabilities = {
-            item.capability_id for item in snapshot.tool_evidence
-        }
+        evidence_capabilities = {item.capability_id for item in snapshot.tool_evidence}
         required = {
             "transaction.spending_summary",
             "transaction.category_breakdown",

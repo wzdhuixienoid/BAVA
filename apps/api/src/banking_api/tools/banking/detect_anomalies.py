@@ -9,14 +9,21 @@ from banking_api.financial.anomaly_models import (
 from banking_api.tools.models import ToolExecutionContext, ToolSpec
 
 
-def build_detect_anomalies_tool(detector: TransactionAnomalyDetector) -> ToolSpec:
-    def handler(
+def build_detect_anomalies_tool(
+    detector: TransactionAnomalyDetector, *, bank_reader=None
+) -> ToolSpec:
+    async def handler(
         context: ToolExecutionContext, arguments: TransactionAnomalyInput
     ) -> TransactionAnomalyOutput:
+        source = (
+            TransactionAnomalyDetector(await bank_reader(context.principal.user_id))
+            if bank_reader is not None
+            else detector
+        )
         now = reference_now()
         start, end = arguments.bounds(now)
         return TransactionAnomalyOutput(
-            snapshot=detector.detect(
+            snapshot=source.detect(
                 user_id=context.principal.user_id,
                 analysis_started_at=start,
                 analysis_ended_at=end,
