@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_ACCOUNT_AGENT
 from banking_api.config.settings import Settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole, RuntimeBackend
@@ -85,7 +85,7 @@ async def main() -> None:
         "registry": registry,
         "executor": ToolExecutor(registry, PolicyService()),
         "context_builder": ContextBuilder(),
-        "agent": MINIMAL_BANKING_AGENT,
+        "agent": PERSONAL_BANKING_ACCOUNT_AGENT,
         "max_steps": settings.agent_max_steps,
         "max_tool_calls": settings.agent_max_tool_calls,
     }
@@ -97,7 +97,9 @@ async def main() -> None:
             settings.langgraph_checkpoint_database_url or settings.database_url,
             strict_msgpack=settings.langgraph_strict_msgpack,
         )
-        runtime = LangGraphAgentRuntime(checkpointer=await checkpoint_manager.start(), **common)
+        runtime = LangGraphAgentRuntime(
+            checkpointer=await checkpoint_manager.start(), **common
+        )
     print("runtime.backend", settings.agent_runtime.value)
     try:
         for prompt in (

@@ -145,4 +145,16 @@ test_wealth_v0113覆盖数量、原文核验、需求更新、阶段、模型正
 
 ## Tool 契约专项
 
-`uv run --project apps/api pytest apps/api/tests/test_tool_contract_audit.py apps/api/tests/test_release_version.py` 检查 26 个登记契约、风险分类、权限和金额错误、推理续接、持久授权及动态订阅入账。仍须运行全量套件与隔离 PostgreSQL 测试；专项不能替代并发、租约与恢复验证。清单和边界见 [工具审计](../architecture/tools.md)。
+`uv run --project apps/api pytest apps/api/tests/test_tool_contract_audit.py apps/api/tests/test_release_version.py` 检查 27 个登记契约、风险分类、权限和金额错误、推理续接、持久授权及动态订阅入账。仍须运行全量套件与隔离 PostgreSQL 测试；专项不能替代并发、租约与恢复验证。清单和边界见 [工具审计](../architecture/tools.md)。
+
+## PersonalBankingAgent 整合回归
+
+`uv run --project apps/api pytest apps/api/tests/test_personal_banking_integration.py` 覆盖三种配置、单一身份、五次工具查四卡、组合消费/报告/异常、历史执行器恢复与配置缺失拒绝。账户及消费分析的工具结果分别持久化，内部账户定位不额外展示。完整验收仍需全量后端、隔离 PostgreSQL 与前端组件测试，结果见 [当前更新说明](../releases/release-notes-v0.11.3.md)。
+
+## v0.11.3 个人银行流水验收
+
+`test_statement_tool.py` 覆盖转账历史对话、转入转出、失败/待处理排除、用户隔离、已删除收款人、北京时间跨年边界、参数拒绝、分页和组合分析，以及双运行时对模型遗漏/错误方向、分页重置的执行约束。与 `test_account_statement.py` 共同验证页面与对话使用同一已入账投影；历史提醒不等于已完成交易。完整验收见 [本轮更新说明](../releases/release-notes-v0.11.3.md)。
+
+前一轮方向修复的DeepSeek真实模型8条用例、17次请求及首次失败修复见 [个人银行真实模型验收](personal-banking-v0.11.3-evaluation.md)。当时应用版本为0.11.3，banking-assistance资源为0.12.6。
+
+转账汇总改动增加 `test_statement_analysis.py`：验证全期间汇总不受分页影响、同名收款人分组、Decimal多币种和收支隔离、分组截断、完整历史快照重呈现与部分历史禁止推算。最新完整后端1180项、前端118项通过；真实模型汇总验收10条、21次请求。banking-assistance当前资源版本为0.12.7。

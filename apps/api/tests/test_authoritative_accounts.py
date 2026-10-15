@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from test_transfer_authorization import create_ready_workflow
 from test_transfer_operations import operation_runtime
 
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_ACCOUNT_AGENT
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.operation_service import OperationService
 from banking_api.application.workflow_service import WorkflowService
@@ -37,7 +37,7 @@ def account_runner(app, registry, responses, backend):
     runtime = (
         LangGraphAgentRuntime(**kwargs, checkpointer=InMemorySaver())
         if backend is RuntimeBackend.LANGGRAPH
-        else ManualAgentRuntime(**kwargs, agent=MINIMAL_BANKING_AGENT)
+        else ManualAgentRuntime(**kwargs, agent=PERSONAL_BANKING_ACCOUNT_AGENT)
     )
     factory = AgentRuntimeFactory()
     factory.register(backend, runtime)

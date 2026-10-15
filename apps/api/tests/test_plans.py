@@ -9,8 +9,9 @@ from sqlalchemy import func, select
 from test_subscriptions import build_runtime
 from test_transfer_operations import authorize_workflow, operation_runtime
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_AGENT,
+)
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
 from banking_api.api.dependencies import get_current_principal
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
@@ -215,7 +216,10 @@ async def setup_plan(app, client, *, data=None, responses=None, fault_mode=None,
     runtime_factory = AgentRuntimeFactory()
     runtime_factory.register(RuntimeBackend.LANGGRAPH, runtime)
     agents = AgentRegistry()
-    for agent in (MINIMAL_BANKING_AGENT, FINANCIAL_ANALYSIS_AGENT, SUBSCRIPTION_ANALYSIS_AGENT):
+    for agent in (
+        PERSONAL_BANKING_AGENT,
+        SUBSCRIPTION_ANALYSIS_AGENT,
+    ):
         agents.register(agent)
     planner_provider = FakeLLMProvider([LLMResponse(content=json.dumps(data or proposal()))])
     runner = InProcessTaskRunner(
@@ -700,10 +704,10 @@ async def test_planner_prompt_injection_creates_no_authority(app, client):
 @pytest.mark.parametrize(
     "text,route",
     [
-        ("查余额", "MINIMAL_BANKING"),
+        ("查余额", "ACCOUNT_QUERY"),
         ("分析订阅成本，我有哪些订阅", "SUBSCRIPTION_ANALYSIS"),
         ("分析这个月消费并生成报告", "FINANCIAL_ANALYSIS"),
-        ("先查一下工资卡余额，再分析这个月消费", "COMPLEX_PLAN"),
+        ("先查一下工资卡余额，再分析这个月消费", "PERSONAL_BANKING"),
         ("先看看我有哪些订阅，然后取消星幕视频", "COMPLEX_PLAN"),
         ("如果余额大于1000就给张三转500", "COMPLEX_PLAN"),
         ("If balance exceeds 1000, query it and transfer 500", "COMPLEX_PLAN"),

@@ -1367,6 +1367,97 @@ export interface components {
              */
             as_of: string;
         };
+        /** AccountStatementInput */
+        AccountStatementInput: {
+            /**
+             * Month
+             * @description 北京时间自然月 YYYY-MM 或自然年 YYYY。
+             */
+            month?: string | null;
+            /**
+             * Recent Days
+             * @description 最近N天，未指定期间默认30天。
+             */
+            recent_days?: number | null;
+            /**
+             * Start At
+             * @description 带时区的起点，包含。
+             */
+            start_at?: string | null;
+            /**
+             * End At
+             * @description 带时区的终点，不包含。
+             */
+            end_at?: string | null;
+            /** Account Ids */
+            account_ids?: string[] | null;
+            /**
+             * Category
+             * @description 分类代码，如 TRANSFER、SHOPPING、SUBSCRIPTION、WEALTH、SALARY。
+             */
+            category?: string | null;
+            /**
+             * Direction
+             * @description DEBIT支出/转给别人，CREDIT收入/收到转账；不填表示两者。姓名query不隐含方向。
+             */
+            direction?: ("DEBIT" | "CREDIT") | null;
+            /** Source */
+            source?: ("BANK" | "TRANSFER" | "SUBSCRIPTION" | "WEALTH") | null;
+            /**
+             * Query
+             * @description 对手方/商户名称或备注包含的文字，不是收款人ID。
+             */
+            query?: string | null;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+            /**
+             * Limit
+             * @default 10
+             */
+            limit: number;
+            /**
+             * As Of
+             * @description 继续翻页时复用上一页as_of，首查留空。
+             */
+            as_of?: string | null;
+        };
+        /** AccountStatementResult */
+        AccountStatementResult: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /**
+             * End At
+             * Format: date-time
+             */
+            end_at: string;
+            /** Transactions */
+            transactions: components["schemas"]["StatementTransaction"][];
+            /** Total Count */
+            total_count: number;
+            /** Offset */
+            offset: number;
+            /** Next Offset */
+            next_offset: number | null;
+            summary?: components["schemas"]["StatementSummary"] | null;
+            /** Answer */
+            answer?: string | null;
+            /**
+             * Posting Scope
+             * @default 仅包含已实际入账流水；待处理、失败、预约和冻结资金不等于已入账。
+             */
+            posting_scope: string;
+        };
         /** AccountSummary */
         AccountSummary: {
             /** Account Id */
@@ -1760,6 +1851,12 @@ export interface components {
              * @enum {string}
              */
             source: "BANK" | "SUBSCRIPTION" | "WEALTH" | "TRANSFER";
+            /** Counterparty Id */
+            counterparty_id?: string | null;
+            /** Counterparty Bank */
+            counterparty_bank?: string | null;
+            /** Counterparty Account */
+            counterparty_account?: string | null;
         };
         /** DashboardTransactionPage */
         DashboardTransactionPage: {
@@ -2736,6 +2833,119 @@ export interface components {
             /** Expected Version */
             expected_version: number;
         };
+        /** StatementCounterpartyTotal */
+        StatementCounterpartyTotal: {
+            /** Counterparty Key */
+            counterparty_key: string;
+            /** Display Name */
+            display_name: string;
+            /** Identity Known */
+            identity_known: boolean;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "DEBIT" | "CREDIT";
+            /** Currency */
+            currency: string;
+            /** Transaction Count */
+            transaction_count: number;
+            /** Amount */
+            amount: string;
+            /** Amount Display */
+            amount_display: string;
+            /** Share Display */
+            share_display: string;
+        };
+        /** StatementCurrencyTotal */
+        StatementCurrencyTotal: {
+            /** Currency */
+            currency: string;
+            /** Debit Count */
+            debit_count: number;
+            /** Credit Count */
+            credit_count: number;
+            /** Total Debit */
+            total_debit: string;
+            /** Total Credit */
+            total_credit: string;
+            /** Debit Display */
+            debit_display: string;
+            /** Credit Display */
+            credit_display: string;
+        };
+        /** StatementSummary */
+        StatementSummary: {
+            /** Is Transfer */
+            is_transfer: boolean;
+            /** Scope Display */
+            scope_display: string;
+            /** Totals */
+            totals: components["schemas"]["StatementCurrencyTotal"][];
+            /** Counterparties */
+            counterparties: components["schemas"]["StatementCounterpartyTotal"][];
+            /** Counterparty Group Count */
+            counterparty_group_count: number;
+            latest_transaction: components["schemas"]["StatementTransaction"] | null;
+            /** Insights */
+            insights: string[];
+            /** Grouping Note */
+            grouping_note?: string | null;
+        };
+        /** StatementTransaction */
+        StatementTransaction: {
+            /** Transaction Id */
+            transaction_id: string;
+            /** Merchant */
+            merchant: string;
+            /** Description */
+            description: string;
+            /** Category */
+            category: string;
+            /** Amount */
+            amount: string;
+            /** Amount Display */
+            amount_display: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Account Id */
+            account_id: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Direction
+             * @default DEBIT
+             * @enum {string}
+             */
+            direction: "DEBIT" | "CREDIT";
+            /**
+             * Source
+             * @default BANK
+             * @enum {string}
+             */
+            source: "BANK" | "SUBSCRIPTION" | "WEALTH" | "TRANSFER";
+            /** Counterparty Id */
+            counterparty_id?: string | null;
+            /** Counterparty Bank */
+            counterparty_bank?: string | null;
+            /** Counterparty Account */
+            counterparty_account?: string | null;
+            /** Account Display */
+            account_display: string;
+            /** Category Display */
+            category_display: string;
+            /** Occurred At Display */
+            occurred_at_display: string;
+            /**
+             * Status
+             * @default POSTED
+             * @constant
+             */
+            status: "POSTED";
+        };
         /** SubscriptionAnalysisSnapshot */
         SubscriptionAnalysisSnapshot: {
             /** Subscriptions */
@@ -3014,6 +3224,10 @@ export interface components {
             wealth_final_result_index?: number;
             /** Account Results */
             account_results?: (components["schemas"]["AccountListResult"] | components["schemas"]["AccountBalanceResult"])[];
+            /** Statement Results */
+            statement_results?: components["schemas"]["AccountStatementResult"][];
+            /** Statement Queries */
+            statement_queries?: components["schemas"]["AccountStatementInput"][];
             financial_display?: components["schemas"]["MonthlySpendingReportCore"];
         } & {
             [key: string]: unknown;

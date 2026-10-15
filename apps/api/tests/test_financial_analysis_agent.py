@@ -4,8 +4,10 @@ from uuid import uuid4
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
+)
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
@@ -77,7 +79,7 @@ def financial_request(content: str = "分析2026年8月消费") -> AgentRunReque
         current_task=content,
         conversation_messages=[message],
         principal=ExecutionPrincipal.for_task("dev-user-001"),
-        agent=FINANCIAL_ANALYSIS_AGENT,
+        agent=PERSONAL_BANKING_SPENDING_AGENT,
     )
 
 
@@ -105,17 +107,15 @@ async def test_financial_context_includes_reference_date_and_finishes_at_budget(
     assert provider.requests[-1].tools == []
 
 
-def test_agent_registry_contains_only_two_specialists() -> None:
+def test_agent_registry_has_one_identity_for_both_banking_profiles() -> None:
     registry = AgentRegistry()
-    registry.register(MINIMAL_BANKING_AGENT)
-    registry.register(FINANCIAL_ANALYSIS_AGENT)
+    registry.register(PERSONAL_BANKING_AGENT)
 
     assert [agent.agent_id for agent in registry.all()] == [
-        "agent:minimal-banking",
-        "agent:financial-analysis",
+        "agent:personal-banking",
     ]
     with pytest.raises(ValueError):
-        registry.register(FINANCIAL_ANALYSIS_AGENT)
+        registry.register(PERSONAL_BANKING_SPENDING_AGENT)
 
 
 def test_application_registers_two_agents_with_isolated_account_permissions() -> None:
@@ -124,8 +124,7 @@ def test_application_registers_two_agents_with_isolated_account_permissions() ->
     tools = application.state.tool_registry
 
     assert {agent.agent_id for agent in agents.all()} == {
-        "agent:minimal-banking",
-        "agent:financial-analysis",
+        "agent:personal-banking",
         "agent:subscription-analysis",
         "agent:wealth-advisor",
     }
@@ -139,13 +138,13 @@ def test_application_registers_two_agents_with_isolated_account_permissions() ->
     assert list_accounts is not None
     assert get_balance is not None
     assert list_accounts.allowed_callers == frozenset(
-        {"agent:minimal-banking", "agent:financial-analysis", "workflow:transfer"}
+        {"agent:personal-banking", "workflow:transfer"}
     )
-    assert get_balance.allowed_callers == frozenset({"agent:minimal-banking", "workflow:transfer"})
+    assert get_balance.allowed_callers == frozenset({"agent:personal-banking", "workflow:transfer"})
 
 
 def test_financial_agent_has_exact_read_capabilities() -> None:
-    assert FINANCIAL_ANALYSIS_AGENT.allowed_capabilities == frozenset(
+    assert PERSONAL_BANKING_SPENDING_AGENT.allowed_capabilities == frozenset(
         {
             "account.list",
             "transaction.spending_summary",
@@ -155,13 +154,13 @@ def test_financial_agent_has_exact_read_capabilities() -> None:
             "transaction.detect_anomalies",
         }
     )
-    assert "account.get_balance" not in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
+    assert "account.get_balance" not in PERSONAL_BANKING_SPENDING_AGENT.allowed_capabilities
     assert not any(
         capability.startswith(("transfer.", "card.", "subscription.", "investment."))
-        for capability in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
+        for capability in PERSONAL_BANKING_SPENDING_AGENT.allowed_capabilities
     )
-    assert "不得对工具返回的数字自行加减乘除" in FINANCIAL_ANALYSIS_AGENT.instructions
-    assert "share 是 0 到 1 的比例" in FINANCIAL_ANALYSIS_AGENT.instructions
+    assert "不得对工具返回的数字自行加减乘除" in PERSONAL_BANKING_SPENDING_AGENT.instructions
+    assert "share 是 0 到 1 的比例" in PERSONAL_BANKING_SPENDING_AGENT.instructions
 
 
 async def test_summary_then_final_answer_is_grounded_by_tool_result() -> None:

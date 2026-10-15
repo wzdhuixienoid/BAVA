@@ -6,8 +6,13 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import uuid4
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
+    PersonalBankingMode,
+    personal_banking_agent,
+)
 from banking_api.config.settings import Settings
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
@@ -37,8 +42,9 @@ from banking_api.tools.banking import (
 from banking_api.tools.executor import ToolExecutor
 
 ROUTE_AGENT = {
-    RequestRoute.MINIMAL_BANKING: MINIMAL_BANKING_AGENT.agent_id,
-    RequestRoute.FINANCIAL_ANALYSIS: FINANCIAL_ANALYSIS_AGENT.agent_id,
+    RequestRoute.ACCOUNT_QUERY: PERSONAL_BANKING_ACCOUNT_AGENT.agent_id,
+    RequestRoute.FINANCIAL_ANALYSIS: PERSONAL_BANKING_SPENDING_AGENT.agent_id,
+    RequestRoute.PERSONAL_BANKING: PERSONAL_BANKING_AGENT.agent_id,
 }
 
 
@@ -88,7 +94,9 @@ def evidence_summary(result: SuccessfulToolResult) -> dict[str, Any]:
         summary["result"] = {
             "period": output["period"],
             "item_count": len(output["transactions"]),
-            "transaction_ids": [item["transaction_id"] for item in output["transactions"]],
+            "transaction_ids": [
+                item["transaction_id"] for item in output["transactions"]
+            ],
         }
     elif result.capability_id == "transaction.detect_anomalies":
         snapshot = output["snapshot"]
@@ -131,8 +139,7 @@ async def main() -> None:
     tools.register(build_get_top_transactions_tool(analytics))
     tools.register(build_detect_anomalies_tool(TransactionAnomalyDetector(bank)))
     agents = AgentRegistry()
-    agents.register(MINIMAL_BANKING_AGENT)
-    agents.register(FINANCIAL_ANALYSIS_AGENT)
+    agents.register(PERSONAL_BANKING_AGENT)
     router = RequestRouter(provider)
     checkpoint_manager = LangGraphCheckpointManager(
         settings.langgraph_checkpoint_database_url or settings.database_url,
@@ -163,7 +170,13 @@ async def main() -> None:
             if agent_id is None:
                 print("final.answer", "当前不支持该请求。")
                 continue
-            agent = agents.get(agent_id)
+            agent = personal_banking_agent(
+                {
+                    RequestRoute.ACCOUNT_QUERY: PersonalBankingMode.ACCOUNT,
+                    RequestRoute.FINANCIAL_ANALYSIS: PersonalBankingMode.SPENDING,
+                    RequestRoute.PERSONAL_BANKING: PersonalBankingMode.COMBINED,
+                }[decision.route]
+            )
             if agent is None:
                 raise RuntimeError("Routed agent is not registered")
             conversation_id = uuid4()

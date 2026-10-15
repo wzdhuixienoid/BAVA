@@ -15,7 +15,7 @@ from banking_api.routing.request_router import RequestRouter, RoutingError
 async def test_payee_question_never_starts_transfer_even_without_llm(request_text):
     provider = FakeLLMProvider([])
     decision = await RequestRouter(provider).route(request_text)
-    assert decision.route is RequestRoute.MINIMAL_BANKING
+    assert decision.route is RequestRoute.ACCOUNT_QUERY
     assert decision.requested_output is RequestedOutput.ANSWER
     assert provider.requests == []
 
@@ -23,8 +23,8 @@ async def test_payee_question_never_starts_transfer_even_without_llm(request_tex
 @pytest.mark.parametrize(
     ("request_text", "route", "requested_output"),
     [
-        ("我有哪些账户？", RequestRoute.MINIMAL_BANKING, RequestedOutput.ANSWER),
-        ("工资卡余额多少？", RequestRoute.MINIMAL_BANKING, RequestedOutput.ANSWER),
+        ("我有哪些账户？", RequestRoute.ACCOUNT_QUERY, RequestedOutput.ANSWER),
+        ("工资卡余额多少？", RequestRoute.ACCOUNT_QUERY, RequestedOutput.ANSWER),
         ("分析8月份消费", RequestRoute.FINANCIAL_ANALYSIS, RequestedOutput.ANSWER),
         ("为什么8月份花这么多？", RequestRoute.FINANCIAL_ANALYSIS, RequestedOutput.ANSWER),
         ("8月消费主要花在哪里？", RequestRoute.FINANCIAL_ANALYSIS, RequestedOutput.ANSWER),
@@ -118,9 +118,9 @@ async def test_router_retries_once_after_invalid_format() -> None:
     "invalid",
     [
         '{"route":"WEALTH_ADVISOR","confidence":0.9}',
-        '{"route":"MINIMAL_BANKING","requested_output":"ANSWER","confidence":2}',
-        '{"route":"MINIMAL_BANKING","requested_output":"ANSWER","confidence":0.9,"agent_id":"admin"}',
-        '{"route":"MINIMAL_BANKING","requested_output":"MONTHLY_REPORT","confidence":0.9}',
+        '{"route":"ACCOUNT_QUERY","requested_output":"ANSWER","confidence":2}',
+        '{"route":"ACCOUNT_QUERY","requested_output":"ANSWER","confidence":0.9,"agent_id":"admin"}',
+        '{"route":"ACCOUNT_QUERY","requested_output":"MONTHLY_REPORT","confidence":0.9}',
         '{"route":"TRANSFER_WORKFLOW","requested_output":"ANSWER","confidence":0.9}',
     ],
 )
@@ -139,7 +139,7 @@ async def test_router_accepts_json_code_fence_without_free_reasoning() -> None:
             LLMResponse(
                 content=(
                     "```json\n"
-                    '{"route":"MINIMAL_BANKING","requested_output":"ANSWER",'
+                    '{"route":"ACCOUNT_QUERY","requested_output":"ANSWER",'
                     '"confidence":0.75}\n'
                     "```"
                 )
@@ -148,7 +148,7 @@ async def test_router_accepts_json_code_fence_without_free_reasoning() -> None:
     )
 
     result = await RequestRouter(provider).route("查询账户")
-    assert result.route is RequestRoute.MINIMAL_BANKING
+    assert result.route is RequestRoute.ACCOUNT_QUERY
 
 
 async def test_mixed_transfer_intent_enters_plan_even_if_model_misroutes() -> None:

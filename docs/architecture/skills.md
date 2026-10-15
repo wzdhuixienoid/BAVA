@@ -1,17 +1,17 @@
 # Skill 使用与审计（2026-10-13）
 
-当前应用交付版本：**0.11.2**；Skill 资源版本 **0.12.3** 独立管理，不能作为应用版本显示。
+当前应用交付版本：**0.11.3**；banking-assistance 资源版本 **0.12.7**，financial-analysis **0.12.4**，其他包 **0.12.3**，独立管理，不能作为应用版本显示。
 
 ## 当前统一的标准技能结构
 
-本项目现在有 **8 个标准 Agent Skills 包**，覆盖所有 **4 个已注册业务 agent**。原来的 3 个 Python 业务 Skill 是其中三个标准包的绑定实现；每个包包含 `SKILL.md`、需要时加载的 references 或可运行的 `scripts/run.py`。
+本项目现在有 **8 个标准 Agent Skills 包**，覆盖所有 **3 个已注册业务 agent**。原来的 3 个 Python 业务 Skill 是其中三个标准包的绑定实现；每个包包含 `SKILL.md`、需要时加载的 references 或可运行的 `scripts/run.py`。
 
 目录名、YAML name/description、metadata 和相对引用按照 [Agent Skills Specification](https://agentskills.io/specification) 校验。metadata.version、业务 ID、输入输出 schema 和契约版本是应用绑定约定。权限白名单与金融执行始终由代码和原有 Policy/Workflow 决定。
 
 | 标准技能包 | 实际调用与执行方式 |
 | --- | --- |
-| banking-assistance | MinimalBankingAgent 从包加载只读账户/收款人查询指令；Manual 与 LangGraph 使用相同绑定。 |
-| financial-analysis | FinancialAnalysisAgent 加载消费分析指令；报告采集额外加载 report-source.md，继续使用受限银行聚合工具。 |
+| banking-assistance | PersonalBankingAgent 的 ACCOUNT / COMBINED 配置从包加载只读账户/收款人查询指令；Manual 与 LangGraph 使用相同绑定。 |
+| financial-analysis | PersonalBankingAgent 的 SPENDING / COMBINED 配置加载消费分析指令；报告采集额外加载 report-source.md，继续使用受限银行聚合工具。 |
 | subscription-analysis | SubscriptionAnalysisAgent 加载订阅分析指令，仅拥有 subscription.analyze 权限。 |
 | wealth-advisory | 对话与 HTTP 理财分析按推荐、比较、定位或知识模式激活技能，模型说明经事实/证据/关系校验后展示。 |
 | wealth-trade-assistance | 对话交易准备进入确定性 Workflow；HTTP 分析可以生成只读准备说明，不通过技能直接提交交易。 |
@@ -57,3 +57,7 @@
 - 发行 wheel 的全部 21 个技能相关文件与源文件逐字节相符；安装后校验八个包与四个 agent。部署容器校验八个包 0.12.3、四个 agent、三个业务契约、资源 hash 及旧符号已不存在。
 
 格式校验与有限模型样本不证明任意自由文字的全部语义。原有金融事实校验、工具权限、有限修复、确定性降级与本人工作流边界继续生效。
+
+## PersonalBankingAgent 整合
+
+基础查询与消费分析共用一个 Agent 身份，执行时按需加载技能和 references；资金工作流不合并。原四个 Agent 的审计记录保留为历史证据。当前结构和验收见 [个人银行 Agent](personal-banking.md)。

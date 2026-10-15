@@ -11,8 +11,10 @@ from test_agent_runtime import build_runtime, run_runtime
 from test_audit_evidence import action, ready
 from test_transfer_workflow import build_transfer_runtime
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
+)
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.task_service import TaskService
@@ -189,7 +191,11 @@ def test_least_privilege_matrix_and_unknown_tool_default_deny(app):
 
     registry = create_app().state.tool_registry
     policy = PolicyService()
-    for agent in (MINIMAL_BANKING_AGENT, FINANCIAL_ANALYSIS_AGENT, SUBSCRIPTION_ANALYSIS_AGENT):
+    for agent in (
+        PERSONAL_BANKING_ACCOUNT_AGENT,
+        PERSONAL_BANKING_SPENDING_AGENT,
+        SUBSCRIPTION_ANALYSIS_AGENT,
+    ):
         assert not {"transfer.commit", "subscription.cancel"} & agent.allowed_capabilities
         for capability in ("transfer.commit", "subscription.cancel"):
             spec = registry.get(capability)

@@ -5,8 +5,10 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
 from banking_api.agents.models import AgentDefinition
+from banking_api.agents.personal_banking_agent import uses_financial_analysis
 from banking_api.config.demo_time import reference_now
 from banking_api.context.builder import ContextBuilder
+from banking_api.domain.statement_scope import statement_arguments
 from banking_api.financial.request_scope import (
     anomaly_requested,
     declines_anomaly_review,
@@ -104,7 +106,7 @@ class LangGraphAgentRuntime:
                     reference_now(),
                     include_calendar=anomaly_requested(request.current_task),
                 )
-                if agent.agent_id == "agent:financial-analysis"
+                if uses_financial_analysis(agent)
                 else None
             )
             if scope and scope.window and anomaly_requested(request.current_task):
@@ -174,6 +176,7 @@ class LangGraphAgentRuntime:
                 runtime_messages=runtime_messages,
                 allowed_tools=allowed_tools,
                 wealth_context=request.wealth_context,
+                statement_context=request.statement_context,
             )
             if state.get("financial_window"):
                 window = state["financial_window"]
@@ -188,10 +191,7 @@ class LangGraphAgentRuntime:
                         ),
                     )
                 )
-            if (
-                agent.agent_id == "agent:financial-analysis"
-                and state["tool_call_count"] >= self.max_tool_calls
-            ):
+            if uses_financial_analysis(agent) and state["tool_call_count"] >= self.max_tool_calls:
                 llm_request = llm_request.model_copy(update={"tools": []})
                 llm_request.messages.append(
                     LLMMessage(
@@ -283,6 +283,10 @@ class LangGraphAgentRuntime:
                 )
                 spec = self.registry.get_by_name(call.name)
                 arguments = call.arguments
+                if spec and spec.capability_id == "account.statement":
+                    arguments = statement_arguments(
+                        arguments, request.current_task, continuation=request.statement_context
+                    )
                 if (
                     spec
                     and spec.capability_id == "transaction.spending_summary"
@@ -313,7 +317,7 @@ class LangGraphAgentRuntime:
                         not in {"month", "recent_days", "analysis_days", "start_at", "end_at"}
                     } | state["financial_window"]
                 if (
-                    agent.agent_id == "agent:financial-analysis"
+                    uses_financial_analysis(agent)
                     and spec
                     and spec.capability_id == "transaction.detect_anomalies"
                     and spec.capability_id not in agent.allowed_capabilities
@@ -482,9 +486,21 @@ class LangGraphAgentRuntime:
             ):
                 graph_state["final_answer"] += "\n\n" + detailed_answer
             else:
-                graph_state["final_answer"] = detailed_answer
+                from banking_api.application.account_results import account_query_answer
+
+                account_answer = (
+                    account_query_answer(state.successful_tool_results)
+                    if any(
+                        s.skill_id == "banking-assistance"
+                        for s in self._resolve_agent(request).skills
+                    )
+                    else ""
+                )
+                graph_state["final_answer"] = (
+                    account_answer + "\n\n" if account_answer else ""
+                ) + detailed_answer
             await sink("skill.run.completed", metadata)
-        elif self._resolve_agent(request).agent_id == "agent:financial-analysis":
+        elif uses_financial_analysis(self._resolve_agent(request)):
             review = next(
                 (
                     item.output.get("spending_review")

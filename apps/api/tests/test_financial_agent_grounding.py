@@ -6,7 +6,7 @@ from uuid import uuid4
 from financial_assertions import raw_financial_facts
 from langgraph.checkpoint.memory import InMemorySaver
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_SPENDING_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
@@ -83,7 +83,7 @@ async def test_financial_agent_numeric_evidence_matches_committed_golden() -> No
             current_task=message.content,
             conversation_messages=[message],
             principal=ExecutionPrincipal.for_task("dev-user-001"),
-            agent=FINANCIAL_ANALYSIS_AGENT,
+            agent=PERSONAL_BANKING_SPENDING_AGENT,
         )
     )
     snapshot = build_financial_analysis_snapshot(result.state.successful_tool_results).model_dump(

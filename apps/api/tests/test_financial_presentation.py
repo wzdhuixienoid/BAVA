@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT_ID
 from banking_api.domain.enums import RequestedOutput
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.financial.models import CategorySpending, TopTransaction
@@ -63,7 +63,7 @@ def test_plain_analysis_does_not_attach_report_display():
         ),
     ]
     output = InProcessTaskRunner._build_task_output(
-        agent_id=FINANCIAL_ANALYSIS_AGENT_ID,
+        agent_id=PERSONAL_BANKING_AGENT_ID,
         assistant_message_id="message",
         steps=1,
         tool_calls=2,

@@ -100,4 +100,4 @@ async def test_message_is_persisted_and_creates_task(app, client) -> None:
     assert len(tasks.json()) == 1
     assert tasks.json()[0]["task_type"] == "BANKING_REQUEST"
     assert tasks.json()[0]["executor_type"] == "AGENT"
-    assert tasks.json()[0]["executor_id"] == "agent:minimal-banking"
+    assert tasks.json()[0]["executor_id"] == "agent:personal-banking"

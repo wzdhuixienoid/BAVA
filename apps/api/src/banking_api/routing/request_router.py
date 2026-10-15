@@ -10,11 +10,16 @@ from banking_api.planning.constraints import has_conditional_control
 from banking_api.routing.models import RequestRoute, RouteDecision
 
 ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对象，格式为：
-{"route":"WEALTH_ANALYSIS|WEALTH_PURCHASE|WEALTH_REDEEM|MINIMAL_BANKING|FINANCIAL_ANALYSIS|AA_COLLECTION|TRANSFER_WORKFLOW|SUBSCRIPTION_ANALYSIS|SUBSCRIPTION_CANCEL|SUBSCRIPTION_RESUME|COMPLEX_PLAN|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT|WORKFLOW","confidence":0.0}
+{"route":"WEALTH_ANALYSIS|WEALTH_PURCHASE|WEALTH_REDEEM|ACCOUNT_QUERY|FINANCIAL_ANALYSIS|PERSONAL_BANKING|AA_COLLECTION|TRANSFER_WORKFLOW|SUBSCRIPTION_ANALYSIS|SUBSCRIPTION_CANCEL|SUBSCRIPTION_RESUME|COMPLEX_PLAN|UNSUPPORTED","requested_output":"ANSWER|MONTHLY_REPORT|WORKFLOW","confidence":0.0}
 
 路由规则：
-- 账户列表、余额查询、可转账收款人列表、查询收款人、新增收款人页面指引 -> MINIMAL_BANKING / ANSWER
+- 账户列表、余额查询、可转账收款人列表、查询收款人、新增收款人页面指引 -> ACCOUNT_QUERY / ANSWER
 - 询问可以向谁转账属于只读收款人查询，不启动转账 Workflow
+- 最近有哪些转账、转入转出历史、账单/购物明细、订阅实际扣费和理财现金流水 -> ACCOUNT_QUERY / ANSWER
+- 查历史流水与发起交易必须区分；查询已转账记录不启动转账，不调用推进状态的工具
+- 转账总额、按收款人分析/汇总、最近转给谁多少钱 -> ACCOUNT_QUERY / ANSWER
+  账单工具summary已提供完整统计。
+- 历史流水加消费统计/报告 -> PERSONAL_BANKING；先查流水再转账等写操作组合 -> COMPLEX_PLAN
 - 消费分析、月份支出、消费分类、花费原因、环比变化、最大消费 -> FINANCIAL_ANALYSIS / ANSWER
 - 异常交易或奇怪扣款 -> FINANCIAL_ANALYSIS / ANSWER
 - 生成、制作、给我一份月度或年度消费/账单报告 -> FINANCIAL_ANALYSIS / MONTHLY_REPORT
@@ -27,7 +32,8 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 取消某项订阅或代扣 -> SUBSCRIPTION_CANCEL / WORKFLOW
 - 重新订阅、恢复某项订阅或代扣续费 -> SUBSCRIPTION_RESUME / WORKFLOW
 - 需要两个以上已有高层能力协作且单个 Agent/Workflow 无法完整完成 -> COMPLEX_PLAN / ANSWER
-- 先查余额再分析消费 -> COMPLEX_PLAN / ANSWER
+- 账户或余额查询加消费分析的只读组合 -> PERSONAL_BANKING / ANSWER
+- 查询余额并生成消费报告 -> PERSONAL_BANKING / MONTHLY_REPORT
 - 先分析订阅再取消订阅 -> COMPLEX_PLAN / ANSWER
 - 分析消费并生成报告仍由 FinancialAnalysis 完整完成，不拆计划
 - 单纯取消订阅不等于订阅分析，单纯转账不等于查询余额
@@ -41,7 +47,7 @@ ROUTER_INSTRUCTIONS = """你是银行请求分类器。只输出一个 JSON 对�
 - 条件自动投资、多笔理财或理财与其他写业务组合 -> UNSUPPORTED / ANSWER
 - 卡片写操作或当前系统不支持的业务 -> UNSUPPORTED / ANSWER
 
-MINIMAL_BANKING 和 UNSUPPORTED 的 requested_output 必须是 ANSWER。
+ACCOUNT_QUERY 和 UNSUPPORTED 的 requested_output 必须是 ANSWER。
 AA_COLLECTION、TRANSFER_WORKFLOW、SUBSCRIPTION_CANCEL 和 SUBSCRIPTION_RESUME 必须是 WORKFLOW。
 
 不要输出解释、Markdown 或推理过程。
@@ -65,6 +71,18 @@ class RequestRouter:
 
         # Complete explicit buys take precedence over contextual FOLLOW_UP keywords.
         from banking_api.wealth.intent import extract_quantity
+
+        if self._is_statement_query(user_request) and (
+            self._is_transfer_history_only(user_request)
+            or not re.search(
+                r"分析|统计|合计|总共|一共|报告|环比|最多|最大|异常|可疑|为什么", user_request
+            )
+        ):
+            return RouteDecision(
+                route=RequestRoute.ACCOUNT_QUERY,
+                requested_output=RequestedOutput.ANSWER,
+                confidence=1,
+            )
 
         complete_buy = (
             bool(re.search(r"申购|购买|买入|买", user_request))
@@ -238,7 +256,7 @@ class RequestRouter:
             normalized,
         ):
             return RouteDecision(
-                route=RequestRoute.MINIMAL_BANKING,
+                route=RequestRoute.ACCOUNT_QUERY,
                 requested_output=RequestedOutput.ANSWER,
                 confidence=1.0,
             )
@@ -291,6 +309,12 @@ class RequestRouter:
                         requested_output=RequestedOutput.ANSWER,
                         confidence=decision.confidence,
                     )
+                if self._is_personal_combination(user_request):
+                    return RouteDecision(
+                        route=RequestRoute.PERSONAL_BANKING,
+                        requested_output=decision.requested_output,
+                        confidence=decision.confidence,
+                    )
                 if self._is_multi_capability_intent(user_request):
                     if decision.requested_output is RequestedOutput.MONTHLY_REPORT or (
                         "报告" in normalized
@@ -307,6 +331,15 @@ class RequestRouter:
                             requested_output=RequestedOutput.ANSWER,
                             confidence=decision.confidence,
                         )
+                if decision.route is RequestRoute.PERSONAL_BANKING:
+                    # A model label alone must not grant both read profiles.
+                    return RouteDecision(
+                        route=RequestRoute.FINANCIAL_ANALYSIS
+                        if re.search(r"消费|账单|支出|报告|异常|花费", user_request)
+                        else RequestRoute.ACCOUNT_QUERY,
+                        requested_output=decision.requested_output,
+                        confidence=decision.confidence,
+                    )
                 return decision
             except (json.JSONDecodeError, ValidationError, TypeError, LLMProviderError):
                 continue
@@ -327,11 +360,14 @@ class RequestRouter:
         has_transfer = any(marker in normalized for marker in ("转账", "汇款", "打款", "转给")) or (
             "给" in normalized and "转" in normalized
         )
+        if RequestRouter._is_statement_query(user_request):
+            has_transfer = False
         has_analysis = any(
             marker in normalized
             for marker in ("消费", "报告", "环比", "为什么花", "支出", "异常交易", "账单")
         )
         has_account = any(marker in normalized for marker in ("查余额", "余额", "有哪些账户"))
+        has_account = has_account or bool(re.search(r"转账记录|转账历史|流水|账单明细", normalized))
         has_sub_analysis = any(
             marker in normalized for marker in ("有哪些订阅", "看看订阅", "分析订阅")
         )
@@ -342,6 +378,85 @@ class RequestRouter:
             marker in normalized for marker in ("订阅", "星幕", "代扣")
         )
         return (
-            sum((has_transfer, has_analysis, has_account, has_sub_analysis, has_cancel, has_resume))
+            sum(
+                (
+                    has_transfer,
+                    has_analysis or has_account,
+                    has_sub_analysis,
+                    has_cancel,
+                    has_resume,
+                )
+            )
             >= 2
+        )
+
+    @staticmethod
+    def _is_personal_combination(user_request: str) -> bool:
+        text = "".join(user_request.split())
+        account = bool(re.search(r"余额|还剩(?:多少|多少钱)|有哪些账户|账户列表|收款人", text))
+        history = RequestRouter._is_statement_query(user_request)
+        account = account or history
+        spending = (
+            bool(re.search(r"消费|支出|账单|报告|花(?:了|费|在)|异常交易", text))
+            if not history
+            else bool(
+                re.search(r"分析|统计|合计|总共|一共|报告|环比|最多|最大|异常|可疑|为什么", text)
+            )
+        )
+        if history and RequestRouter._is_transfer_history_only(text):
+            spending = False
+        other = bool(
+            re.search(r"转账|汇款|打款|转给|取消|恢复|订阅|理财|申购|赎回|买入|定投", text)
+        )
+        return (
+            account
+            and spending
+            and (history or not other)
+            and not has_conditional_control(user_request)
+        )
+
+    @staticmethod
+    def _is_statement_query(user_request: str) -> bool:
+        """Recognize explicit history requests, leaving mixed mutations to the planner."""
+        text = "".join(user_request.split())
+        if has_conditional_control(text):
+            return False
+        if re.search(
+            r"(?:^|[，。；,;]|然后|再|并|同时)(?:请|帮我|顺便)?(?:给.+转\d|向.+(?:转账|汇款)|(?:转账|汇款|打款).*\d|从.+转|用.+(?:买|申购|赎回)|取消|恢复|预约)",
+            text,
+        ):
+            return False
+        if re.search(
+            r"(?:再|然后|接着|并且|同时|顺便|并).{0,12}(?:给.+转|转账|汇款|打款|购买|申购|赎回|取消|恢复|预约)|(?:现在|立即|帮我|请)(?:给.+转|转账|汇款|打款|购买|申购|赎回|取消|恢复|预约)|发起|办理|转一笔|每月\d+",
+            text,
+        ):
+            return False
+        history = bool(
+            re.search(
+                r"账单明细|交易明细|收支明细|流水|转账记录|转账历史|汇款记录|扣费记录|扣款记录|购物明细|消费明细|收入明细|支出明细",
+                text,
+            )
+        )
+        recent = bool(
+            re.search(
+                r"(?:最近|近期|近\d+天|上月|本月|今年|去年|\d{4}年).*(?:有哪些转账|转过|转了|收到.*转账|转入|转出|扣了哪些|哪些扣款)",
+                text,
+            )
+        )
+        transfer_statistics = bool(
+            re.search(
+                r"(?:转账|转出|转入|汇款).*(?:总额|合计|一共|总共|汇总|分别|分析|统计)"
+                r"|(?:分析|统计|汇总|查看|查询).*(?:转账|转出|转入|汇款)"
+                r"|(?:给|向).{1,24}(?:转了|转过|汇过).*(?:多少|记录)",
+                text,
+            )
+        )
+        return history or recent or transfer_statistics
+
+    @staticmethod
+    def _is_transfer_history_only(text: str) -> bool:
+        return (
+            RequestRouter._is_statement_query(text)
+            and bool(re.search(r"转账|转出|转入|汇款|转了|转过", text))
+            and not re.search(r"消费|购物|花费|开销|异常|可疑|订阅|理财|申购|赎回|报告", text)
         )

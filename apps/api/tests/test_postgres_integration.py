@@ -10,7 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_ACCOUNT_AGENT
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.operation_recovery_policy import OperationRecoveryPolicy
 from banking_api.application.operation_service import (
@@ -497,7 +497,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
         registry=registry,
         executor=ToolExecutor(registry, PolicyService()),
         context_builder=ContextBuilder(),
-        agent=MINIMAL_BANKING_AGENT,
+        agent=PERSONAL_BANKING_ACCOUNT_AGENT,
     )
     runtime_factory = AgentRuntimeFactory()
     runtime_factory.register(RuntimeBackend.MANUAL, runtime)
@@ -523,12 +523,12 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
 
     assert task.task_type == "BANKING_REQUEST"
     assert task.runtime_backend is RuntimeBackend.MANUAL
-    assert task.executor_id == "agent:minimal-banking"
+    assert task.executor_id == "agent:personal-banking"
     assert task.status is TaskStatus.COMPLETED
     assert task.version == 8
     assert isinstance(task.input, dict)
     assert {key: value for key, value in task.output.items() if key != "account_results"} == {
-        "agent_id": "agent:minimal-banking",
+        "agent_id": "agent:personal-banking",
         "assistant_message_id": str(detail.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
@@ -1262,7 +1262,7 @@ def build_langgraph_runtime(provider, bank, checkpointer):  # type: ignore[no-un
         registry=registry,
         executor=ToolExecutor(registry, PolicyService()),
         context_builder=ContextBuilder(),
-        agent=MINIMAL_BANKING_AGENT,
+        agent=PERSONAL_BANKING_ACCOUNT_AGENT,
         checkpointer=checkpointer,
     )
 

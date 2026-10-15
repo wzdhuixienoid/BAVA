@@ -22,7 +22,7 @@ async def test_runtime_transitions_task_to_completed(app, client) -> None:
     assert task.json()["status"] == "COMPLETED"
     assert task.json()["version"] == 4
     assert task.json()["executor_type"] == "AGENT"
-    assert task.json()["executor_id"] == "agent:minimal-banking"
+    assert task.json()["executor_id"] == "agent:personal-banking"
 
 
 async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
@@ -42,9 +42,7 @@ async def test_controlled_failure_sets_failed_and_persists_event(app) -> None:
     await runner.run(accepted.task_id)
 
     async with factory() as session:
-        task = await TaskService(session).get(
-            UUID(str(accepted.task_id)), user_id="dev-user-001"
-        )
+        task = await TaskService(session).get(UUID(str(accepted.task_id)), user_id="dev-user-001")
         assert task.status is TaskStatus.INTERRUPTED
         assert task.version == 4
         assert task.error == {

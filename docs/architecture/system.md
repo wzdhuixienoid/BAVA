@@ -1,19 +1,19 @@
 # 系统架构
 
-本页描述 v0.11.4 的实现。长期设计约束见 [设计原则](design-principles.md)。
+本页描述当前 v0.11.3 的实现，包含 PersonalBankingAgent 整合。长期设计约束见 [设计原则](design-principles.md)。
 
 ## 执行概念
 
 | 概念 | 职责 | 当前实现 |
 | --- | --- | --- |
-| Agent | 选择下一步只读查询并解释结果 | MinimalBanking、FinancialAnalysis、SubscriptionAnalysis、WealthAdvisor |
+| Agent | 选择下一步只读查询并解释结果 | PersonalBanking、SubscriptionAnalysis、WealthAdvisor |
 | Skill | 稳定组织专业结果 | 消费报告、异常分析说明；消费可信快照 |
 | Workflow | 按明确状态推进业务 | 转账、取消订阅、恢复续费授权、理财申购/赎回 |
 | Tool | 提供受权限控制的具体能力 | 账户、收款人、金融汇总、订阅分析与受控提交 |
 | Plan | 组合已有高层能力 | 固定持久化 DAG、确定性条件与等待用户步骤 |
 | Domain API | 向前端提供资源和业务动作 | 报告、订阅、收款人、预约、AA、消息与审计 |
 
-四类 Agent 均为只读。`RequestRouter` 选择执行路径；单个 Agent 或 Workflow 能完成的请求走原路径，跨能力请求才进入 `ConstrainedPlanner` 和 `PlanValidator`。Planner 不能直接提交金融操作。
+三类 Agent 均为只读。`RequestRouter` 选择执行路径；单个 Agent 或 Workflow 能完成的请求走原路径，跨能力请求才进入 `ConstrainedPlanner` 和 `PlanValidator`。Planner 不能直接提交金融操作。
 
 ## 从消息到执行
 
@@ -104,6 +104,8 @@ AgentSkillCatalog从可信包发现元数据，按动作激活技能并加载当
 
 WealthDesignProfile是独立的模拟设计来源，按产品原版本、画像版本及发布时间绑定，不覆盖v1条款或NAV。只读检索返回DESIGN来源，分析快照保留画像和内容摘要。收益目标影响策略候选，硬资格、预算、风险上限和用款约束先过滤；换一批排除此前介绍的候选，保留约束。PRODUCT_OVERVIEW独立于个性化筛选。模型通过已核验事实、策略资料与比较关系生成解释，数字仍从结构化事实插入，校验失败有限修复并降级。
 
-## 当前工具执行边界（应用 0.11.2）
+## 当前工具执行边界（应用 0.11.3）
 
-26 个 function tools 分为 18 个 R1 纯读取、5 个 R4 提交、3 个 R3 对账；对账可能推进银行结算。登记契约、模型 tool_call_id 续接、工作流权限及持久授权均经公共执行管线校验。消费分析和总览共享已入账投影，包含成功订阅续费，理财现金变动只入账单。完整调用方和清单见 [Tool 审计](tools.md)。
+27 个 function tools 分为 19 个 R1 纯读取、5 个 R4 提交、3 个 R3 对账；对账可能推进银行结算。登记契约、模型 tool_call_id 续接、工作流权限及持久授权均经公共执行管线校验。PersonalBankingAgent 的 account.statement 与总览共用已入账投影，可查询转账、消费、收入、成功续费和理财现金变动。消费分析仍排除转账及理财资产移动。完整调用方和清单见 [Tool 审计](tools.md)。
+
+基础银行查询和消费分析通过 PersonalBankingAgent 的三种 Skill 配置执行；普通只读组合不创建 Plan。跨订阅/工作流及条件执行仍使用 Plan。细节见 [个人银行 Agent](personal-banking.md)。

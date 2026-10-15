@@ -1,5 +1,7 @@
 # Agent
 
-账户、消费、订阅和理财四类只读 Agent 分别绑定 banking-assistance、financial-analysis、subscription-analysis 和 wealth-advisory 标准技能包。指令由 agent_skills 提供，注册与运行前校验绑定和资源 hash；派生报告及理财场景按需加载 references。理财开关关闭时不注册 WealthAdvisorAgent。
+应用版本 0.11.3。当前登记 PersonalBankingAgent、SubscriptionAnalysisAgent、WealthAdvisorAgent 三个只读 Agent。
 
-产品 runtime 使用 LangGraph。Agent 只读工具白名单由 ToolRegistry 和 PolicyService 强制执行；金额、排名和结构化结果由确定性服务计算。完整调用与验证见 [Skill 审计](../../../../../docs/architecture/skills.md)。
+PersonalBankingAgent 使用统一身份 agent:personal-banking，执行前选择 ACCOUNT、SPENDING、COMBINED 配置，分别加载 banking-assistance、financial-analysis 或两者。只有报告请求额外加载 report-source.md；纯账户查询不加载消费规则。Tool 权限按所选配置校验，完整异常工具仍须本轮明确要求。资金提交和结算不向 Agent 开放。
+
+旧 MinimalBankingAgent 与 FinancialAnalysisAgent 定义已移除，仅在兼容映射中保留历史 Task 标识。计划 ACCOUNT_QUERY、FINANCIAL_ANALYSIS 两种高层能力继续分开，但由同一个 Agent 按相应配置执行。详见 [个人银行 Agent](../../../../../docs/architecture/personal-banking.md)。

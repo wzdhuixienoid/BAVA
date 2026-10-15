@@ -36,11 +36,11 @@ from banking_api.wealth.schemas import RecommendationInput
 
 def test_all_registered_tools_have_valid_contract_and_reconcile_classification():
     specs = create_app().state.tool_registry.all()
-    assert len(specs) == 26
+    assert len(specs) == 27
     reads = [s for s in specs if s.risk_level == RiskLevel.R1_PRIVATE_READ]
     writes = [s for s in specs if s.risk_level == RiskLevel.R4_FINANCIAL_COMMIT]
     reconciles = [s for s in specs if s.risk_level == RiskLevel.R3_FINANCIAL_RECONCILE]
-    assert (len(reads), len(writes), len(reconciles)) == (18, 5, 3)
+    assert (len(reads), len(writes), len(reconciles)) == (19, 5, 3)
     assert {s.capability_id for s in reconciles} == {
         "transfer.get_status",
         "wealth.purchase.status",
@@ -61,8 +61,8 @@ def test_all_registered_tools_have_valid_contract_and_reconcile_classification()
         if spec.side_effect:
             assert all(c.startswith("workflow:") for c in spec.allowed_callers)
             for caller in (
-                "agent:minimal-banking",
-                "agent:financial-analysis",
+                "agent:personal-banking",
+                "agent:personal-banking",
                 "agent:wealth-advisor",
             ):
                 assert (

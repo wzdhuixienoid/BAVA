@@ -1,3 +1,4 @@
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT_ID
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
 from banking_api.payees.service import PayeeService
@@ -11,7 +12,6 @@ from banking_api.tools.models import (
 )
 
 TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
-BANKING_AGENT_CALLER = "agent:minimal-banking"
 
 
 def build_search_payees_tool(bank: MockBankService, session_factory=None) -> ToolSpec:
@@ -37,7 +37,7 @@ def build_search_payees_tool(bank: MockBankService, session_factory=None) -> Too
         output_model=SearchPayeesOutput,
         risk_level=RiskLevel.R1_PRIVATE_READ,
         side_effect=False,
-        allowed_callers=frozenset({TRANSFER_WORKFLOW_CALLER, BANKING_AGENT_CALLER}),
+        allowed_callers=frozenset({TRANSFER_WORKFLOW_CALLER, PERSONAL_BANKING_AGENT_ID}),
         handler=handler,
     )
 
@@ -67,6 +67,6 @@ def build_list_payees_tool(bank: MockBankService, session_factory=None) -> ToolS
         output_model=ListPayeesOutput,
         risk_level=RiskLevel.R1_PRIVATE_READ,
         side_effect=False,
-        allowed_callers=frozenset({BANKING_AGENT_CALLER}),
+        allowed_callers=frozenset({PERSONAL_BANKING_AGENT_ID}),
         handler=handler,
     )

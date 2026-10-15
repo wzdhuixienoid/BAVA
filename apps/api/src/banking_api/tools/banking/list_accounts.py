@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT_ID
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
 from banking_api.tools.models import (
@@ -9,8 +10,6 @@ from banking_api.tools.models import (
     ToolSpec,
 )
 
-MINIMAL_BANKING_AGENT_ID = "agent:minimal-banking"
-FINANCIAL_ANALYSIS_AGENT_ID = "agent:financial-analysis"
 TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 
@@ -31,8 +30,7 @@ def build_list_accounts_tool(bank: MockBankService) -> ToolSpec:
         side_effect=False,
         allowed_callers=frozenset(
             {
-                MINIMAL_BANKING_AGENT_ID,
-                FINANCIAL_ANALYSIS_AGENT_ID,
+                PERSONAL_BANKING_AGENT_ID,
                 TRANSFER_WORKFLOW_CALLER,
             }
         ),

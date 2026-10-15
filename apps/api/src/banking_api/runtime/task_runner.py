@@ -8,9 +8,16 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from banking_api.agent_skills import ActivatedSkill, SkillSelectionError, packaged_catalog
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.models import AgentDefinition
+from banking_api.agents.personal_banking_agent import (
+    LEGACY_AGENT_ROUTES,
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_AGENT,
+    PERSONAL_BANKING_AGENT_ID,
+    PersonalBankingMode,
+    personal_banking_agent,
+    uses_financial_analysis,
+)
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT_ID
 from banking_api.application.account_results import build_account_results
 from banking_api.application.conversation_service import to_message
@@ -82,8 +89,9 @@ UNSUPPORTED_MESSAGE = "当前无法安全处理该请求。暂不支持条件自
 
 ROUTE_AGENT_IDS = {
     RequestRoute.WEALTH_ANALYSIS: "agent:wealth-advisor",
-    RequestRoute.MINIMAL_BANKING: MINIMAL_BANKING_AGENT.agent_id,
-    RequestRoute.FINANCIAL_ANALYSIS: FINANCIAL_ANALYSIS_AGENT_ID,
+    RequestRoute.ACCOUNT_QUERY: PERSONAL_BANKING_ACCOUNT_AGENT.agent_id,
+    RequestRoute.FINANCIAL_ANALYSIS: PERSONAL_BANKING_AGENT_ID,
+    RequestRoute.PERSONAL_BANKING: PERSONAL_BANKING_AGENT_ID,
     RequestRoute.SUBSCRIPTION_ANALYSIS: SUBSCRIPTION_ANALYSIS_AGENT_ID,
 }
 TRANSFER_WORKFLOW_ID = "workflow:transfer"
@@ -220,6 +228,7 @@ class InProcessTaskRunner:
             durable_executor_id = task.executor_id
             durable_requested_output = task.requested_output
             saved_wealth_intent = task.input_json.get("wealth_intent")
+            durable_banking_route = task.input_json.get("personal_banking_route")
 
         async def event_sink(event_type: str, data: dict[str, Any]) -> None:
             await self._persist_runtime_event(
@@ -230,6 +239,28 @@ class InProcessTaskRunner:
             )
 
         try:
+            from banking_api.application.statement_results import (
+                continuation_context,
+                is_statement_continuation,
+            )
+
+            statement_context = None
+            if is_statement_continuation(current_task):
+                async with self.session_factory() as statement_session:
+                    statement_context = await continuation_context(
+                        statement_session,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        before=wealth_before,
+                    )
+                if statement_context is not None and statement_context["next_offset"] is None:
+                    await self._complete_without_agent(
+                        claim=claim,
+                        conversation_id=conversation_id,
+                        answer="所选条件下的账单已显示完毕，没有更多已入账记录。",
+                        route=RequestRoute.ACCOUNT_QUERY,
+                    )
+                    return
             from banking_api.wealth.context import (
                 ASSESSMENT_UPDATE,
                 concise_context,
@@ -275,6 +306,7 @@ class InProcessTaskRunner:
                     )
                 )
                 and not re.search(r"转账|订阅|消费|账单", current_task)
+                and not RequestRouter._is_statement_query(current_task)
             ):
                 from banking_api.wealth.coordination import analysis_request
                 from banking_api.wealth.semantic import WealthIntentFrame, interpret
@@ -350,9 +382,16 @@ class InProcessTaskRunner:
                 executor_type=durable_executor_type,
                 executor_id=durable_executor_id,
                 requested_output=durable_requested_output,
+                personal_banking_route=durable_banking_route,
             )
             if decision is None:
-                if (
+                if statement_context:
+                    decision = RouteDecision(
+                        route=RequestRoute.ACCOUNT_QUERY,
+                        requested_output=RequestedOutput.ANSWER,
+                        confidence=1,
+                    )
+                elif (
                     wealth_frame
                     and wealth_frame.action != "ORDER_STATUS"
                     and not unsupported_wealth
@@ -470,24 +509,28 @@ class InProcessTaskRunner:
             if executor_id is None:
                 raise RoutingError("Route does not map to an executor")
             agent = self._get_agent(executor_id)
+            if agent.agent_id == PERSONAL_BANKING_AGENT_ID:
+                agent = personal_banking_agent(
+                    {
+                        RequestRoute.ACCOUNT_QUERY: PersonalBankingMode.ACCOUNT,
+                        RequestRoute.FINANCIAL_ANALYSIS: PersonalBankingMode.SPENDING,
+                        RequestRoute.PERSONAL_BANKING: PersonalBankingMode.COMBINED,
+                    }[decision.route],
+                    report=decision.requested_output is RequestedOutput.MONTHLY_REPORT,
+                )
             if (
                 decision.requested_output is RequestedOutput.MONTHLY_REPORT
-                and agent.agent_id != FINANCIAL_ANALYSIS_AGENT_ID
+                and not uses_financial_analysis(agent)
             ):
-                raise RoutingError("Monthly report requires FinancialAnalysisAgent")
+                raise RoutingError("Monthly report requires the spending skill")
             if (
-                agent.agent_id in {FINANCIAL_ANALYSIS_AGENT_ID, "agent:wealth-advisor"}
-                and runtime_backend is not RuntimeBackend.LANGGRAPH
-            ):
+                uses_financial_analysis(agent) or agent.agent_id == "agent:wealth-advisor"
+            ) and runtime_backend is not RuntimeBackend.LANGGRAPH:
                 raise AgentRuntimeError(
                     "FINANCIAL_AGENT_REQUIRES_LANGGRAPH",
-                    "FinancialAnalysisAgent requires LangGraph runtime",
+                    "Spending analysis requires LangGraph runtime",
                 )
-            run_agent = (
-                self._report_source_agent(agent)
-                if decision.requested_output is RequestedOutput.MONTHLY_REPORT
-                else agent
-            )
+            run_agent = agent
             if decision.requested_output is RequestedOutput.MONTHLY_REPORT:
                 await self._update_progress(
                     claim=claim,
@@ -551,6 +594,7 @@ class InProcessTaskRunner:
                         agent=run_agent,
                         event_sink=event_sink,
                         wealth_context=wealth_context,
+                        statement_context=statement_context,
                         initial_tool_calls=__import__(
                             "banking_api.wealth.answer", fromlist=["initial_fact_calls"]
                         ).initial_fact_calls(wealth_analysis)
@@ -628,10 +672,47 @@ class InProcessTaskRunner:
                     user_id=user_id,
                     agent_id=agent.agent_id,
                     snapshot=snapshot,
+                    statement_evidence=[
+                        r
+                        for r in result.state.successful_tool_results
+                        if r.capability_id == "account.statement"
+                    ],
+                    account_results=[
+                        r.model_dump(mode="json")
+                        for r in build_account_results(result.state.successful_tool_results)
+                    ]
+                    if any(s.skill_id == "banking-assistance" for s in run_agent.skills)
+                    else [],
                     steps=result.state.step_count,
                     tool_calls=result.state.tool_call_count,
                 )
                 return
+            if any(
+                r.capability_id == "account.statement" for r in result.state.successful_tool_results
+            ) and all(
+                r.capability_id in {"account.statement", "account.list", "account.get_balance"}
+                for r in result.state.successful_tool_results
+            ):
+                from banking_api.application.account_results import account_query_answer
+                from banking_api.application.statement_results import statement_answer
+                from banking_api.runtime.base import AgentRunResult
+
+                balances = (
+                    account_query_answer(result.state.successful_tool_results)
+                    if any(
+                        r.capability_id == "account.get_balance"
+                        for r in result.state.successful_tool_results
+                    )
+                    else ""
+                )
+                result = AgentRunResult(
+                    answer="\n\n".join(
+                        filter(
+                            None, (balances, statement_answer(result.state.successful_tool_results))
+                        )
+                    ),
+                    state=result.state,
+                )
             async with self.session_factory() as session:
                 tasks = TaskRepository(session)
                 messages = MessageRepository(session)
@@ -654,6 +735,9 @@ class InProcessTaskRunner:
                         tool_calls=result.state.tool_call_count,
                         successful_tool_results=result.state.successful_tool_results,
                         requested_output=decision.requested_output,
+                        include_account_results=any(
+                            s.skill_id == "banking-assistance" for s in run_agent.skills
+                        ),
                     )
                     | (
                         {"wealth_analysis": wealth_analysis.model_dump(mode="json")}
@@ -778,7 +862,7 @@ class InProcessTaskRunner:
     async def _route(self, current_task: str, wealth_context=None) -> RouteDecision:
         if self.router is None:
             return RouteDecision(
-                route=RequestRoute.MINIMAL_BANKING,
+                route=RequestRoute.ACCOUNT_QUERY,
                 requested_output=RequestedOutput.ANSWER,
                 confidence=1,
             )
@@ -794,10 +878,21 @@ class InProcessTaskRunner:
         executor_type: ExecutorType | None,
         executor_id: str | None,
         requested_output: RequestedOutput | None,
+        personal_banking_route: str | None = None,
     ) -> RouteDecision | None:
         if executor_id is None or requested_output is None:
             return None
-        if executor_id == "planner:constrained":
+        if executor_id in LEGACY_AGENT_ROUTES:
+            route = RequestRoute(LEGACY_AGENT_ROUTES[executor_id])
+        elif executor_id == PERSONAL_BANKING_AGENT_ID:
+            if personal_banking_route not in {
+                RequestRoute.ACCOUNT_QUERY,
+                RequestRoute.FINANCIAL_ANALYSIS,
+                RequestRoute.PERSONAL_BANKING,
+            }:
+                raise RoutingError("Persisted personal banking skill scope is missing")
+            route = RequestRoute(personal_banking_route)
+        elif executor_id == "planner:constrained":
             route = RequestRoute.COMPLEX_PLAN
         elif executor_id in {"workflow:wealth-purchase", "workflow:wealth-redeem"}:
             route = (
@@ -838,9 +933,11 @@ class InProcessTaskRunner:
         )
 
     def _get_agent(self, agent_id: str) -> AgentDefinition:
+        if agent_id in LEGACY_AGENT_ROUTES:
+            agent_id = PERSONAL_BANKING_AGENT_ID
         if self.agent_registry is None:
-            if agent_id == MINIMAL_BANKING_AGENT.agent_id:
-                return MINIMAL_BANKING_AGENT
+            if agent_id == PERSONAL_BANKING_AGENT_ID:
+                return PERSONAL_BANKING_AGENT
             raise RoutingError("Agent registry is not configured")
         agent = self.agent_registry.get(agent_id)
         if agent is None:
@@ -872,6 +969,8 @@ class InProcessTaskRunner:
                 executor_type = ExecutorType.WORKFLOW
             elif executor_id is not None and route is not RequestRoute.COMPLEX_PLAN:
                 executor_type = ExecutorType.AGENT
+            if executor_id == PERSONAL_BANKING_AGENT_ID:
+                task.input_json = {**task.input_json, "personal_banking_route": route.value}
             await tasks.assign_route(
                 task,
                 requested_output=requested_output,
@@ -1307,6 +1406,7 @@ class InProcessTaskRunner:
         tool_calls: int,
         successful_tool_results: list[SuccessfulToolResult],
         requested_output: RequestedOutput,
+        include_account_results: bool = True,
     ) -> dict[str, Any]:
         output: dict[str, Any] = {
             "agent_id": agent_id,
@@ -1315,12 +1415,22 @@ class InProcessTaskRunner:
             "tool_calls": tool_calls,
             "requested_output": requested_output.value,
         }
-        if agent_id == MINIMAL_BANKING_AGENT.agent_id:
+        if agent_id == PERSONAL_BANKING_AGENT_ID and include_account_results:
             output["account_results"] = [
                 result.model_dump(mode="json")
                 for result in build_account_results(successful_tool_results)
             ]
-        if agent_id == FINANCIAL_ANALYSIS_AGENT_ID:
+            from banking_api.application.statement_results import statement_results
+
+            statements = statement_results(successful_tool_results)
+            if statements:
+                output["statement_results"] = [page.model_dump(mode="json") for page in statements]
+                output["statement_queries"] = [
+                    r.arguments
+                    for r in successful_tool_results
+                    if r.capability_id == "account.statement"
+                ]
+        if any(r.capability_id.startswith("transaction.") for r in successful_tool_results):
             snapshot = build_financial_analysis_snapshot(successful_tool_results)
             output["analysis_snapshot"] = snapshot.model_dump(mode="json")
             anomaly_result = next(
@@ -1350,7 +1460,7 @@ class InProcessTaskRunner:
                 if snapshot.spending_summary is not None:
                     output["anomaly_presentation"] = "combined"
                     output.pop("transaction_anomaly_answer", None)
-        if agent_id == MINIMAL_BANKING_AGENT.agent_id:
+        if agent_id == PERSONAL_BANKING_ACCOUNT_AGENT.agent_id:
             payees = [
                 item.output
                 for item in successful_tool_results
@@ -1381,19 +1491,6 @@ class InProcessTaskRunner:
                 output["wealth_final_result_index"] = len(output["wealth_results"]) - 1
         return output
 
-    @staticmethod
-    def _report_source_agent(agent: AgentDefinition) -> AgentDefinition:
-        skill = packaged_catalog().activate_named(
-            "financial-analysis",
-            references=("references/analysis-rules.md", "references/report-source.md"),
-        )
-        return AgentDefinition(
-            agent_id=agent.agent_id,
-            instructions=skill.instructions,
-            allowed_capabilities=agent.allowed_capabilities,
-            skills=(skill,),
-        )
-
     async def _run_report_pipeline(
         self,
         *,
@@ -1402,6 +1499,8 @@ class InProcessTaskRunner:
         user_id: str,
         agent_id: str,
         snapshot: FinancialAnalysisSnapshot,
+        account_results: list[dict[str, Any]] | None = None,
+        statement_evidence: list[SuccessfulToolResult] | None = None,
         steps: int,
         tool_calls: int,
     ) -> None:
@@ -1457,6 +1556,8 @@ class InProcessTaskRunner:
             user_id=user_id,
             agent_id=agent_id,
             snapshot=snapshot,
+            account_results=account_results,
+            statement_evidence=statement_evidence,
             report=report,
             skill=definition,
             steps=steps,
@@ -1471,6 +1572,8 @@ class InProcessTaskRunner:
         user_id: str,
         agent_id: str,
         snapshot: FinancialAnalysisSnapshot,
+        account_results: list[dict[str, Any]] | None = None,
+        statement_evidence: list[SuccessfulToolResult] | None = None,
         report: MonthlySpendingReport,
         skill: SkillDefinition,
         steps: int,
@@ -1505,10 +1608,23 @@ class InProcessTaskRunner:
                 period_label = (
                     f"{parts[0]}年{int(parts[1])}月" if len(parts) == 2 else f"{parts[0]}年年度"
                 )
+                balances = "\n".join(
+                    f"{r['display_name']}当前余额：{r['balance_display']}"
+                    for r in account_results or []
+                    if r.get("kind") == "ACCOUNT_BALANCE"
+                )
+                from banking_api.application.statement_results import (
+                    statement_answer,
+                    statement_results,
+                )
+
+                ledger_answer = statement_answer(statement_evidence or [])
                 assistant = await messages.create(
                     conversation_id=conversation_id,
                     role=MessageRole.ASSISTANT,
-                    content=f"{period_label}消费报告已生成。",
+                    content=(balances + "\n\n" if balances else "")
+                    + (ledger_answer + "\n\n" if ledger_answer else "")
+                    + f"{period_label}消费报告已生成。",
                 )
                 await tasks.transition(
                     task,
@@ -1517,6 +1633,12 @@ class InProcessTaskRunner:
                         "requested_output": RequestedOutput.MONTHLY_REPORT.value,
                         "agent_id": agent_id,
                         "analysis_snapshot": snapshot.model_dump(mode="json"),
+                        "account_results": account_results or [],
+                        "statement_results": [
+                            p.model_dump(mode="json")
+                            for p in statement_results(statement_evidence or [])
+                        ],
+                        "statement_queries": [r.arguments for r in statement_evidence or []],
                         "skill_id": skill.skill_id,
                         "skill_version": skill.version,
                         "skill_package": packaged_catalog().bind_business_skill(skill).metadata(),

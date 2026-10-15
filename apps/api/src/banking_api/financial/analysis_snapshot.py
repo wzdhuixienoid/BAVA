@@ -42,6 +42,8 @@ def build_financial_analysis_snapshot(
     evidence: list[ToolEvidence] = []
 
     for result in results:
+        if not result.capability_id.startswith("transaction."):
+            continue
         sanitized_input = dict(result.arguments)
         evidence.append(
             ToolEvidence(

@@ -1,6 +1,8 @@
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from banking_api.agents.models import AgentDefinition
+from banking_api.agents.personal_banking_agent import uses_financial_analysis
 from banking_api.config.demo_time import reference_now
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
@@ -18,6 +20,7 @@ class ContextBuilder:
         runtime_messages: list[LLMMessage],
         allowed_tools: list[ToolSpec],
         wealth_context: dict | None = None,
+        statement_context: dict | None = None,
     ) -> LLMRequest:
         eligible = [
             message
@@ -25,7 +28,34 @@ class ContextBuilder:
             if message.role in {MessageRole.USER, MessageRole.ASSISTANT}
         ][-10:]
         messages = [LLMMessage(role="system", content=agent.instructions)]
-        if agent.agent_id == "agent:financial-analysis":
+        if any(t.capability_id == "account.statement" for t in allowed_tools):
+            local_now = reference_now().astimezone(ZoneInfo("Asia/Shanghai"))
+            messages.append(
+                LLMMessage(
+                    role="system",
+                    content=(
+                        f"本次银行查询业务参考时间为 {local_now.isoformat()}。"
+                        "账单未指定期间默认最近30天，不能沿用旧对话中的月份。"
+                        "本月和今年使用该参考时间的自然月和自然年，未给年份使用当前年。"
+                        "明确日期使用北京时间+08:00；起点包含、终点不包含，只有结束日期时含该日全天。"
+                        "收到上轮工具as_of和next_offset后，继续查询应复用同一期间、筛选和as_of。"
+                    ),
+                )
+            )
+            if statement_context:
+                import json
+
+                messages.append(
+                    LLMMessage(
+                        role="system",
+                        content=(
+                            "用户正在继续上一页账单。以下为经本人及本对话归属校验的上一页查询条件，"
+                            "调用get_account_statement必须复用这些条件及as_of，以next_offset作为offset，"
+                            "不要从0重复查询：" + json.dumps(statement_context, ensure_ascii=False)
+                        ),
+                    )
+                )
+        if uses_financial_analysis(agent):
             now = reference_now()
             previous_month = (now.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
             messages.append(

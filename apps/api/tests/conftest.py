@@ -14,7 +14,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_ACCOUNT_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import RuntimeBackend
 from banking_api.llm.fake_provider import FakeLLMProvider
@@ -56,7 +56,7 @@ async def app(tmp_path):
             registry=registry,
             executor=ToolExecutor(registry, PolicyService()),
             context_builder=ContextBuilder(),
-            agent=MINIMAL_BANKING_AGENT,
+            agent=PERSONAL_BANKING_ACCOUNT_AGENT,
             max_steps=max_steps,
             max_tool_calls=max_tool_calls,
         )

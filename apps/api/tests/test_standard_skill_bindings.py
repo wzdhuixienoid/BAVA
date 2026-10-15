@@ -15,9 +15,11 @@ from test_wealth import wealth as wealth
 from test_wealth_v0113 import result
 
 from banking_api.agent_skills import AgentSkillCatalog, packaged_catalog
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
 from banking_api.agents.models import AgentDefinition
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
+)
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
 from banking_api.agents.wealth_advisor_agent import WEALTH_ADVISOR_AGENT
 from banking_api.context.builder import ContextBuilder
@@ -31,15 +33,14 @@ from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.runtime.base import AgentRunRequest, AgentRuntimeError
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
 from banking_api.runtime.manual_agent_runtime import ManualAgentRuntime
-from banking_api.runtime.task_runner import InProcessTaskRunner
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.skills.transaction_anomaly_analysis import TransactionAnomalyAnalysisSkill
 from banking_api.skills.wealth_recommendation import WealthRecommendationSkill
 from banking_api.tools.executor import ToolExecutor
 
 AGENTS = (
-    MINIMAL_BANKING_AGENT,
-    FINANCIAL_ANALYSIS_AGENT,
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
     SUBSCRIPTION_ANALYSIS_AGENT,
     WEALTH_ADVISOR_AGENT,
 )
@@ -86,7 +87,10 @@ async def test_graph_sends_real_skill_instructions_and_records_actual_hashes(age
 async def test_manual_runtime_uses_same_standard_package():
     runtime, provider = build_runtime([LLMResponse(content="请明确需要查询的账户。")])
     _, events = await run_runtime(runtime)
-    assert MINIMAL_BANKING_AGENT.skills[0].instructions in provider.requests[0].messages[0].content
+    assert (
+        PERSONAL_BANKING_ACCOUNT_AGENT.skills[0].instructions
+        in provider.requests[0].messages[0].content
+    )
     started = next(data for name, data in events if name == "agent.run.started")
     assert started["skills"][0]["skill_id"] == "banking-assistance"
 
@@ -105,10 +109,12 @@ def test_registry_rejects_agents_without_real_skill_instructions():
     with pytest.raises(ValueError):
         registry.register(AgentDefinition("agent:no-skill", "free prompt", frozenset()))
     with pytest.raises(ValueError):
-        registry.register(replace(MINIMAL_BANKING_AGENT, instructions="unrelated instructions"))
-    fake_skill = replace(MINIMAL_BANKING_AGENT.skills[0], resources={"SKILL.md": "fake"})
+        registry.register(
+            replace(PERSONAL_BANKING_ACCOUNT_AGENT, instructions="unrelated instructions")
+        )
+    fake_skill = replace(PERSONAL_BANKING_ACCOUNT_AGENT.skills[0], resources={"SKILL.md": "fake"})
     with pytest.raises(ValueError):
-        registry.register(replace(MINIMAL_BANKING_AGENT, skills=(fake_skill,)))
+        registry.register(replace(PERSONAL_BANKING_ACCOUNT_AGENT, skills=(fake_skill,)))
 
 
 @pytest.mark.parametrize(
@@ -182,8 +188,13 @@ def test_helpers_reject_incomplete_snapshots_with_no_output(name):
 
 
 def test_report_source_loads_extra_reference_only_for_explicit_report_mode():
-    base = FINANCIAL_ANALYSIS_AGENT
-    derived = InProcessTaskRunner._report_source_agent(base)
+    base = PERSONAL_BANKING_SPENDING_AGENT
+    from banking_api.agents.personal_banking_agent import (
+        PersonalBankingMode,
+        personal_banking_agent,
+    )
+
+    derived = personal_banking_agent(PersonalBankingMode.SPENDING, report=True)
     assert "references/report-source.md" not in base.skills[0].resources
     assert "references/report-source.md" in derived.skills[0].resources
     assert derived.allowed_capabilities == base.allowed_capabilities

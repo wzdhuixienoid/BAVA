@@ -1,4 +1,4 @@
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT_ID
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT_ID
 from banking_api.config.demo_time import reference_now
 from banking_api.domain.enums import RiskLevel
 from banking_api.financial.analytics_service import FinancialAnalyticsService
@@ -34,6 +34,6 @@ def build_compare_spending_periods_tool(
         output_model=SpendingPeriodComparison,
         risk_level=RiskLevel.R1_PRIVATE_READ,
         side_effect=False,
-        allowed_callers=frozenset({FINANCIAL_ANALYSIS_AGENT_ID}),
+        allowed_callers=frozenset({PERSONAL_BANKING_AGENT_ID}),
         handler=handler,
     )

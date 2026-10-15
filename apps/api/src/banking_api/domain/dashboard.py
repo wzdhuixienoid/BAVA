@@ -14,6 +14,9 @@ class DashboardTransaction(ReportTopTransaction):
     currency: str
     direction: Literal["DEBIT", "CREDIT"] = "DEBIT"
     source: Literal["BANK", "SUBSCRIPTION", "WEALTH", "TRANSFER"] = "BANK"
+    counterparty_id: str | None = None
+    counterparty_bank: str | None = None
+    counterparty_account: str | None = None
 
 
 class DashboardTransactionPage(BaseModel):

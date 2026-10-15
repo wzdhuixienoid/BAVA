@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_ACCOUNT_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole, RiskLevel
 from banking_api.domain.message import Message
@@ -47,7 +47,7 @@ def build_runtime(
                 output_model=ListAccountsOutput,
                 risk_level=RiskLevel.R1_PRIVATE_READ,
                 side_effect=False,
-                allowed_callers=frozenset({"agent:minimal-banking"}),
+                allowed_callers=frozenset({"agent:personal-banking"}),
                 handler=lambda _context, _arguments: {"accounts": "not-a-list"},
             )
         )
@@ -59,7 +59,7 @@ def build_runtime(
         "registry": registry,
         "executor": ToolExecutor(registry, PolicyService()),
         "context_builder": ContextBuilder(),
-        "agent": MINIMAL_BANKING_AGENT,
+        "agent": PERSONAL_BANKING_ACCOUNT_AGENT,
         "max_steps": max_steps,
         "max_tool_calls": max_tool_calls,
     }

@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
+from banking_api.application.statement_results import with_statement_analysis
 from banking_api.application.task_service import TaskNotFoundError, TaskService
 from banking_api.audit.models import AuditTrace
 from banking_api.audit.projection import AuditProjection
@@ -35,7 +36,10 @@ async def list_tasks(
         user_id=principal.user_id, conversation_id=conversation_id
     )
     accounts = request.app.state.mock_bank.list_accounts(user_id=principal.user_id)
-    return [with_anomaly_answer(with_account_names(task, accounts)) for task in tasks]
+    return [
+        with_statement_analysis(with_anomaly_answer(with_account_names(task, accounts)))
+        for task in tasks
+    ]
 
 
 @router.get("/{task_id}", response_model=Task)
@@ -45,7 +49,7 @@ async def get_task(
     try:
         task = await TaskService(session).get(task_id, user_id=principal.user_id)
         accounts = request.app.state.mock_bank.list_accounts(user_id=principal.user_id)
-        return with_anomaly_answer(with_account_names(task, accounts))
+        return with_statement_analysis(with_anomaly_answer(with_account_names(task, accounts)))
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=404, detail="未找到该任务") from exc
 

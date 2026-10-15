@@ -1,15 +1,14 @@
-# Tool 使用与审计（应用版本 0.11.2）
+# Tool 使用与审计（应用版本 0.11.3）
 
 审计日期：2026-10-15。范围是应用登记的 function tools、模型协议、运行时、工作流、后台恢复以及银行数据投影。这里的 Tool 是应用能力，不是 MCP 服务；Python 文件名不需要与 MCP 工具约定混用。
 
 ## 实际使用位置
 
-`main.create_app()` 在 development/test 环境登记 26 个工具，production 环境登记其中 15 个（11 个模拟理财工具不登记）。四个 Agent 通过 `ContextBuilder → OpenAICompatibleProvider → ManualAgentRuntime/LangGraphAgentRuntime → ToolExecutor → PolicyService` 调用允许的只读能力。金融分析和理财对话由 TaskRunner 强制使用 LangGraph；Manual 是账户等基础交互的参考运行时。运行时验证标准 Skill 绑定，Skill 指令不能扩大工具权限。
+`main.create_app()` 在 development/test 环境登记 27 个工具，production 环境登记其中 16 个（11 个模拟理财工具不登记）。三个 Agent 通过 `ContextBuilder → OpenAICompatibleProvider → ManualAgentRuntime/LangGraphAgentRuntime → ToolExecutor → PolicyService` 调用允许的只读能力。金融分析和理财对话由 TaskRunner 强制使用 LangGraph；Manual 是账户等基础交互的参考运行时。运行时验证标准 Skill 绑定，Skill 指令不能扩大工具权限。
 
 | 使用方 | 工具能力 |
 | --- | --- |
-| MinimalBankingAgent | 账户列表、余额、收款人搜索与列表 |
-| FinancialAnalysisAgent | 账户列表、消费汇总、分类、期间对比、主要交易、异常检查；未明确要求异常时不开放完整异常工具 |
+| PersonalBankingAgent | ACCOUNT：账户、余额、账单与收款人；SPENDING：消费分析；COMBINED：两类所需能力。未明确要求异常时不开放完整异常工具 |
 | SubscriptionAnalysisAgent | 订阅成本和续费分析 |
 | WealthAdvisorAgent | 产品目录、单品、对比、推荐、资料检索、本人持仓和订单 |
 | TransferWorkflowEngine | 账户、余额、收款人，已授权转账提交及对账 |
@@ -21,12 +20,13 @@ HTTP 页面读取由业务服务提供，金融写入经 Workflow/Operation。�
 
 ## 完整登记清单
 
-18 个纯读取、5 个提交、3 个会推进结算的对账工具。能力 ID 用于内部权限；函数名用于模型协议，两者有意分开。
+19 个纯读取、5 个提交、3 个会推进结算的对账工具。能力 ID 用于内部权限；函数名用于模型协议，两者有意分开。
 
 | 能力 ID | 函数名 | 分类 |
 | --- | --- | --- |
 | account.list | list_accounts | R1 读取 |
 | account.get_balance | get_balance | R1 读取 |
+| account.statement | get_account_statement | R1 读取 |
 | payee.search | search_payees | R1 读取 |
 | payee.list | list_payees | R1 读取 |
 | transaction.spending_summary | get_spending_summary | R1 读取 |
@@ -86,4 +86,4 @@ HTTP 页面读取由业务服务提供，金融写入经 Workflow/Operation。�
 
 回归文件：`test_tool_contract_audit.py`、`test_tool_executor.py`、`test_runtime_parity.py`、`test_security_adversarial.py`、`test_transfer_operations.py`、`test_account_statement.py` 及 PostgreSQL 并发/恢复套件。`test_release_version.py` 校验 Python、FastAPI OpenAPI、三个 package.json、uv.lock 和当前文档标题，并确保网页版本来自 web/package.json。
 
-最终完整后端 1124 项通过（无跳过），前端 111 项通过，四条真实模型只读交互完成。详细执行结果记录在 [本轮更新说明](../releases/release-notes-v0.11.2.md)。历史发布及独立 Skill 资源版本保留各自标识，应用当前版本统一为 0.11.2。无新增数据库迁移，head 仍为 0034。
+本轮验证结果见 [更新说明](../releases/release-notes-v0.11.3.md)。历史审计证据保留于 v0.11.2 更新说明。无新增数据库迁移，head 仍为 0034。

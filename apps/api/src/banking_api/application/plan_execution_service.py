@@ -297,6 +297,18 @@ class PlanExecutionService:
         runner = self.runner
         definition = self.registry.get(capability)
         agent = runner._get_agent(definition.executor_id)
+        from banking_api.agents.personal_banking_agent import (
+            PERSONAL_BANKING_AGENT_ID,
+            PersonalBankingMode,
+            personal_banking_agent,
+        )
+
+        if agent.agent_id == PERSONAL_BANKING_AGENT_ID:
+            agent = personal_banking_agent(
+                PersonalBankingMode.SPENDING
+                if capability == PlanCapability.FINANCIAL_ANALYSIS
+                else PersonalBankingMode.ACCOUNT
+            )
         if capability == PlanCapability.FINANCIAL_ANALYSIS and (
             claim.runtime_backend != RuntimeBackend.LANGGRAPH
         ):

@@ -515,9 +515,9 @@ async def test_agents_cannot_invoke_transfer_commit_even_with_injected_prompt(ap
     _, provider, registry, _ = operation_runtime(app)
     executor = ToolExecutor(registry, PolicyService())
     for caller, allowlist in (
-        ("agent:minimal-banking", frozenset({"account.list", "account.get_balance"})),
+        ("agent:personal-banking", frozenset({"account.list", "account.get_balance"})),
         (
-            "agent:financial-analysis",
+            "agent:personal-banking",
             frozenset(
                 {
                     "account.list",

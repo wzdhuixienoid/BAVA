@@ -25,9 +25,7 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
 
     runner = app.state.test_make_runner(
         [
-            LLMResponse(
-                tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]
-            ),
+            LLMResponse(tool_calls=[LLMToolCall(id="call_1", name="list_accounts", arguments={})]),
             LLMResponse(
                 tool_calls=[
                     LLMToolCall(
@@ -43,9 +41,7 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
     await runner.run(accepted.task_id)
 
     async with factory() as session:
-        task = await TaskService(session).get(
-            UUID(str(accepted.task_id)), user_id="dev-user-001"
-        )
+        task = await TaskService(session).get(UUID(str(accepted.task_id)), user_id="dev-user-001")
         loaded = await ConversationService(session, bus).get(
             conversation_id=conversation.conversation_id,
             user_id="dev-user-001",
@@ -62,7 +58,7 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
 
     assert task.status is TaskStatus.COMPLETED
     assert {key: value for key, value in task.output.items() if key != "account_results"} == {
-        "agent_id": "agent:minimal-banking",
+        "agent_id": "agent:personal-banking",
         "assistant_message_id": str(loaded.messages[-1].message_id),
         "steps": 3,
         "tool_calls": 2,
@@ -73,7 +69,7 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
     assert results[1]["balance"] == "23864.52"
     assert results[1]["balance_display"] == "¥23,864.52"
     assert task.version == 8
-    assert task.executor_id == "agent:minimal-banking"
+    assert task.executor_id == "agent:personal-banking"
     assert loaded.messages[-1].content == "工资卡余额为 23,864.52 元。"
     assert [event.event_type for event in event_rows].count("tool.call.completed") == 2
     assert all("23864.52" not in str(event.data_json) for event in event_rows)

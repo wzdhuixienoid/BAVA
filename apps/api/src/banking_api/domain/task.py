@@ -12,6 +12,7 @@ from banking_api.domain.enums import (
     RuntimeBackend,
     TaskStatus,
 )
+from banking_api.domain.statement import AccountStatementInput, AccountStatementResult
 from banking_api.financial.report_models import MonthlySpendingReportCore
 from banking_api.wealth.schemas import WealthAnalysis, WealthReadResult
 
@@ -24,6 +25,8 @@ class TaskOutput(TypedDict, total=False):
     wealth_results: list[WealthReadResult]
     wealth_final_result_index: int
     account_results: AccountQueryResults
+    statement_results: list[AccountStatementResult]
+    statement_queries: list[AccountStatementInput]
     financial_display: MonthlySpendingReportCore
 
 

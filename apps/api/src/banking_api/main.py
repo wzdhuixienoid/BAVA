@@ -5,8 +5,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from banking_api import __version__
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_AGENT,
+)
 from banking_api.agents.subscription_analysis_agent import SUBSCRIPTION_ANALYSIS_AGENT
 from banking_api.api.router import api_router
 from banking_api.api.routes.health import router as health_router
@@ -51,6 +53,7 @@ from banking_api.tools.banking import (
     build_commit_transfer_tool,
     build_compare_spending_periods_tool,
     build_detect_anomalies_tool,
+    build_get_account_statement_tool,
     build_get_balance_tool,
     build_get_category_breakdown_tool,
     build_get_spending_summary_tool,
@@ -214,6 +217,7 @@ def create_app() -> FastAPI:
     anomaly_detector = TransactionAnomalyDetector(bank)
     registry = ToolRegistry()
     registry.register(build_list_accounts_tool(bank))
+    registry.register(build_get_account_statement_tool(bank, session_factory))
     registry.register(build_get_balance_tool(bank, transfer_provider.effective_balance))
 
     async def posted_bank(user_id):
@@ -267,8 +271,7 @@ def create_app() -> FastAPI:
     transfer_engine.aa_resolver = resolve_aa
     subscription_engine = SubscriptionCancellationWorkflow(executor)
     agent_registry = AgentRegistry()
-    agent_registry.register(MINIMAL_BANKING_AGENT)
-    agent_registry.register(FINANCIAL_ANALYSIS_AGENT)
+    agent_registry.register(PERSONAL_BANKING_AGENT)
     agent_registry.register(SUBSCRIPTION_ANALYSIS_AGENT)
     from banking_api.agents.wealth_advisor_agent import WEALTH_ADVISOR_AGENT
 
@@ -284,7 +287,7 @@ def create_app() -> FastAPI:
         registry=registry,
         executor=executor,
         context_builder=ContextBuilder(),
-        agent=MINIMAL_BANKING_AGENT,
+        agent=PERSONAL_BANKING_ACCOUNT_AGENT,
         max_steps=settings.agent_max_steps,
         max_tool_calls=settings.agent_max_tool_calls,
     )

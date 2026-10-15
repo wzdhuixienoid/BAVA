@@ -1,8 +1,9 @@
 import json
 from typing import Any
 
-from banking_api.agents.minimal_banking_agent import AgentDefinition
+from banking_api.agents.models import AgentDefinition
 from banking_api.context.builder import ContextBuilder
+from banking_api.domain.statement_scope import statement_arguments
 from banking_api.financial.request_scope import restrict_financial_agent
 from banking_api.llm.models import LLMMessage
 from banking_api.llm.provider import LLMProvider, LLMProviderError
@@ -79,6 +80,7 @@ class ManualAgentRuntime:
                     conversation_messages=request.conversation_messages,
                     runtime_messages=state.runtime_messages,
                     allowed_tools=allowed_tools,
+                    statement_context=request.statement_context,
                 )
                 await sink(
                     "llm.request.started",
@@ -145,9 +147,15 @@ class ManualAgentRuntime:
                             "argument_keys": argument_keys,
                         },
                     )
+                    spec = self.registry.get_by_name(call.name)
+                    arguments = call.arguments
+                    if spec and spec.capability_id == "account.statement":
+                        arguments = statement_arguments(
+                            arguments, request.current_task, continuation=request.statement_context
+                        )
                     result = await self.executor.execute(
                         tool_name=call.name,
-                        arguments=call.arguments,
+                        arguments=arguments,
                         caller=effective_caller,
                         principal=request.principal,
                         agent_allowlist=agent.allowed_capabilities,
@@ -163,7 +171,7 @@ class ManualAgentRuntime:
                             SuccessfulToolResult(
                                 capability_id=result.capability_id,
                                 tool_name=call.name,
-                                arguments=call.arguments,
+                                arguments=arguments,
                                 output=result.output or {},
                             )
                         )

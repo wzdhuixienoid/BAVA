@@ -21,6 +21,8 @@ CATEGORY_LABELS = {
     "OTHER": "其他",
     "TRANSFER": "转账",
     "SALARY": "工资",
+    "WEALTH": "理财",
+    "REFUND": "退款",
 }
 
 
@@ -28,6 +30,10 @@ def category_label(value: str) -> str:
     return CATEGORY_LABELS.get(
         value, value if any("\u4e00" <= c <= "\u9fff" for c in value) else "其他"
     )
+
+
+def currency_label(value: str) -> str:
+    return {"CNY": "人民币", "USD": "美元", "EUR": "欧元", "GBP": "英镑"}.get(value, value)
 
 
 def with_account_names(task, accounts):  # type: ignore[no-untyped-def]

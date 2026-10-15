@@ -1,13 +1,13 @@
-# 应用 Agent Skills（资源版本 0.12.3）
+# 应用 Agent Skills
 
-应用交付版本为 **0.11.2**；此处 **0.12.3** 是独立的 Skill 资源版本，用于绑定和 hash 审计，不作为网页或 API 版本。
+应用交付版本为 **0.11.3**。banking-assistance 资源版本为 **0.12.7**、financial-analysis 为 **0.12.4**，其他包为 **0.12.3**；资源版本独立用于绑定和 hash 审计，不作为网页或 API 版本。
 
 所有应用业务 agent 与业务 Skill 均绑定 [Agent Skills 规范](https://agentskills.io/specification) 的技能包。指令集中在 `SKILL.md` 和按场景读取的 references；Python 模块保存权限白名单、计算、类型校验及工作流执行。
 
 | 标准技能包 | 绑定路径 |
 | --- | --- |
-| banking-assistance | MinimalBankingAgent |
-| financial-analysis | FinancialAnalysisAgent，报告模式额外加载 report-source.md |
+| banking-assistance | PersonalBankingAgent：ACCOUNT / COMBINED |
+| financial-analysis | PersonalBankingAgent：SPENDING / COMBINED，报告模式额外加载 report-source.md |
 | subscription-analysis | SubscriptionAnalysisAgent |
 | wealth-advisory | WealthAdvisorAgent；按推荐、比较、定位、知识模式加载资料 |
 | wealth-trade-assistance | 申购/赎回准备，续接已有 Workflow |

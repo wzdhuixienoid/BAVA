@@ -77,7 +77,7 @@ async def interact(app, runner, factory, content):
     [
         (
             "查看我的账户",
-            "MINIMAL_BANKING",
+            "ACCOUNT_QUERY",
             "banking-assistance",
             [call("accounts", "list_accounts", {}), LLMResponse(content="账户查询完成。")],
         ),

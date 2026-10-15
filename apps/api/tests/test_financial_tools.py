@@ -1,7 +1,9 @@
 import pytest
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_ACCOUNT_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
+)
 from banking_api.domain.enums import PolicyDecision, RiskLevel
 from banking_api.domain.principal import ExecutionPrincipal
 from banking_api.financial.analytics_service import FinancialAnalyticsService
@@ -16,7 +18,7 @@ from banking_api.tools.banking import (
     build_get_spending_summary_tool,
     build_get_top_transactions_tool,
 )
-from banking_api.tools.banking.get_spending_summary import FINANCIAL_ANALYSIS_AGENT_ID
+from banking_api.tools.banking.get_spending_summary import PERSONAL_BANKING_AGENT_ID
 from banking_api.tools.executor import ToolExecutor
 from banking_api.tools.models import ToolErrorCode, ToolSpec
 
@@ -51,7 +53,7 @@ def test_financial_tools_are_r1_read_only_and_financial_agent_only(
     assert all(spec.risk_level is RiskLevel.R1_PRIVATE_READ for spec in registry.all())
     assert all(spec.side_effect is False for spec in registry.all())
     assert all(
-        spec.allowed_callers == frozenset({FINANCIAL_ANALYSIS_AGENT_ID}) for spec in registry.all()
+        spec.allowed_callers == frozenset({PERSONAL_BANKING_AGENT_ID}) for spec in registry.all()
     )
     assert registry.get_by_name("transaction.search") is None
 
@@ -62,6 +64,7 @@ def test_application_registry_adds_financial_tools_with_read_only_payee_access()
     assert {spec.capability_id for spec in registry.all()} == {
         "account.list",
         "account.get_balance",
+        "account.statement",
         "payee.search",
         "payee.list",
         "transfer.commit",
@@ -96,12 +99,13 @@ def test_application_registry_adds_financial_tools_with_read_only_payee_access()
             )
             assert set(spec.input_schema["properties"]) == {"operation_id"}
     assert [
-        spec.capability_id for spec in registry.resolve(MINIMAL_BANKING_AGENT.allowed_capabilities)
-    ] == ["account.list", "account.get_balance", "payee.search", "payee.list"]
-    assert "transfer.commit" not in MINIMAL_BANKING_AGENT.allowed_capabilities
-    assert "transfer.get_status" not in MINIMAL_BANKING_AGENT.allowed_capabilities
-    assert "transfer.commit" not in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
-    assert "transfer.get_status" not in FINANCIAL_ANALYSIS_AGENT.allowed_capabilities
+        spec.capability_id
+        for spec in registry.resolve(PERSONAL_BANKING_ACCOUNT_AGENT.allowed_capabilities)
+    ] == ["account.list", "account.statement", "account.get_balance", "payee.search", "payee.list"]
+    assert "transfer.commit" not in PERSONAL_BANKING_ACCOUNT_AGENT.allowed_capabilities
+    assert "transfer.get_status" not in PERSONAL_BANKING_ACCOUNT_AGENT.allowed_capabilities
+    assert "transfer.commit" not in PERSONAL_BANKING_SPENDING_AGENT.allowed_capabilities
+    assert "transfer.get_status" not in PERSONAL_BANKING_SPENDING_AGENT.allowed_capabilities
 
 
 @pytest.mark.parametrize("capability_id", sorted(FINANCIAL_CAPABILITIES))
@@ -115,7 +119,7 @@ def test_policy_allows_financial_agent_for_each_tool(
 
     result = PolicyService().evaluate(
         spec=spec,
-        caller=FINANCIAL_ANALYSIS_AGENT_ID,
+        caller=PERSONAL_BANKING_AGENT_ID,
         authenticated=True,
         agent_allowlist=FINANCIAL_CAPABILITIES,
     )
@@ -133,7 +137,7 @@ def test_policy_denies_minimal_agent_for_each_transaction_tool(
 
     result = PolicyService().evaluate(
         spec=spec,
-        caller="agent:minimal-banking",
+        caller="agent:personal-banking",
         authenticated=True,
         agent_allowlist=frozenset({"account.list", "account.get_balance"}),
     )
@@ -160,7 +164,7 @@ async def test_financial_tools_execute_through_registry_policy_and_executor(
     result = await executor.execute(
         tool_name=tool_name,
         arguments=arguments,
-        caller=FINANCIAL_ANALYSIS_AGENT_ID,
+        caller=PERSONAL_BANKING_AGENT_ID,
         principal=TEST_PRINCIPAL,
         agent_allowlist=FINANCIAL_CAPABILITIES,
     )
@@ -179,7 +183,7 @@ async def test_minimal_agent_cannot_execute_financial_tool(
     result = await executor.execute(
         tool_name="get_spending_summary",
         arguments={"month": "2026-08"},
-        caller="agent:minimal-banking",
+        caller="agent:personal-banking",
         principal=TEST_PRINCIPAL,
         agent_allowlist=frozenset({"account.list", "account.get_balance"}),
     )
@@ -209,7 +213,7 @@ async def test_financial_domain_errors_remain_structured(
     result = await executor.execute(
         tool_name="get_spending_summary",
         arguments=arguments,
-        caller=FINANCIAL_ANALYSIS_AGENT_ID,
+        caller=PERSONAL_BANKING_AGENT_ID,
         principal=TEST_PRINCIPAL,
         agent_allowlist=FINANCIAL_CAPABILITIES,
     )
@@ -229,7 +233,7 @@ async def test_top_transaction_limit_is_schema_bounded(
     result = await executor.execute(
         tool_name="get_top_transactions",
         arguments={"month": "2026-08", "limit": limit},
-        caller=FINANCIAL_ANALYSIS_AGENT_ID,
+        caller=PERSONAL_BANKING_AGENT_ID,
         principal=TEST_PRINCIPAL,
         agent_allowlist=FINANCIAL_CAPABILITIES,
     )

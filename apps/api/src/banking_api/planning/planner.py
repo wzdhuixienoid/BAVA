@@ -13,6 +13,8 @@ PLANNER_INSTRUCTIONS = """你是受约束银行任务规划器，只输出符合
 TRANSFER_WORKFLOW、SUBSCRIPTION_CANCEL_WORKFLOW、SUBSCRIPTION_RESUME_WORKFLOW。无条件计划需要至少两个不同能力，最多8个步骤，
 最多一个 write Workflow。依赖必须存在且无环，用短中文标题和目标摘要。
 只读能力可以给短 subtask_query；write Workflow 的 subtask_query 必须为 null，
+ACCOUNT_QUERY 包含本人账户余额、收款人及已入账账单/转账历史查询；
+历史查询不能使用 TRANSFER_WORKFLOW。
 业务 payload 由原 Workflow 从原始用户 Message 提取。绝不提供业务金额 payload、账户、收款人、订阅ID、
 Principal、权限、风险、Approval、Reauthentication、Operation、Provider 或底层 Tool。
 支持最多2个 CONDITION Step：只允许余额、本月消费、月度订阅成本 >= threshold。

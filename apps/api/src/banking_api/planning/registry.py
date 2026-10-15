@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT_ID
 from banking_api.planning.models import PlanCapability
 
 
@@ -20,10 +21,10 @@ class PlanCapabilityRegistry:
     definitions = MappingProxyType(
         {
             PlanCapability.ACCOUNT_QUERY: PlanCapabilityDefinition(
-                "agent:minimal-banking", "AGENT"
+                PERSONAL_BANKING_AGENT_ID, "AGENT"
             ),
             PlanCapability.FINANCIAL_ANALYSIS: PlanCapabilityDefinition(
-                "agent:financial-analysis", "AGENT"
+                PERSONAL_BANKING_AGENT_ID, "AGENT"
             ),
             PlanCapability.SUBSCRIPTION_ANALYSIS: PlanCapabilityDefinition(
                 "agent:subscription-analysis", "AGENT"

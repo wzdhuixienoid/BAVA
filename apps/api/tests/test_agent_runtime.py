@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_ACCOUNT_AGENT
 from banking_api.context.builder import ContextBuilder
 from banking_api.domain.enums import MessageRole
 from banking_api.domain.message import Message
@@ -36,7 +36,7 @@ def build_runtime(
         registry=registry,
         executor=ToolExecutor(registry, PolicyService()),
         context_builder=ContextBuilder(),
-        agent=MINIMAL_BANKING_AGENT,
+        agent=PERSONAL_BANKING_ACCOUNT_AGENT,
         max_steps=max_steps,
         max_tool_calls=max_tool_calls,
     )
@@ -238,11 +238,11 @@ def test_context_contains_only_recent_conversation_and_allowed_tool_schemas() ->
     )
 
     request = runtime.context_builder.build(
-        agent=MINIMAL_BANKING_AGENT,
+        agent=PERSONAL_BANKING_ACCOUNT_AGENT,
         current_task="message-11",
         conversation_messages=messages,
         runtime_messages=[],
-        allowed_tools=runtime.registry.resolve(MINIMAL_BANKING_AGENT.allowed_capabilities),
+        allowed_tools=runtime.registry.resolve(PERSONAL_BANKING_ACCOUNT_AGENT.allowed_capabilities),
     )
 
     assert len(request.messages) == 11

@@ -2,6 +2,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT_ID
 from banking_api.domain.account import AccountBalanceResult
 from banking_api.domain.enums import RiskLevel
 from banking_api.mock_bank.service import MockBankService
@@ -11,7 +12,6 @@ from banking_api.tools.models import (
     ToolSpec,
 )
 
-MINIMAL_BANKING_AGENT_ID = "agent:minimal-banking"
 TRANSFER_WORKFLOW_CALLER = "workflow:transfer"
 
 
@@ -36,6 +36,6 @@ def build_get_balance_tool(
         output_model=AccountBalanceResult,
         risk_level=RiskLevel.R1_PRIVATE_READ,
         side_effect=False,
-        allowed_callers=frozenset({MINIMAL_BANKING_AGENT_ID, TRANSFER_WORKFLOW_CALLER}),
+        allowed_callers=frozenset({PERSONAL_BANKING_AGENT_ID, TRANSFER_WORKFLOW_CALLER}),
         handler=handler,
     )

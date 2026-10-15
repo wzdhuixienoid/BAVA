@@ -6,7 +6,7 @@
 
 资源与工具查询按 Principal.user_id 限定；跨用户资源访问表现为 404。模型参数和浏览器请求不能切换 authority。HTTP credential 不进入 Message、Task、Event、Prompt 或 checkpoint；Task worker 从持久化用户归属重建服务端执行身份。
 
-ToolRegistry 与 PolicyService 限定调用者能力。四个 Agent 都只读；写 Tool 由确定性 Workflow 调用，接受持久化 operation_id。Recovery 只能处理既有操作，不扩大调用权限。
+ToolRegistry 与 PolicyService 限定调用者能力。三个 Agent 都只读；写 Tool 由确定性 Workflow 调用，接受持久化 operation_id。Recovery 只能处理既有操作，不扩大调用权限。
 
 ## 用户控制
 
@@ -80,6 +80,6 @@ conversation_id双重限定。已保存风险测评是本人账户资料，不�
 
 DESIGN资料是项目编写的虚构产品设计，不是银行披露、实际持仓或交易授权。发布时间之前及历史版本检索不自动加入新画像。画像不改变原条款、合成净值或历史订单；组合比例不得用来预测合成收益。增长目标只影响已通过资格和硬条件的只读候选，不提高本人测评等级，不推断最大可承受亏损。
 
-## 工具边界审计（应用 0.11.2，2026-10-15）
+## 工具边界审计（应用 0.11.3，2026-10-15）
 
 转账及理财状态对账可推进结算，统一标为 R3_FINANCIAL_RECONCILE 与 side_effect=true，仅对应工作流可调用；五个提交工具为 R4。普通 Agent 仅能调用 R1。八个 Operation 工具统一验证本人、业务类型、已消费授权绑定、workflow 及实际 payload 摘要；ToolSpec 登记后冻结，运行时禁止 Agent 冒充工作流 caller。纯状态读取的订阅查询仍为 R1。已受理操作沿用持久授权恢复，不重用过期确认发起新交易。清单与验证见 [Tool 审计](tools.md)。

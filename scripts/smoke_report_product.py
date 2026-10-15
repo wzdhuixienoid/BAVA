@@ -6,8 +6,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from urllib.parse import urlparse
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT
 from banking_api.api.dependencies import get_session
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.task_service import TaskService
@@ -87,8 +86,7 @@ async def main() -> None:
     tools.register(build_compare_spending_periods_tool(analytics))
     tools.register(build_get_top_transactions_tool(analytics))
     agents = AgentRegistry()
-    agents.register(MINIMAL_BANKING_AGENT)
-    agents.register(FINANCIAL_ANALYSIS_AGENT)
+    agents.register(PERSONAL_BANKING_AGENT)
     skills = SkillRegistry()
     skills.register(MonthlySpendingReportSkill.definition)
     bus = EventBus()
@@ -180,13 +178,19 @@ async def main() -> None:
             (DATA_DIR / "golden_monthly_report_core.json").read_text(encoding="utf-8")
         )["report_core"]
         actual_core = MonthlySpendingReportCore.model_validate(
-            {key: value for key, value in content.items() if key not in {"headline", "insights"}}
+            {
+                key: value
+                for key, value in content.items()
+                if key not in {"headline", "insights"}
+            }
         ).model_dump(mode="json")
         if actual_core != golden:
             raise RuntimeError("Persisted report core does not match Golden fixture")
 
         routed = next(event for event in events if event.event_type == "request.routed")
-        generated = next(event for event in events if event.event_type == "report.generated")
+        generated = next(
+            event for event in events if event.event_type == "report.generated"
+        )
         assistant_messages = [
             message.content
             for message in detail.messages
@@ -222,9 +226,7 @@ async def main() -> None:
                 "report_id": report_payload["report_id"],
                 "period": report_payload["period"],
                 "total_spending": content["overview"]["total_spending"],
-                "total_spending_display": content["overview"][
-                    "total_spending_display"
-                ],
+                "total_spending_display": content["overview"]["total_spending_display"],
                 "percentage_change_display": content["period_comparison"][
                     "percentage_change_display"
                 ],

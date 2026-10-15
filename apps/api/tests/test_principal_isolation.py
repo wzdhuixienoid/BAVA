@@ -1,4 +1,4 @@
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_SPENDING_AGENT
 from banking_api.api.dependencies import get_current_principal
 from banking_api.domain.principal import ExecutionPrincipal, Principal
 from banking_api.financial.analytics_service import FinancialAnalyticsService
@@ -78,7 +78,7 @@ async def test_banking_tools_cannot_switch_authority_via_arguments() -> None:
     accounts = await executor.execute(
         tool_name="list_accounts",
         arguments={},
-        caller="agent:minimal-banking",
+        caller="agent:personal-banking",
         principal=principal,
         agent_allowlist=frozenset({"account.list", "account.get_balance"}),
     )
@@ -88,7 +88,7 @@ async def test_banking_tools_cannot_switch_authority_via_arguments() -> None:
     injected = await executor.execute(
         tool_name="list_accounts",
         arguments={"user_id": "user-b"},
-        caller="agent:minimal-banking",
+        caller="agent:personal-banking",
         principal=principal,
         agent_allowlist=frozenset({"account.list", "account.get_balance"}),
     )
@@ -98,7 +98,7 @@ async def test_banking_tools_cannot_switch_authority_via_arguments() -> None:
     foreign_balance = await executor.execute(
         tool_name="get_balance",
         arguments={"account_id": "account-b"},
-        caller="agent:minimal-banking",
+        caller="agent:personal-banking",
         principal=principal,
         agent_allowlist=frozenset({"account.list", "account.get_balance"}),
     )
@@ -116,8 +116,8 @@ async def test_banking_tools_cannot_switch_authority_via_arguments() -> None:
     foreign_analysis = await executor.execute(
         tool_name="get_spending_summary",
         arguments={"month": "2026-08", "account_ids": ["account-b"]},
-        caller="agent:financial-analysis",
+        caller="agent:personal-banking",
         principal=principal,
-        agent_allowlist=FINANCIAL_ANALYSIS_AGENT.allowed_capabilities,
+        agent_allowlist=PERSONAL_BANKING_SPENDING_AGENT.allowed_capabilities,
     )
     assert foreign_analysis.ok is False

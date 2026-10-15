@@ -71,7 +71,7 @@ async def test_read_only_is_green_and_transfer_policy_boundaries(app) -> None:
     decision = PolicyDecision.ALLOW
     policy_result = PolicyService().evaluate(
         spec=read,
-        caller="agent:minimal-banking",
+        caller="agent:personal-banking",
         authenticated=True,
         agent_allowlist=frozenset({"account.list"}),
     )

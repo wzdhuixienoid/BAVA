@@ -51,6 +51,7 @@ class AgentRunRequest:
     caller: str | None = None
     event_sink: RuntimeEventSink | None = None
     wealth_context: dict[str, Any] | None = None
+    statement_context: dict[str, Any] | None = None
     initial_tool_calls: tuple[LLMToolCall, ...] = ()
 
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from banking_api.agents.models import AgentDefinition
+from banking_api.agents.personal_banking_agent import uses_financial_analysis
 
 _RECENT_DAYS = re.compile(
     r"(?:最近|近|过去|前)?\s*([0-9０-９]+|[零〇一二两三四五六七八九十百千万]+)\s*天"
@@ -187,7 +188,7 @@ def request_scope(
 
 
 def restrict_financial_agent(agent: AgentDefinition, text: str) -> AgentDefinition:
-    if agent.agent_id != "agent:financial-analysis" or anomaly_requested(text):
+    if not uses_financial_analysis(agent) or anomaly_requested(text):
         return agent
     return AgentDefinition(
         agent_id=agent.agent_id,

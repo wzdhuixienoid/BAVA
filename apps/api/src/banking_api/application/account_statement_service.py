@@ -7,9 +7,21 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import or_, select
 
 from banking_api.domain.dashboard import DashboardTransaction, DashboardTransactionPage
+from banking_api.domain.statement import (
+    AccountStatementInput,
+    AccountStatementResult,
+    StatementTransaction,
+)
 from banking_api.financial.analytics_service import FinancialAnalyticsService
+from banking_api.financial.presentation import category_label, transaction_time
 from banking_api.financial.report_formatter import ReportFormatter
-from banking_api.persistence.models import MockBankTransferModel, MockSubscriptionChargeModel
+from banking_api.financial.statement_presentation import render_statement
+from banking_api.financial.statement_summary import build_statement_summary
+from banking_api.persistence.models import (
+    MockBankTransferModel,
+    MockSubscriptionChargeModel,
+    PayeeModel,
+)
 from banking_api.wealth.models import WealthLedger, WealthOrder
 
 BEIJING = ZoneInfo("Asia/Shanghai")
@@ -30,6 +42,91 @@ class AccountStatementService:
         self.bank = bank
         self.session = session
 
+    async def query(
+        self, *, user_id, arguments: AccountStatementInput, now: datetime
+    ) -> AccountStatementResult:
+        analytics = FinancialAnalyticsService(self.bank)
+        accounts = analytics._selected_account_ids(arguments.account_ids, user_id=user_id)
+        cutoff = min(utc(arguments.as_of), utc(now)) if arguments.as_of else utc(now)
+        period = arguments.period_input()
+        start, end = analytics._period_bounds(period.resolve_period(cutoff))
+        if period.month:
+            # FinancialPeriodInput validates calendar periods; ledger calendars use Beijing time.
+            start = start.replace(tzinfo=BEIJING).astimezone(UTC)
+            end = end.replace(tzinfo=BEIJING).astimezone(UTC)
+        names = {
+            a["account_id"]: f"{a['display_name']} · {a['masked_number']}"
+            for a in self.bank.list_accounts(user_id=user_id)
+        }
+        query = arguments.query.casefold() if arguments.query else None
+        rows = [
+            row
+            for row in await self.posted_transactions(user_id=user_id, as_of=cutoff)
+            if start <= row.occurred_at < end
+            and row.account_id in accounts
+            and (arguments.category is None or row.category == arguments.category)
+            and (arguments.direction is None or row.direction == arguments.direction)
+            and (arguments.source is None or row.source == arguments.source)
+            and (
+                query is None
+                or query in row.merchant.casefold()
+                or query in row.description.casefold()
+            )
+        ]
+        page = rows[arguments.offset : arguments.offset + arguments.limit]
+        following = arguments.offset + len(page)
+
+        def view(row):
+            return StatementTransaction(
+                **row.model_dump(),
+                account_display=names[row.account_id],
+                category_display=category_label(row.category),
+                occurred_at_display=transaction_time(row.occurred_at),
+            )
+
+        is_transfer = (
+            arguments.category == "TRANSFER"
+            or bool(rows)
+            and all(r.category == "TRANSFER" for r in rows)
+        )
+        scope = [
+            "、".join(names[a] for a in arguments.account_ids)
+            if arguments.account_ids
+            else "全部账户"
+        ]
+        scope.append(category_label(arguments.category) if arguments.category else "全部类别")
+        if arguments.direction:
+            scope.append(
+                ("转出" if arguments.direction == "DEBIT" else "转入")
+                if is_transfer
+                else ("支出" if arguments.direction == "DEBIT" else "收入")
+            )
+        if arguments.query:
+            scope.append(f"名称或备注包含“{arguments.query}”")
+        if arguments.source:
+            scope.append(
+                {
+                    "BANK": "银行账单",
+                    "TRANSFER": "转账",
+                    "SUBSCRIPTION": "订阅扣费",
+                    "WEALTH": "理财资金流水",
+                }[arguments.source]
+            )
+        result = AccountStatementResult(
+            as_of=cutoff,
+            start_at=start,
+            end_at=end,
+            transactions=[view(row) for row in page],
+            total_count=len(rows),
+            offset=arguments.offset,
+            next_offset=following if following < len(rows) else None,
+            summary=build_statement_summary(
+                rows, is_transfer=is_transfer, scope_display=" · ".join(scope), view=view
+            ),
+        )
+        result.answer = render_statement(result)
+        return result
+
     async def posted_transactions(self, *, user_id, as_of) -> list[DashboardTransaction]:
         accounts = {a["account_id"] for a in self.bank.list_accounts(user_id=user_id)}
         rows = []
@@ -46,6 +143,7 @@ class AccountStatementService:
             account,
             direction,
             source,
+            counterparty=None,
         ):
             if account not in accounts:
                 return
@@ -65,6 +163,7 @@ class AccountStatementService:
                     account_id=account,
                     direction=direction,
                     source=source,
+                    **(counterparty or {}),
                     amount_display=("+" if direction == "CREDIT" else "-")
                     + ReportFormatter().money(amount, currency),
                 )
@@ -137,7 +236,22 @@ class AccountStatementService:
                 "WEALTH",
             )
 
-        payees = {p["payee_id"]: p["display_name"] for p in self.bank.list_payees(user_id=user_id)}
+        payees = {p["payee_id"]: p for p in self.bank.list_payees(user_id=user_id)}
+        # Include soft-deleted recipients and every page: deleting an address-book entry
+        # must not erase the counterparty on an already posted transfer.
+        saved_payees = await self.session.scalars(
+            select(PayeeModel).where(PayeeModel.user_id == user_id)
+        )
+        payees.update(
+            {
+                p.source_payee_id or p.payee_id: {
+                    "display_name": p.display_name,
+                    "bank_name": p.bank_name,
+                    "masked_account": f"****{p.account_suffix}",
+                }
+                for p in saved_payees
+            }
+        )
         transfers = await self.session.scalars(
             select(MockBankTransferModel).where(
                 MockBankTransferModel.status == "SUCCEEDED",
@@ -149,9 +263,10 @@ class AccountStatementService:
         )
         for row in transfers:
             if row.user_id == user_id:
+                payee = payees.get(row.payee_id)
                 add(
                     f"transfer:{row.provider_reference}:debit",
-                    payees.get(row.payee_id, "转账支出"),
+                    payee["display_name"] if payee else "转账支出",
                     row.remark or "转账支出 · 已入账",
                     "TRANSFER",
                     row.amount,
@@ -160,6 +275,13 @@ class AccountStatementService:
                     row.source_account_id,
                     "DEBIT",
                     "TRANSFER",
+                    counterparty={
+                        "counterparty_id": row.payee_id,
+                        "counterparty_bank": payee["bank_name"],
+                        "counterparty_account": payee["masked_account"],
+                    }
+                    if payee
+                    else None,
                 )
             if row.destination_user_id == user_id and row.credited_at is not None:
                 add(

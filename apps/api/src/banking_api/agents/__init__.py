@@ -1,3 +1,3 @@
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import PERSONAL_BANKING_AGENT
 
-__all__ = ["MINIMAL_BANKING_AGENT"]
+__all__ = ["PERSONAL_BANKING_AGENT"]

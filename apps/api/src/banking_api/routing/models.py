@@ -9,7 +9,8 @@ class RequestRoute(StrEnum):
     WEALTH_ANALYSIS = "WEALTH_ANALYSIS"
     WEALTH_PURCHASE = "WEALTH_PURCHASE"
     WEALTH_REDEEM = "WEALTH_REDEEM"
-    MINIMAL_BANKING = "MINIMAL_BANKING"
+    ACCOUNT_QUERY = "ACCOUNT_QUERY"
+    PERSONAL_BANKING = "PERSONAL_BANKING"
     FINANCIAL_ANALYSIS = "FINANCIAL_ANALYSIS"
     TRANSFER_WORKFLOW = "TRANSFER_WORKFLOW"
     AA_COLLECTION = "AA_COLLECTION"
@@ -27,6 +28,13 @@ class RouteDecision(BaseModel):
     requested_output: RequestedOutput
     confidence: float = Field(ge=0, le=1)
 
+    @model_validator(mode="before")
+    @classmethod
+    def legacy_account_route(cls, value):
+        if isinstance(value, dict) and value.get("route") == "MINIMAL_BANKING":
+            return {**value, "route": RequestRoute.ACCOUNT_QUERY}
+        return value
+
     @model_validator(mode="after")
     def validate_output_for_route(self) -> "RouteDecision":
         if self.route in {
@@ -41,7 +49,7 @@ class RouteDecision(BaseModel):
                 raise ValueError("Workflow routes must request workflow output")
             return self
         if (
-            self.route is not RequestRoute.FINANCIAL_ANALYSIS
+            self.route not in {RequestRoute.FINANCIAL_ANALYSIS, RequestRoute.PERSONAL_BANKING}
             and self.requested_output is not RequestedOutput.ANSWER
         ):
             raise ValueError("Only financial analysis can request a monthly report")

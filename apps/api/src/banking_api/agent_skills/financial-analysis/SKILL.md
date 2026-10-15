@@ -2,7 +2,7 @@
 name: financial-analysis
 description: 分析本人消费结构、期间变化及异常交易；消费分析和报告数据采集时使用。
 metadata:
-  version: "0.12.3"
+  version: "0.12.4"
   runtime: "banking-api"
 ---
 

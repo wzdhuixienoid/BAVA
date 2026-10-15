@@ -1,6 +1,6 @@
 # 文档导航
 
-当前版本为 **v0.11.2 / Alembic 0034**，整理日期为 2026-10-15。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
+当前版本为 **v0.11.3 / Alembic 0034**，整理日期为 2026-10-15。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
 
 ## 使用 Agent
 
@@ -17,18 +17,20 @@
 | --- | --- |
 | [设计原则](architecture/design-principles.md) | 长期架构基线；最初制定于 v0.1，未来组件不视为已实现 |
 | [系统架构](architecture/system.md) | Agent、Skill、Workflow、Tool、计划、Worker 与持久化职责 |
-| [Tool 使用与审计](architecture/tools.md) | 26 个工具清单、调用路径、协议与权限修复、验证 |
+| [PersonalBankingAgent](architecture/personal-banking.md) | 统一银行查询与消费分析、按需 Skill、权限与旧任务兼容 |
+| [Tool 使用与审计](architecture/tools.md) | 27 个工具清单、调用路径、协议与权限修复、验证 |
 | [Skill 使用与审计](architecture/skills.md) | 实际调用清单、规范边界、修复与运行验证 |
 | [金融计算与计划约束](architecture/algorithms.md) | Decimal、期间、异常规则、条件 grounding、幂等恢复 |
 | [安全与事实边界](architecture/security.md) | 身份、权限、风险、强验证、安全熔断、审计与已知限制 |
 | [环境配置与升级](development/setup.md) | Docker、本地开发、关键配置、OIDC 和迁移 |
 | [测试与演示](development/testing.md) | 自动化检查、隔离数据库、数据校验、Smoke、preflight 与 reset |
 
-本轮版本按要求统一为 0.11.2；历史更新说明保留当时版本，Skill 资源有独立版本。
+本轮版本统一为 0.11.3；历史更新说明保留当时版本，Skill 资源有独立版本。
 
 ## 更新与历史
 
-- [当前 v0.11.2 工具审计与修复](releases/release-notes-v0.11.2.md)
+- [当前 v0.11.3 个人银行账单与转账查询修复](releases/release-notes-v0.11.3.md)
+- [v0.11.3 个人银行真实模型验收](development/personal-banking-v0.11.3-evaluation.md)
 
 - [v0.11.0 更新说明](releases/release-notes-v0.11.0.md)
 - [v0.10.3 更新说明](releases/release-notes-v0.10.3.md)

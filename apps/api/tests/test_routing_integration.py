@@ -4,8 +4,10 @@ from uuid import UUID
 from langgraph.checkpoint.memory import InMemorySaver
 from sqlalchemy import select
 
-from banking_api.agents.financial_analysis_agent import FINANCIAL_ANALYSIS_AGENT
-from banking_api.agents.minimal_banking_agent import MINIMAL_BANKING_AGENT
+from banking_api.agents.personal_banking_agent import (
+    PERSONAL_BANKING_AGENT,
+    PERSONAL_BANKING_SPENDING_AGENT,
+)
 from banking_api.application.conversation_service import ConversationService
 from banking_api.application.report_service import ReportPersistenceError
 from banking_api.application.task_service import TaskService
@@ -33,6 +35,7 @@ from banking_api.skill_runtime.executor import SkillExecutor
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.tools.banking import (
     build_compare_spending_periods_tool,
+    build_get_account_statement_tool,
     build_get_balance_tool,
     build_get_category_breakdown_tool,
     build_get_spending_summary_tool,
@@ -65,13 +68,13 @@ def build_routed_runner(app, responses):  # type: ignore[no-untyped-def]
     tools = ToolRegistry()
     tools.register(build_list_accounts_tool(bank))
     tools.register(build_get_balance_tool(bank))
+    tools.register(build_get_account_statement_tool(bank, app.state.test_session_factory))
     tools.register(build_get_spending_summary_tool(analytics))
     tools.register(build_get_category_breakdown_tool(analytics))
     tools.register(build_compare_spending_periods_tool(analytics))
     tools.register(build_get_top_transactions_tool(analytics))
     agents = AgentRegistry()
-    agents.register(MINIMAL_BANKING_AGENT)
-    agents.register(FINANCIAL_ANALYSIS_AGENT)
+    agents.register(PERSONAL_BANKING_AGENT)
     skills = SkillRegistry()
     skills.register(MonthlySpendingReportSkill.definition)
     runtime_factory = AgentRuntimeFactory()
@@ -183,10 +186,10 @@ async def test_financial_route_persists_executor_snapshot_and_routing_event(app)
     assert task.status is TaskStatus.COMPLETED
     assert task.task_type == "BANKING_REQUEST"
     assert task.executor_type is ExecutorType.AGENT
-    assert task.executor_id == "agent:financial-analysis"
+    assert task.executor_id == "agent:personal-banking"
     assert task.requested_output is RequestedOutput.ANSWER
     assert task.output is not None
-    assert task.output["agent_id"] == "agent:financial-analysis"
+    assert task.output["agent_id"] == "agent:personal-banking"
     assert UUID(task.output["assistant_message_id"])
     snapshot = task.output["analysis_snapshot"]
     assert snapshot["period"] == "2026-08"
@@ -198,11 +201,13 @@ async def test_financial_route_persists_executor_snapshot_and_routing_event(app)
     assert routed.data_json == {
         "route": "FINANCIAL_ANALYSIS",
         "requested_output": "ANSWER",
-        "executor_id": "agent:financial-analysis",
+        "executor_id": "agent:personal-banking",
     }
     assert set(routed.data_json) == {"route", "requested_output", "executor_id"}
     assert (
-        provider.requests[1].messages[0].content.startswith(FINANCIAL_ANALYSIS_AGENT.instructions)
+        provider.requests[1]
+        .messages[0]
+        .content.startswith(PERSONAL_BANKING_SPENDING_AGENT.instructions)
     )
     assert "detect_transaction_anomalies" not in {tool.name for tool in provider.requests[1].tools}
     async with app.state.test_session_factory() as session:
@@ -213,12 +218,12 @@ async def test_financial_route_persists_executor_snapshot_and_routing_event(app)
     assert detail.messages[-1].content.startswith("8月消费为")
 
 
-async def test_minimal_route_selects_minimal_agent_and_no_snapshot(app) -> None:
+async def test_account_route_selects_personal_agent_without_spending_snapshot(app) -> None:
     _, accepted = await accept(app, "我有哪些账户？")
     runner, provider = build_routed_runner(
         app,
         [
-            route_response("MINIMAL_BANKING"),
+            route_response("ACCOUNT_QUERY"),
             call("accounts", "list_accounts", {}),
             LLMResponse(content="你有 4 个账户。"),
         ],
@@ -227,13 +232,14 @@ async def test_minimal_route_selects_minimal_agent_and_no_snapshot(app) -> None:
     await runner.run(accepted.task_id)
     task, _ = await load_task_and_events(app, accepted.task_id)
 
-    assert task.executor_id == "agent:minimal-banking"
+    assert task.executor_id == "agent:personal-banking"
     assert task.output is not None
-    assert task.output["agent_id"] == "agent:minimal-banking"
+    assert task.output["agent_id"] == "agent:personal-banking"
     assert "analysis_snapshot" not in task.output
     assert {tool.name for tool in provider.requests[1].tools} == {
         "list_accounts",
         "get_balance",
+        "get_account_statement",
     }
 
 
@@ -304,10 +310,9 @@ async def test_account_specific_snapshot_records_resolved_account_id(app) -> Non
     snapshot = task.output["analysis_snapshot"]
     assert snapshot["account_ids"] == ["acc_salary"]
     assert [item["capability_id"] for item in snapshot["tool_evidence"]] == [
-        "account.list",
         "transaction.spending_summary",
     ]
-    assert snapshot["tool_evidence"][1]["input"] == {
+    assert snapshot["tool_evidence"][0]["input"] == {
         "month": "2026-08",
         "account_ids": ["acc_salary"],
     }
@@ -358,7 +363,7 @@ async def test_monthly_report_product_pipeline_persists_one_visible_message(app)
 
     assert task.status is TaskStatus.COMPLETED
     assert task.requested_output is RequestedOutput.MONTHLY_REPORT
-    assert task.executor_id == "agent:financial-analysis"
+    assert task.executor_id == "agent:personal-banking"
     assert task.output is not None
     assert task.output["requested_output"] == "MONTHLY_REPORT"
     assert task.output["skill_id"] == "skill:monthly-spending-report"

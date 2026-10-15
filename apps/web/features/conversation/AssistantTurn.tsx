@@ -6,6 +6,7 @@ import { subscriptionReport } from "@/features/subscriptions/answer";
 import { AARequestCard } from "@/features/aa/AARequestCard";
 import { PlanCard } from "@/features/plans/PlanCard";
 import { AccountAnswer } from "@/features/accounts/AccountAnswer";
+import { StatementAnswer } from "@/features/accounts/StatementAnswer";
 import { AuditPanel } from "@/features/audit/AuditPanel";
 import { accountResults } from "@/features/accounts/presentation";
 import { ReportCard } from "@/features/reports/ReportCard";
@@ -60,15 +61,19 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
   const highlight = (id: string) => highlightedResult === id ? "rounded-xl ring-2 ring-cyan-500 ring-offset-4" : "";
   const hasAnswer = turn.replies.some((message) => message.role === "ASSISTANT");
   const accounts = accountResults(outputs);
+  const statements = outputs.flatMap((output) => Array.isArray(output.statement_results)
+    ? output.statement_results as components["schemas"]["AccountStatementResult"][] : []);
   const isFinancialAnalysis = outputs.some((output) => output.analysis_snapshot || output.financial_display);
   const needsHistoricalCorrection = unrequestedAnomalies;
   const accountOnlyAnswer = accounts.length > 0 && !isFinancialAnalysis && !anomalyAnswer
-    && !outputs.some((output) => output.payee_results)
+    && !outputs.some((output) => output.payee_results) && statements.length === 0
     && !turn.plans.length && !turn.workflows.length && !turn.reports.length;
   const wealth = wealthAnswer(outputs);
   const wealthAnalysis = (outputs.findLast(output => output.wealth_analysis)?.wealth_analysis ?? wealth?.analysis) as components["schemas"]["WealthAnalysis"] | undefined;
   const wealthOnlyAnswer = Boolean((wealthAnalysis || wealth) && isWealthOnlyAnswer(outputs) && !turn.plans.length && !turn.workflows.length && !turn.reports.length);
-  const replies = needsHistoricalCorrection || accountOnlyAnswer || wealthOnlyAnswer
+  const statementOnlyAnswer = statements.length > 0 && !isFinancialAnalysis && !anomalyAnswer
+    && !outputs.some(output => output.payee_results) && !turn.plans.length && !turn.workflows.length && !turn.reports.length;
+  const replies = needsHistoricalCorrection || accountOnlyAnswer || wealthOnlyAnswer || statementOnlyAnswer
     ? turn.replies.filter((message) => message.role === "SYSTEM_NOTICE") : turn.replies;
   const subscriptionSnapshot = outputs.find(output => output.subscription_analysis_snapshot)?.subscription_analysis_snapshot as components["schemas"]["SubscriptionAnalysisSnapshot"] | undefined;
   const replyContent = (content: string) => isFinancialAnalysis ? localizeFinancialAnswer(content, outputs) : content;
@@ -90,7 +95,8 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
           {turn.tasks.filter(task => typeof task.output?.aa_request_id === "string").map(task => <AARequestCard key={task.task_id} requestId={String(task.output!.aa_request_id)} />)}
           {turn.plans.map((plan) => <PlanCard key={plan.plan_id} plan={plan} workflows={[]} onRefresh={onRefresh} />)}
           {wealthAnalysis ? <WealthAnalysisCard analysis={wealthAnalysis} conversationId={turn.tasks[0]?.conversation_id} onRefresh={onRefresh}/> : wealth && <><WealthResultCard result={wealth}/>{turn.user && turn.tasks[0] && <WealthReanalyze conversationId={turn.tasks[0].conversation_id} request={turn.user.content} onRefresh={onRefresh}/>}</>}
-          {accounts.length > 0 && <AccountAnswer results={accounts} />}
+          {accounts.length > 0 && (statements.length === 0 || accounts.some(account => account.kind === "ACCOUNT_BALANCE")) && <AccountAnswer results={accounts} />}
+          {statements.length > 0 && <StatementAnswer results={statements} />}
           {needsHistoricalCorrection && <p className="text-slate-600">这条历史回复误用了异常交易分析，未按你指定的消费范围执行。现在可按最近任意天数分析消费。</p>}
 
           {turn.reports.map((report) => {

@@ -3,6 +3,7 @@ from banking_api.tools.banking.compare_spending_periods import (
     build_compare_spending_periods_tool,
 )
 from banking_api.tools.banking.detect_anomalies import build_detect_anomalies_tool
+from banking_api.tools.banking.get_account_statement import build_get_account_statement_tool
 from banking_api.tools.banking.get_balance import build_get_balance_tool
 from banking_api.tools.banking.get_category_breakdown import (
     build_get_category_breakdown_tool,
@@ -14,6 +15,7 @@ from banking_api.tools.banking.list_accounts import build_list_accounts_tool
 from banking_api.tools.banking.search_payees import build_search_payees_tool
 
 __all__ = [
+    "build_get_account_statement_tool",
     "build_detect_anomalies_tool",
     "build_compare_spending_periods_tool",
     "build_commit_transfer_tool",
