@@ -218,7 +218,11 @@ async def test_downgrade_refuses_unsubmitted_wealth_draft(pg_wealth):
     assert result.returncode != 0
     assert "Refusing destructive downgrade with wealth workflows" in result.stderr
     async with factory() as session:
-        assert await session.scalar(text("SELECT version_num FROM alembic_version")) == "0034"
+        from alembic.script import ScriptDirectory
+
+        assert await session.scalar(text("SELECT version_num FROM alembic_version")) == (
+            ScriptDirectory(str(Path(__file__).parents[1] / "migrations")).get_current_head()
+        )
         assert await session.scalar(select(func.count()).select_from(WealthOrder)) == 0
         from banking_api.persistence.models import WorkflowModel
 

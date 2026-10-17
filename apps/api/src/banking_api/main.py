@@ -31,6 +31,7 @@ from banking_api.registries.agent_registry import AgentRegistry
 from banking_api.registries.skill_registry import SkillRegistry
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.routing.request_router import RequestRouter
+from banking_api.runtime.anomaly_notification_worker import AnomalyNotificationWorker
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.langgraph.checkpoint import LangGraphCheckpointManager
 from banking_api.runtime.langgraph.graph import LangGraphAgentRuntime
@@ -85,6 +86,7 @@ def create_app() -> FastAPI:
     checkpoint_manager: LangGraphCheckpointManager | None = None
     schedule_worker = None
     subscription_notification_worker = None
+    anomaly_notification_worker = None
     operation_recovery_worker: OperationRecoveryWorker | None = None
     outbox_publisher: OutboxPublisher | None = None
     task_execution_worker: TaskExecutionWorker | None = None
@@ -93,6 +95,7 @@ def create_app() -> FastAPI:
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         nonlocal checkpoint_manager, operation_recovery_worker, outbox_publisher
         nonlocal task_execution_worker, schedule_worker, subscription_notification_worker
+        nonlocal anomaly_notification_worker
         checkpoint_url = settings.langgraph_checkpoint_database_url or settings.database_url
         if checkpoint_url:
             checkpoint_manager = LangGraphCheckpointManager(
@@ -152,6 +155,9 @@ def create_app() -> FastAPI:
         )
         subscription_notification_worker.start()
         application.state.subscription_notification_worker = subscription_notification_worker
+        anomaly_notification_worker = AnomalyNotificationWorker(session_factory, bank)
+        anomaly_notification_worker.start()
+        application.state.anomaly_notification_worker = anomaly_notification_worker
         if settings.mock_scheduled_transfers_enabled:
             schedule_worker = ScheduleWorker(session_factory, bus, transfer_engine)
             schedule_worker.start()
@@ -169,6 +175,8 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            if anomaly_notification_worker is not None:
+                await anomaly_notification_worker.stop()
             if subscription_notification_worker is not None:
                 await subscription_notification_worker.stop()
             if schedule_worker is not None:

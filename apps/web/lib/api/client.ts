@@ -64,6 +64,7 @@ export const api = {
   wealthDocument: (id: string) => request<components["schemas"]["WealthKnowledgeResult"]>(`/api/v1/wealth/documents/${encodeURIComponent(id)}`),
 
   listNotifications: (offset = 0) => request<components["schemas"]["NotificationInbox"]>(`/api/v1/notifications?offset=${offset}`),
+  getNotification: (id: string) => request<components["schemas"]["Notification"]>(`/api/v1/notifications/${encodeURIComponent(id)}`),
   readNotification: (id: string) => request<components["schemas"]["Notification"]>(`/api/v1/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }),
   deleteNotification: (id: string) => request<void>(`/api/v1/notifications/${encodeURIComponent(id)}`, { method: "DELETE" }),
   listAA: () => request<AARequest[]>("/api/v1/aa-requests"),
@@ -71,6 +72,7 @@ export const api = {
   aaAccounts: () => request<AAAccount[]>("/api/v1/aa-accounts"),
   updateAA: (id:string, expected_version:number, intent:AAIntent, collection_account_id:string, deadline:string) => request<AARequest>(`/api/v1/aa-requests/${encodeURIComponent(id)}`, {method:"PATCH",body:JSON.stringify({expected_version,intent,collection_account_id,deadline})}),
   publishAA: (id:string, expected_version:number) => request<AARequest>(`/api/v1/aa-requests/${encodeURIComponent(id)}/actions/publish`, {method:"POST",body:JSON.stringify({expected_version})}),
+  deleteAA: (id:string, expected_version:number) => request<void>(`/api/v1/aa-requests/${encodeURIComponent(id)}`, {method:"DELETE",body:JSON.stringify({expected_version})}),
   payAA: (id:string, expected_version:number, source_account_id:string) => request<Workflow>(`/api/v1/aa-shares/${encodeURIComponent(id)}/actions/pay`, {method:"POST",body:JSON.stringify({expected_version,source_account_id})}),
   closeAAShare: (id:string, action:"cancel"|"reject", expected_version:number) => request<AARequest>(`/api/v1/aa-shares/${encodeURIComponent(id)}/actions/${action}`, {method:"POST",body:JSON.stringify({expected_version})}),
   mockSessions: () => request<{enabled:boolean;current_user_id:string;identities:{name:string;identity:string}[]}>("/api/v1/mock-sessions"),

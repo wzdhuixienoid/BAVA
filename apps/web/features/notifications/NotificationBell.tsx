@@ -101,6 +101,7 @@ export function NotificationBell() {
             <div className="mt-2 flex gap-4 text-xs">
               {!item.read_at && <button disabled={busy !== null} className="font-semibold text-cyan-700" onClick={() => void act(item.notification_id)}>标为已读</button>}
               {item.kind === "WEALTH_RESULT" && <Link href="/wealth" onClick={() => setOpen(false)} className="text-cyan-700 underline">查看理财订单</Link>}
+              {item.kind === "TRANSACTION_ANOMALY" && <Link href={`/notifications/${encodeURIComponent(item.notification_id)}`} onClick={() => { if (!item.read_at) void act(item.notification_id); setOpen(false); }} className="text-cyan-700 underline">查看异常交易</Link>}
               {item.kind.startsWith("SUBSCRIPTION_") && <Link href="/subscriptions" onClick={() => { if (!item.read_at) void act(item.notification_id); setOpen(false); }} className="text-cyan-700 underline">查看订阅</Link>}
               {item.schedule_id && <Link href="/scheduled-transfers" onClick={() => { if (!item.read_at) void act(item.notification_id); setOpen(false); }} className="text-cyan-700 underline">查看转账</Link>}
             </div>

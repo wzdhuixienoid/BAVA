@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import func, select
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
+from banking_api.financial.anomaly_models import TransactionAnomalySnapshot
 from banking_api.persistence.models import NotificationModel
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -20,6 +21,7 @@ class Notification(BaseModel):
     schedule_id: UUID | None
     created_at: datetime
     read_at: datetime | None
+    anomaly_snapshot: TransactionAnomalySnapshot | None = None
 
     @field_validator("created_at", "read_at")
     @classmethod
@@ -64,19 +66,29 @@ async def list_notifications(
     )
 
 
-async def owned(session, notification_id, user_id):
-    row = await session.scalar(
-        select(NotificationModel)
-        .where(
-            NotificationModel.notification_id == notification_id,
-            NotificationModel.user_id == user_id,
-            NotificationModel.deleted_at.is_(None),
-        )
-        .with_for_update()
+async def owned(session, notification_id, user_id, *, lock=True):
+    statement = select(NotificationModel).where(
+        NotificationModel.notification_id == notification_id,
+        NotificationModel.user_id == user_id,
+        NotificationModel.deleted_at.is_(None),
     )
+    if lock:
+        statement = statement.with_for_update()
+    row = await session.scalar(statement)
     if row is None:
         raise HTTPException(404, detail="未找到该消息")
     return row
+
+
+@router.get("/{notification_id}", response_model=Notification)
+async def get_notification(
+    notification_id: UUID,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+):
+    return Notification.model_validate(
+        await owned(session, notification_id, principal.user_id, lock=False)
+    )
 
 
 @router.post("/{notification_id}/read", response_model=Notification)

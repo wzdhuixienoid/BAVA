@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { components } from "@banking/api-client";
 import { AssistantTurn } from "./AssistantTurn";
-import { buildConversationTurns, resultElementId } from "./timeline";
+import { buildConversationTurns } from "./timeline";
 
 type Message = components["schemas"]["Message"];
 type Task = components["schemas"]["Task"];
@@ -11,22 +11,18 @@ type Plan = components["schemas"]["Plan"];
 type Workflow = components["schemas"]["Workflow"];
 type Report = components["schemas"]["ReportListItem"];
 
-export type ResultNavigation = { resultId: string; request: number };
-
-export function MessageList({ messages, tasks, plans, workflows, reports, activityRevision, navigation, onRefresh }: {
+export function MessageList({ messages, tasks, plans, workflows, reports, activityRevision, onRefresh }: {
   messages: Message[];
   tasks: Task[];
   plans: Plan[];
   workflows: Workflow[];
   reports: Report[];
   activityRevision: number;
-  navigation: ResultNavigation | null;
   onRefresh: () => Promise<void>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const followLatest = useRef(true);
-  const lastLocatedRequest = useRef(0);
   const [showLatest, setShowLatest] = useState(false);
   const turns = useMemo(() => buildConversationTurns({ messages, tasks, plans, workflows, reports }), [messages, tasks, plans, workflows, reports]);
   const latestUserMessageId = messages.reduce((latest, message) => message.role === "USER" ? message.message_id : latest, "");
@@ -49,17 +45,6 @@ export function MessageList({ messages, tasks, plans, workflows, reports, activi
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!navigation || lastLocatedRequest.current === navigation.request) return;
-    const target = document.getElementById(resultElementId(navigation.resultId));
-    const scroller = scrollRef.current;
-    if (!target || !scroller || scroller.clientHeight === 0) return;
-    followLatest.current = false;
-    scroller.scrollTop += target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 24;
-    target.focus({ preventScroll: true });
-    lastLocatedRequest.current = navigation.request;
-  }, [navigation, turns]);
-
   return (
     <div className="relative min-h-0 flex-1">
       <div ref={scrollRef} aria-label="对话消息与回复" className="h-full overflow-y-auto overscroll-contain px-4 py-6 lg:px-6"
@@ -80,7 +65,7 @@ export function MessageList({ messages, tasks, plans, workflows, reports, activi
                 <p className="whitespace-pre-wrap break-words">{turn.user.content}</p>
               </article>}
               {(turn.tasks.length > 0 || turn.replies.length > 0 || turn.plans.length > 0 || turn.workflows.length > 0 || turn.reports.length > 0) && (
-                <AssistantTurn turn={turn} activityRevision={activityRevision} highlightedResult={navigation?.resultId ?? null} onRefresh={onRefresh} />
+                <AssistantTurn turn={turn} activityRevision={activityRevision} onRefresh={onRefresh} />
               )}
             </div>
           ))}

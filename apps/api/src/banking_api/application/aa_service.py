@@ -148,7 +148,9 @@ class AAService:
         return await self.resource(row, user_id)
 
     async def _owned(self, request_id, user_id, *, issuer=False, lock=False):
-        row = await self.session.get(AARequestModel, request_id, with_for_update=lock)
+        row = await self.session.get(
+            AARequestModel, request_id, with_for_update=lock, populate_existing=lock
+        )
         if row is None:
             raise OperationActionError("AA_NOT_FOUND")
         if row.user_id != user_id:
@@ -318,6 +320,8 @@ class AAService:
             return await WorkflowService(self.session, self.bus, self.engine).get(
                 share.workflow_id, user_id=user_id
             )
+        if share.status != "PENDING" or row.deleted_at is not None:
+            raise OperationActionError("AA_SHARE_NOT_PAYABLE")
         # Prepare an owned conversation and task before locking.
         conv = await ConversationService(self.session, self.bus).create(
             user_id=user_id, title="AA 付款"
@@ -427,9 +431,12 @@ class AAService:
             await self.session.scalars(
                 select(AARequestModel)
                 .where(
-                    (AARequestModel.user_id == user_id)
-                    | AARequestModel.request_id.in_(
-                        select(AAShareModel.request_id).where(AAShareModel.user_id == user_id)
+                    ((AARequestModel.user_id == user_id) & AARequestModel.deleted_at.is_(None))
+                    | (
+                        (AARequestModel.user_id != user_id)
+                        & AARequestModel.request_id.in_(
+                            select(AAShareModel.request_id).where(AAShareModel.user_id == user_id)
+                        )
                     )
                 )
                 .order_by(AARequestModel.created_at.desc())
@@ -439,6 +446,50 @@ class AAService:
 
     async def get(self, request_id, user_id):
         return await self.resource(await self._owned(request_id, user_id), user_id)
+
+    async def _can_delete(self, row, shares):
+        others = [share for share in shares if share.user_id != row.user_id]
+        if (
+            row.deleted_at is not None
+            or not row.snapshot_json
+            or not others
+            or any(
+                share.operation_id
+                or share.status != ("SELF_PAID" if share.user_id == row.user_id else "CANCELLED")
+                for share in shares
+            )
+        ):
+            return False
+        # Keep submitted evidence even if a stale/legacy share missed its Operation link.
+        operation = await self.session.scalar(
+            select(OperationModel.operation_id)
+            .where(
+                OperationModel.workflow_id.in_(
+                    [share.workflow_id for share in shares if share.workflow_id]
+                )
+            )
+            .limit(1)
+        )
+        return operation is None
+
+    async def delete_cancelled(self, request_id, user_id, expected_version):
+        row = await self._owned(request_id, user_id, issuer=True, lock=True)
+        self._version(row, expected_version)
+        shares = (
+            await self.session.scalars(
+                select(AAShareModel)
+                .where(AAShareModel.request_id == row.request_id)
+                .execution_options(populate_existing=True)
+            )
+        ).all()
+        # CANCELLED shares cannot become payable again; the request lock serializes
+        # this check with close_share, without reversing payment's share lock order.
+        if not await self._can_delete(row, shares):
+            raise OperationActionError("ONLY_FULLY_CANCELLED_AA_CAN_BE_DELETED")
+        row.deleted_at = _as_utc(self.clock())
+        row.version += 1
+        await self._event(row, "aa.deleted_from_list")
+        await self.session.commit()
 
     async def resource(self, row, user_id):
         result = {
@@ -453,6 +504,8 @@ class AAService:
             "draft": row.draft_json if row.user_id == user_id else None,
             "payload_hash": row.payload_hash,
             "mock": True,
+            "deleted_from_list": row.user_id == user_id and row.deleted_at is not None,
+            "can_delete": False,
         }
         if row.status == "DRAFT":
             try:
@@ -503,13 +556,21 @@ class AAService:
                     else None,
                 }
             )
+        fully_cancelled = (
+            bool(rendered)
+            and any(s["status"] == "CANCELLED" for s in rendered)
+            and all(s["status"] in {"CANCELLED", "SELF_PAID"} for s in rendered)
+        )
         result.update(
             shares=rendered,
             receivable=money(receivable),
             received=money(received),
             outstanding=money(receivable - received),
             self_paid=money(self_paid),
-            status="COLLECTED"
+            can_delete=row.user_id == user_id and await self._can_delete(row, shares),
+            status="CANCELLED"
+            if fully_cancelled
+            else "COLLECTED"
             if received == receivable
             else "PARTIAL_CLOSED"
             if terminal

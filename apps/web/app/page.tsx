@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { components } from "@banking/api-client";
-import Link from "next/link";
+import { WorkspaceNavigation } from "@/features/navigation/WorkspaceNavigation";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { APP_VERSION } from "@/lib/version";
 import { ConversationPanel } from "@/features/conversation/ConversationPanel";
@@ -96,24 +96,7 @@ export default function HomePage() {
         >
           + 新建对话
         </button>
-        <nav aria-label="功能导航" className="mb-5 space-y-3">
-          <Link
-            href="/dashboard"
-            className="block rounded-lg bg-slate-800 px-4 py-2.5 text-center text-sm font-semibold text-cyan-100 hover:bg-slate-700"
-          >金融总览 Dashboard</Link>
-          <Link
-            href="/reports"
-            className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
-          >历史消费报告</Link>
-          <Link
-            href="/wealth"
-            className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
-          >理财中心</Link>
-          <Link
-            href="/subscriptions"
-            className="block rounded-lg border border-slate-700 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 hover:bg-slate-900"
-          >订阅管理</Link>
-        </nav>
+        <WorkspaceNavigation />
         {!auth.development && <button className="mb-5 text-sm text-cyan-300 hover:text-cyan-200" onClick={() => void auth.logout()}>登出</button>}
         {deleteError && <p role="alert" className="mb-3 text-xs text-red-300">{deleteError}</p>}
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">最近对话</p>

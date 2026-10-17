@@ -1,46 +1,48 @@
-# 环境配置、本地开发与升级
+# 环境配置与升级
 
 ## Docker 启动
 
-仓库根目录复制 `.env.example` 为 `.env`，填写真实可用的 OpenAI-compatible `LLM_BASE_URL`、`LLM_API_KEY` 与 `LLM_MODEL`，设置自己的 `MOCK_REAUTH_CODE`。API root 不含 `/chat/completions`。
+在仓库根目录复制 [.env.example](../../.env.example) 为 `.env`，填写可用的 `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL` 和私有 `MOCK_REAUTH_CODE`。Base URL 不含 `/chat/completions`。
 
 ```bash
 cp .env.example .env
 docker compose up --build -d
 ```
 
-示例明确设置 `APP_ENVIRONMENT=development`、`AUTH_MODE=development`、`NEXT_PUBLIC_AUTH_MODE=development` 和 `DEVELOPMENT_USER_ID=dev-user-001`。身份模式必须显式指定。Web 为 3000，API 为 8000，PostgreSQL 为 5432；容器 API 启动命令自动运行 Alembic。
+示例显式设置 `APP_ENVIRONMENT=development`、`AUTH_MODE=development`、`NEXT_PUBLIC_AUTH_MODE=development`，默认用户为 dev-user-001。Web 3000、API 8000、PostgreSQL 5432；API 启动自动执行 Alembic。
 
 ## 关键配置
 
-完整参数见仓库 [.env.example](../../.env.example) 和 [Settings](../../apps/api/src/banking_api/config/settings.py)。
+参数及校验以 [Settings](../../apps/api/src/banking_api/config/settings.py) 为准。`.env.example` 是 Docker 演示配置，不能把它与 Settings 的默认值混同。
 
-| 参数 | 示例／默认行为 |
+| 参数 | 当前行为 |
 | --- | --- |
-| `AGENT_RUNTIME` | 产品使用 `langgraph`，manual 为参考 |
-| `AGENT_MAX_STEPS` / `AGENT_MAX_TOOL_CALLS` | 默认 6 / 8 |
-| `BANKING_BUSINESS_TIMEZONE` | 默认 `Asia/Shanghai` |
-| `TASK_WORKER_ENABLED` / `OPERATION_RECOVERY_ENABLED` / `OUTBOX_PUBLISHER_ENABLED` | 默认开启；Task heartbeat 必须小于 lease |
-| `MOCK_SCHEDULED_TRANSFERS_ENABLED` | 默认关闭；开启后运行预约 Worker |
-| `MOCK_SUBSCRIPTION_BILLING_ENABLED` | Settings 默认关闭，Compose 与示例默认开启；仅 development/test |
-| `MOCK_PARTICIPANT_LOGIN_ENABLED` | 默认关闭，开启须 development 身份及私有签名 key ≥32 字符 |
-| `SCHEDULED_TRANSFER_MIN_ADVANCE_SECONDS` / `MAX_DAYS` / `LATE_WINDOW_SECONDS` | 默认 60 秒 / 30 天 / 300 秒，完整变量名均以 `SCHEDULED_TRANSFER_` 开头 |
-| `RECURRING_TRANSFER_MAX_OCCURRENCES` / `RECURRING_TRANSFER_MAX_DAYS` | 默认 12 次 / 366 天，只可在代码允许范围内收紧 |
-| `TRANSFER_APPROVAL_TTL_SECONDS` / `TRANSFER_REAUTH_TTL_SECONDS` | 默认 600 / 300 秒，预约独立授权不延长 TTL |
-| `LANGGRAPH_CHECKPOINT_DATABASE_URL` | 可单独指定；否则使用应用数据库 URL |
-| `DEMO_REFERENCE_TIME` | 可选、带时区的 development/test 合成数据读取时间；生产拒绝 |
+| `AGENT_RUNTIME` | 默认 langgraph；manual 为参考，消费和理财产品路径固定 LangGraph |
+| `AGENT_MAX_STEPS`／`AGENT_MAX_TOOL_CALLS` | 默认 6／8 |
+| `TASK_WORKER_ENABLED`／`OPERATION_RECOVERY_ENABLED`／`OUTBOX_PUBLISHER_ENABLED` | 默认开启；Task heartbeat 必须小于 lease |
+| `MOCK_SCHEDULED_TRANSFERS_ENABLED` | 默认关闭，开启才运行预约 Worker |
+| `MOCK_SUBSCRIPTION_BILLING_ENABLED`／`MOCK_WEALTH_ENABLED` | Settings 默认关闭，Compose 示例开启；production 拒绝开启 |
+| `MOCK_PARTICIPANT_LOGIN_ENABLED` | 默认关闭；仅非生产 development 身份可启用，私有签名 key 至少 32 字符；AA 页面不提供身份切换 UI |
+| `SCHEDULED_TRANSFER_MIN_ADVANCE_SECONDS`／`SCHEDULED_TRANSFER_MAX_DAYS`／`SCHEDULED_TRANSFER_LATE_WINDOW_SECONDS` | 默认 60 秒／30 天／300 秒 |
+| `RECURRING_TRANSFER_MAX_OCCURRENCES`／`RECURRING_TRANSFER_MAX_DAYS` | 默认 12 次／366 天，只可在代码范围内收紧 |
+| `TRANSFER_APPROVAL_TTL_SECONDS`／`TRANSFER_REAUTH_TTL_SECONDS` | 默认 600／300 秒，预约使用独立授权 |
+| `BANKING_BUSINESS_TIMEZONE` | 默认 Asia/Shanghai |
+| `LANGGRAPH_CHECKPOINT_DATABASE_URL` | 可独立配置，否则复用应用数据库地址 |
+| `DEMO_REFERENCE_TIME` | 可选带时区的合成数据读取参考时间，production 拒绝 |
 
-风险业务日、授权 TTL、租约、恢复和消息 Worker 的调度仍用真实时间。不要把 Demo 读取时钟当作全局时间冻结。
+异常通知 Worker 默认约 30 秒运行，当前没有独立环境开关；订阅 Worker 默认约 30 秒运行，扣费开关只控制模拟扣费。读取参考时间不改变风险业务日、授权 TTL、租约或恢复调度；订阅扣费使用实际 Worker 时间。
+
+Docker 只传递 [Compose](../../docker-compose.yml) 的 environment 中声明的变量。新增或高级 Settings 参数须同步添加 Compose 透传；修改根 `.env` 并不自动把所有变量传入容器。前端 `NEXT_PUBLIC_*` 是构建配置，修改后重建 Web，不能包含 LLM 密钥。
 
 ## 本地开发
 
-需要 Python 3.12+、uv、支持前端测试的 Node.js，以及 `package.json` 指定的 pnpm 11.19.0。先准备 `.env`，启动 PostgreSQL：
+需要 Python 3.12+、uv、支持 `--experimental-strip-types` 的 Node.js 22.6+ 和根 package.json 指定的 pnpm 11.19.0。先准备 `.env` 和数据库：
 
 ```bash
 docker compose up -d postgres
 ```
 
-本地进程连接 `localhost`，不能沿用 `.env` 中仅容器内可解析的 `postgres` 主机名。一个终端运行后端：
+本地进程使用 localhost，不能使用仅容器内解析的 postgres 主机名。后端终端执行：
 
 ```bash
 cd apps/api
@@ -51,43 +53,40 @@ uv run --env-file ../../.env alembic upgrade head
 uv run --env-file ../../.env uvicorn banking_api.main:app --reload
 ```
 
-Settings 按进程工作目录读取 `.env`；上面的 `--env-file ../../.env` 显式加载仓库根配置，环境变量仍优先。另一个终端在仓库根目录启动前端：
+Settings 相对进程目录读取 `.env`；这里显式加载根文件，进程环境变量优先。另一个终端在根目录执行：
 
 ```bash
 pnpm install
 pnpm web:dev
 ```
 
-前端使用 `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`。本地 Next.js 开发环境需要能读取相应的 NEXT_PUBLIC 配置，可将这些公开配置放在 `apps/web/.env.local`；不向前端复制 LLM 密钥。更新公开构建参数后，Docker Web 需要重新构建。
+在 `apps/web/.env.local` 放置前端公开配置，例如 `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`、`NEXT_PUBLIC_AUTH_MODE=development`；不要复制后端私密配置。非 3000 端口的前端还须在后端 CORS origins 中显式允许。
 
-## OIDC 模式
+## OIDC
 
-设置 `AUTH_MODE=oidc`、`OIDC_ISSUER`、`OIDC_AUDIENCE`、允许签名算法，并设置前端 authority、client ID 和 scope。`OIDC_JWKS_URL` 可留空以使用 discovery。生产环境禁止 development 登录和模拟订阅扣费。
+设置 `AUTH_MODE=oidc`、`OIDC_ISSUER`、`OIDC_AUDIENCE` 及允许的非对称签名算法；`OIDC_JWKS_URL` 为空时使用 discovery。前端设置 OIDC authority、client ID、scope 和对应 auth mode。
 
-前端使用 Authorization Code + PKCE，access token 保存于内存，HTTP 和 fetch-streaming SSE 通过 Bearer header 认证。合法外部身份仍需要显式映射：
+前端采用 Authorization Code + PKCE，access token 仅在内存，通过 Bearer header 访问 HTTP 和 fetch-streaming SSE。外部身份须显式映射；在已正确配置数据库的后端终端执行：
 
 ```bash
-cd apps/api
 uv run --env-file ../../.env python -m banking_api.security.authentication.provision \
-  --user-id dev-user-001 \
-  --issuer https://idp.example.com \
-  --subject external-subject
+  --user-id dev-user-001 --issuer https://idp.example.com --subject external-subject
 ```
 
-这些实现提供 OIDC-ready 边界，当前未验收真实生产 IdP 与真实 MFA 的完整闭环。
+生产模式拒绝 development 身份、合成读取时钟、Mock 理财和 Mock 订阅扣费；设置 production 本身不代表已接入真实金融渠道。真实 IdP／MFA 的完整验收尚未完成。
 
-## 升级到 v0.11.0
+## 升级数据库
 
-当前迁移 head 为 `0034`。已有环境先备份数据库、暂停新业务写入并安排未收敛操作，再同步代码与迁移。不要为升级清库或执行 Demo reset。
+当前迁移 head 为 **0036**。已有环境先备份并暂停新写入，同步代码后按迁移链升级；不清库、不用 reset 代替迁移。
 
-Docker API 启动自动迁移；手动迁移需显式配置目标 DATABASE_URL，在 `apps/api` 执行：
+Docker API 启动自动升级。手动操作在已配置目标数据库的 `apps/api` 目录执行：
 
 ```bash
+uv run --env-file ../../.env alembic current
 uv run --env-file ../../.env alembic upgrade head
+uv run --env-file ../../.env alembic current
 ```
 
-`0031` 新增消息中心，`0032` 新增订阅提醒游标与模拟扣费账本，`0033` 更新已有提醒文案。页面内确认取消复用已有合同与动作账本。更早备注、预约、AA、移除手机号转账、周期授权和列表软删除迁移随链执行，历史编号保留。
+迁移链保留历史编号和数据转换。当前 schema 包含消息／订阅扣费账本、理财资源、AA 列表软删除和异常证据快照。删除使用说明中的发布历史不意味着可以删除或改写历史迁移。
 
-迁移后重启 API/Web，检查 `/health` 和 [preflight](testing.md)。版本及迁移依据：[API 版本](../../apps/api/src/banking_api/__init__.py)、[迁移 0034](../../apps/api/migrations/versions/0034_mock_wealth.py)。
-
-理财开关`MOCK_WEALTH_ENABLED`默认false，Composedevelopment示例true，production禁止。0034新增业务enum时使用PostgreSQLautocommitblock，历史迁移不改写。无理财业务记录时允许降级删除新表，保留共享enum新增值；有理财工作流、订单、持仓或测评记录时拒绝破坏性降级。禁止清空旧账本获得升级或测试通过。
+存在理财业务数据时拒绝破坏性降级；有异常通知证据时拒绝删除该快照字段。升级失败先查目标库、迁移和日志，不清空账本重试。升级后重启 API／Web 并核对版本、schema 和业务状态，见 [运行维护](operations.md)。

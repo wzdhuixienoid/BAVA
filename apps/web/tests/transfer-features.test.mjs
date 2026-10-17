@@ -5,7 +5,6 @@ import {renderToStaticMarkup} from "react-dom/server";
 import "./tsx-loader.mjs";
 const {AARequestCard} = await import("../features/aa/AARequestCard.tsx");
 const {TransferWorkflowCard} = await import("../features/workflows/transfer/TransferWorkflowCard.tsx");
-const {ResultsPanel} = await import("../features/results/ResultsPanel.tsx");
 const render=(component,props)=>renderToStaticMarkup(createElement(component,props));
 const review={source_account_display_name:"工资卡",source_account_masked_number:"****6688",payee_display_name:"李小雨",payee_masked_account:"****4815",payee_bank_name:"Mock银行",amount:"50.00",currency:"CNY",remark:"<script>餐费</script>",scheduled_for:"2026-10-09T01:00:00Z",execute_deadline:"2026-10-09T01:05:00Z",business_timezone:"Asia/Shanghai"};
 test("appointment review binds Beijing time and distinguishes authorization from payment",()=>{
@@ -18,7 +17,6 @@ test("AA shows partial receipts and cancellation only for unpaid shares",()=>{
 });
 test("AA UNKNOWN exposes original payment detail and never counts as collected",()=>{
  const html=render(AARequestCard,{requestId:"a",initialRequest:{...collection,received:"0.00",shares:[{...collection.shares[0],is_mine:true,status:"UNKNOWN",workflow_id:"w"}]}});assert.match(html,/查询原操作/);assert.doesNotMatch(html,/已收齐|撤回收款请求/);
- const index=render(ResultsPanel,{reports:[],workflows:[],aaRequests:[collection],onLocateResult:()=>{}});assert.doesNotMatch(index,/AA 收款结果/);
 });
 
 test("AA participant has an independent payment entry for their pending share",()=>{

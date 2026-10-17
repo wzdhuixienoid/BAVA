@@ -620,6 +620,7 @@ class AARequestModel(Base):
     payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AAShareModel(Base):
@@ -657,6 +658,7 @@ class NotificationModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    anomaly_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
 
 class SubscriptionNotificationCursorModel(Base):

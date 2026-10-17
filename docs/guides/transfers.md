@@ -1,6 +1,8 @@
-# 转账、预约与 AA
+# 转账与收款
 
 全部流程使用模拟银行。当前仅支持人民币银行卡收款人，不支持手机号转账或换汇。
+
+工作台左侧统一从“转账与收款”进入，在 `/transfers` 选择“预约与周期转账”“AA 收款与付款”或“收款人管理”。各管理页面可返回此入口；从转账草稿进入收款人管理时，仍可返回原对话继续办理。即时转账和发起 AA 仍在工作台对话中进行，处理过程、结果与审计链都在对话中查看。
 
 ## 转账历史
 
@@ -48,6 +50,8 @@
 
 `/aa` 查看收款与付款。撤回取消尚未付款的请求，不重新分摊已确认金额，保留已付款证据；提交中或 UNKNOWN 不能直接撤回。
 
+全部其他参与者的份额都已取消，且没有付款提交记录时，发起者可点击“删除收款”并确认，从自己的列表移除该请求。删除保留原请求、份额与审计；原对话显示删除说明，其他参与者仍可查看自己的历史。待付款、部分取消、已付款、结果未知、拒绝或过期的请求不能按此入口删除。AA 页面不再展示开发身份切换控件；隔离多身份测试仍可使用受开发配置约束的 Mock 会话 API。
+
 多身份演示仅在显式开发配置下启用：`MOCK_PARTICIPANT_LOGIN_ENABLED=true`，并配置至少 32 字符的私有 `MOCK_PARTICIPANT_SIGNING_KEY`。它不是生产登录，也不发送短信或外部支付通知。
 
 ## 如何判断成功
@@ -63,4 +67,4 @@
 
 Task 完成只表示处理结束。审计链展示核对、授权、风险、原 Operation 与 Provider 证据；不展示验证码或隐藏推理。
 
-实现入口：[Transfer Workflow](../../apps/api/src/banking_api/workflows/transfer/engine.py)、[ScheduleService](../../apps/api/src/banking_api/application/schedule_service.py)、[AAService](../../apps/api/src/banking_api/application/aa_service.py)。旧的详细设计及实际执行记录见 [历史转账实现](../archive/reviews/v0.10.2/transfer-implementation.md) 和 [历史验证记录](../archive/reviews/v0.10.2/transfer-validation.md)。
+实现入口：[Transfer Workflow](../../apps/api/src/banking_api/workflows/transfer/engine.py)、[ScheduleService](../../apps/api/src/banking_api/application/schedule_service.py)、[AAService](../../apps/api/src/banking_api/application/aa_service.py)。

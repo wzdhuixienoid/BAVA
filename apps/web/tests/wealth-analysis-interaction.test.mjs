@@ -18,7 +18,7 @@ async function render(Component,props,fn){let r;await act(async()=>{r=create(cre
 
 test("conversation displays typed analysis first, without raw reply or intermediate catalogue",async()=>{
  const turn={user:{content:"推荐理财"},tasks:[{task_id:"t",conversation_id:"c",status:"COMPLETED",output:{wealth_analysis:analysis,wealth_results:[{result_kind:"CATALOGUE",products:[{name:"中间目录"}]}]}}],plans:[],workflows:[],reports:[],replies:[{message_id:"m",role:"ASSISTANT",content:"工具返回 /api/v1/ mock-wealth-01"},{message_id:"notice",role:"SYSTEM_NOTICE",content:"保留系统通知"}]};
- await render(AssistantTurn,{turn,activityRevision:0,highlightedResult:null,onRefresh:async()=>{}},async r=>{
+ await render(AssistantTurn,{turn,activityRevision:0,onRefresh:async()=>{}},async r=>{
   const content=text(r.toJSON());assert.ok(content.includes(analysis.conclusion));assert.ok(content.includes("投资多少元"));assert.ok(content.includes("保留系统通知"));
   for(const bad of ["中间目录","工具返回","mock-wealth-01","/api/v1/","不重复这段"])assert.ok(!content.includes(bad),bad);
  });
@@ -83,7 +83,7 @@ test("page sends recommendation to the workbench with input context and suppress
 
 test("unassessed purchase reply shows assessment link without purchase workflow",async()=>{
  const turn={user:{content:"我想购买理财产品"},tasks:[{task_id:"entry",conversation_id:"c",status:"COMPLETED",output:{route:"WEALTH_ANALYSIS",requested_output:"ANSWER"}}],plans:[],workflows:[],reports:[],replies:[{message_id:"guide",role:"ASSISTANT",content:"购买理财前，请先完成有效的风险测评。\n\n[前往理财中心查看并完成风险测评](/wealth)"}]};
- await render(AssistantTurn,{turn,activityRevision:0,highlightedResult:null,onRefresh:async()=>{}},async r=>{
+ await render(AssistantTurn,{turn,activityRevision:0,onRefresh:async()=>{}},async r=>{
   assert.ok(text(r.toJSON()).includes("购买理财前"));
   assert.ok(r.root.findAllByType("a").some(a=>a.props.href==="/wealth"));
   assert.ok(!text(r.toJSON()).includes("补全或修改交易"));

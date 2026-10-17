@@ -1,6 +1,6 @@
 # 应用 Agent Skills
 
-应用交付版本为 **0.11.3**。banking-assistance 资源版本为 **0.12.7**、financial-analysis 为 **0.12.4**，其他包为 **0.12.3**；资源版本独立用于绑定和 hash 审计，不作为网页或 API 版本。
+资源版本以各包 YAML metadata 为准，独立用于绑定与 hash 审计，不作为应用版本。
 
 所有应用业务 agent 与业务 Skill 均绑定 [Agent Skills 规范](https://agentskills.io/specification) 的技能包。指令集中在 `SKILL.md` 和按场景读取的 references；Python 模块保存权限白名单、计算、类型校验及工作流执行。
 
@@ -23,4 +23,6 @@ AgentRegistry 拒绝没有标准技能、指令不包含绑定技能或 hash 不
 
 加载器安全解析 YAML，拒绝重复键、未知字段、空描述、无效 metadata、未声明/越界引用；脚本只登记 hash，不加载为模型指令或自动授予 Shell 权限。目录元数据用于发现，模型只接收所选技能正文与本次需要的 references。可信包采用进程内加载快照，更新包后重启服务。
 
-修改资源时更新技能资源版本，运行 `test_agent_skill_catalog`、`test_standard_skill_bindings`、业务回归和真实模型 smoke；对每个包运行 quick_validate。镜像内检查 discover、activate_named 和代理/业务契约绑定，验证部署资源完整。
+修改资源时更新技能资源版本，运行 `test_agent_skill_catalog`、`test_standard_skill_bindings`、受影响业务回归；指令语义变化时另做授权合成数据的真实模型评估；通过 Catalog 检查全部包的声明、引用和资源完整性。镜像内检查 discover、activate_named 和代理/业务契约绑定，验证部署资源完整。
+
+完整职责和验证方法见 [Agent Skills](../../../../../docs/architecture/skills.md) 和 [测试指南](../../../../../docs/development/testing.md)。

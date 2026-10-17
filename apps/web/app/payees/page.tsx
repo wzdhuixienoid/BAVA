@@ -18,7 +18,7 @@ export default function PayeesPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [returnHref, setReturnHref] = useState("/");
+  const [returnHref, setReturnHref] = useState("/transfers");
   const [returnToTransfer, setReturnToTransfer] = useState(false);
   const [editing, setEditing] = useState<Payee | null>(null);
   const [deleting, setDeleting] = useState<Payee | null>(null);
@@ -73,7 +73,7 @@ export default function PayeesPage() {
   }
   const input = "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2";
   return <main className="min-h-screen bg-slate-50 px-5 py-10"><div className="mx-auto max-w-5xl">
-    <header className="mb-7 flex items-center justify-between gap-4"><h1 className="text-2xl font-semibold">收款人管理</h1><Link href={returnHref} className="text-sm text-cyan-700 underline">{returnToTransfer ? "返回转账" : "返回工作台"}</Link></header>
+    <header className="mb-7 flex items-center justify-between gap-4"><h1 className="text-2xl font-semibold">收款人管理</h1><Link href={returnHref} className="text-sm text-cyan-700 underline">{returnToTransfer ? "返回转账" : returnHref === "/transfers" ? "返回转账与收款" : "返回工作台"}</Link></header>
     {error && <p role="alert" className="mb-4 rounded bg-red-50 p-3 text-red-800">{error}</p>}
     {notice && <p role="status" className="mb-4 rounded bg-emerald-50 p-3 text-emerald-800">{notice}{returnToTransfer && <Link href={returnHref} className="ml-3 underline">返回转账选择收款人</Link>}</p>}
     <section className="mb-8 rounded-xl border bg-white p-5">

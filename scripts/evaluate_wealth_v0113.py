@@ -247,7 +247,7 @@ if __name__ == "__main__":
     parser.add_argument("--independent", action="store_true")
     parser.add_argument("--answers-only", action="store_true")
     parser.add_argument(
-        "--strategy", action="store_true", help="Evaluate the v0.11.4 dialogue"
+        "--strategy", action="store_true", help="Evaluate strategy and follow-up dialogue scenarios"
     )
     parser.add_argument("--scene", action="append", help="Evaluate a selected message")
     parser.add_argument(

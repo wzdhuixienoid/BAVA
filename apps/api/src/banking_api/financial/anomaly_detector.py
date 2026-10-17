@@ -51,7 +51,10 @@ class TransactionAnomalyDetector:
         analysis_started_at: datetime | None = None,
         analysis_ended_at: datetime | None = None,
         account_ids: list[str] | None = None,
+        anomaly_offset: int = 0,
     ) -> TransactionAnomalySnapshot:
+        if anomaly_offset < 0:
+            raise ValueError("异常分页偏移不能为负数")
         now = self._as_utc(generated_at or datetime.now(UTC))
         analysis_end = self._as_utc(analysis_ended_at) if analysis_ended_at else now
         analysis_start = (
@@ -214,7 +217,7 @@ class TransactionAnomalyDetector:
             analysis_period_ended_at=analysis_end,
             baseline_lookback_days=BASELINE_LOOKBACK_DAYS,
             insufficient_baseline=not baseline_sufficient,
-            anomalies=items[:MAX_ANOMALIES],
+            anomalies=items[anomaly_offset : anomaly_offset + MAX_ANOMALIES],
             generated_at=now,
             available_data_started_at=min(
                 (self._occurred_at(item) for item in available), default=None
@@ -227,18 +230,19 @@ class TransactionAnomalyDetector:
             ),
             baseline_skipped_count=baseline_skipped_count,
             total_anomaly_count=len(items),
-            truncated=len(items) > MAX_ANOMALIES,
+            truncated=len(items) > anomaly_offset + MAX_ANOMALIES,
         )
 
     def _detect_rapid_duplicates(
         self, candidates: list[dict[str, Any]], findings: dict[str, _Finding]
     ) -> None:
-        grouped: dict[tuple[str, str, Decimal], list[dict[str, Any]]] = defaultdict(list)
+        grouped: dict[tuple[str, str, str, Decimal], list[dict[str, Any]]] = defaultdict(list)
         for item in candidates:
             if item.get("category") == "TRANSFER":
                 continue
             grouped[
                 (
+                    str(item.get("account_id", "")),
                     normalize_merchant(str(item["merchant"])),
                     str(item["currency"]).upper(),
                     self._amount(item),

@@ -13,7 +13,6 @@ const { PlanCard } = await import("../features/plans/PlanCard.tsx");
 const { SubscriptionSummaryCard } = await import("../features/subscriptions/SubscriptionSummaryCard.tsx");
 const { SubscriptionCancellationCard } = await import("../features/workflows/subscriptions/SubscriptionCancellationCard.tsx");
 const { WorkflowReceipt } = await import("../features/results/WorkflowReceipt.tsx");
-const { ResultsPanel } = await import("../features/results/ResultsPanel.tsx");
 const render = (component, props) => renderToStaticMarkup(createElement(component, props));
 const risk = {
   level: "RED", requested_amount: "600.00", currency: "CNY", daily_successful_total: "600.00",
@@ -45,12 +44,6 @@ test("Task COMPLETED with pending review is not business success", () => {
   assert.equal(isConfirmedWorkflow(pending), false);
   assert.equal(responseState({ plans: [], tasks: [{ status: "COMPLETED" }], workflows: [pending] }).label, "等待你的操作");
   assert.doesNotMatch(render(TransferWorkflowCard, { workflow: pending, onRefresh: async () => {} }), /转账成功/);
-});
-test("real completion index excludes UNKNOWN and a pending workflow", () => {
-  const html = render(ResultsPanel, { reports: [], workflows: [workflow, { ...workflow, workflow_id: "pending", status: "READY_FOR_REVIEW", operation_summary: null }], onLocateResult: () => {} });
-  assert.doesNotMatch(html, /在对话中查看：转账/);
-  assert.match(html, /已完成事件/);
-  assert.match(html, />0</);
 });
 test("FALSE branch shows persisted skipped guarded step and real dependency", () => {
   const step = { step_id: "c", step_key: "condition", display_title: "余额条件", step_kind: "CONDITION", status: "COMPLETED", capability: null, condition_decision: decision, depends_on: ["a"] };
@@ -89,7 +82,7 @@ test("resume uses strong verification and never labels the result cancelled", ()
 
 test("historical subscription snapshots do not render an analysis card or fold the answer", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
-  const html = render(AssistantTurn, { turn: { user: { message_id: "u1" }, tasks: [{ task_id: "snapshot-task", status: "COMPLETED", input: {}, output: { subscription_analysis_snapshot: { subscriptions: [], monthly_cost_by_currency: [], price_changes: [] } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a1", role: "ASSISTANT", content: "详细信息可在左侧「订阅与代扣总览」查看。" }], }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u1" }, tasks: [{ task_id: "snapshot-task", status: "COMPLETED", input: {}, output: { subscription_analysis_snapshot: { subscriptions: [], monthly_cost_by_currency: [], price_changes: [] } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a1", role: "ASSISTANT", content: "详细信息可在左侧「订阅与代扣总览」查看。" }], }, activityRevision: 0, onRefresh: async () => {} });
   assert.doesNotMatch(html, /订阅分析|助理说明/); assert.match(html, /以下是你的订阅情况/);
 });
 
@@ -100,7 +93,7 @@ test("legacy confirmed draft never claims strong verification complete without e
 
 test("payee query keeps only the text answer, including historical structured results", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
-  const html = render(AssistantTurn, { turn: { user: { message_id: "u" }, tasks: [{ task_id: "payee-task", status: "COMPLETED", input: {}, output: { payee_results: [{ payees: [{ payee_id: "p", display_name: "张三", bank_name: "模拟银行", masked_account: "****1234", phone_alias: "" }] }] } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "可转账收款人：张三 · ****1234" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u" }, tasks: [{ task_id: "payee-task", status: "COMPLETED", input: {}, output: { payee_results: [{ payees: [{ payee_id: "p", display_name: "张三", bank_name: "模拟银行", masked_account: "****1234", phone_alias: "" }] }] } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "可转账收款人：张三 · ****1234" }] }, activityRevision: 0, onRefresh: async () => {} });
   assert.equal((html.match(/张三/g) ?? []).length, 1);
   assert.equal((html.match(/1234/g) ?? []).length, 1);
   assert.doesNotMatch(html, /助理说明/);
@@ -116,7 +109,7 @@ test("recipient step provides existing and new payee shortcuts with distinct sam
 
 test("ordinary spending answers stay visible without an automatic dashboard, including saved outputs", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
-  const html = render(AssistantTurn, { turn: { user: { message_id: "u" }, tasks: [{ task_id: "spending-task", status: "COMPLETED", input: {}, output: { analysis_snapshot: {}, financial_display: { period: "2026-09" } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "主要支出为 HOUSING 与 HEALTH。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u" }, tasks: [{ task_id: "spending-task", status: "COMPLETED", input: {}, output: { analysis_snapshot: {}, financial_display: { period: "2026-09" } } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "主要支出为 HOUSING 与 HEALTH。" }] }, activityRevision: 0, onRefresh: async () => {} });
   assert.match(html, /主要支出为 住房 与 健康/);
   assert.doesNotMatch(html, /消费 Dashboard|助理说明|HOUSING|HEALTH/);
 });
@@ -139,7 +132,7 @@ test("saved spending tables localize categories, accounts, timestamps and decima
 
 test("legacy unsolicited anomaly analysis is identified instead of presented as the requested spending answer", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
-  const props = { turn: { user: { message_id: "u", content: "分析我最近15天的消费" }, tasks: [{ task_id: "legacy", status: "COMPLETED", output: { transaction_anomaly_snapshot: {}, analysis_snapshot: { spending_summary: { period: "2026-09" } } } }], plans: [], reports: [], workflows: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "不支持天数，所以做异常分析。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} };
+  const props = { turn: { user: { message_id: "u", content: "分析我最近15天的消费" }, tasks: [{ task_id: "legacy", status: "COMPLETED", output: { transaction_anomaly_snapshot: {}, analysis_snapshot: { spending_summary: { period: "2026-09" } } } }], plans: [], reports: [], workflows: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "不支持天数，所以做异常分析。" }] }, activityRevision: 0, onRefresh: async () => {} };
   const html = render(AssistantTurn, props);
   assert.match(html, /这条历史回复误用了异常交易分析/);
   assert.doesNotMatch(html, /不支持天数|助理说明/);
@@ -170,7 +163,7 @@ test("ordinary assistant keeps spending answer and brief automatic check togethe
     tasks: [{ task_id: "t", status: "COMPLETED", output: { analysis_snapshot: { spending_summary: { spending_review: {} } } } }],
     plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT",
       content: "消费总额为 1000.00 元。\n\n### 值得核对的交易\n短时重复扣款。" }] },
-    activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+    activityRevision: 0, onRefresh: async () => {} });
   assert.match(html, /消费总额为 1000\.00 元|短时重复扣款/);
   assert.equal((html.match(/值得核对的交易/g) ?? []).length, 1);
   assert.doesNotMatch(html, /历史回复误用|异常交易分析|助理说明/);
@@ -195,14 +188,14 @@ test("report list separates deletion controls from navigation and shows restore 
 
 test("deleted report task outputs do not recreate a report card in the conversation", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
-  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "生成消费报告" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { report_id: "deleted-r", report_deleted: true } }], plans: [], reports: [], workflows: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "报告已生成。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "生成消费报告" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { report_id: "deleted-r", report_deleted: true } }], plans: [], reports: [], workflows: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "报告已生成。" }] }, activityRevision: 0, onRefresh: async () => {} });
   assert.doesNotMatch(html, /href="\/reports\/deleted-r"/);
 });
 
 test("anomaly analysis is a single visible assistant answer without a separate card or folded copy", async () => {
   const { AssistantTurn } = await import("../features/conversation/AssistantTurn.tsx");
   const content = "## 异常交易分析\n\n| 日期 | 金额 | 严重度 | 金额倍数 |\n| --- | --- | --- | --- |\n| 2026-10-07 20:00:00 | 8600.00 | 高 | 190.90 |";
-  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "近一年有什么异常交易吗" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { transaction_anomaly_snapshot: { analysis_period_started_at: "2025-10-07T15:05:00Z", analysis_period_ended_at: "2026-10-07T15:05:00Z" }, transaction_anomaly_answer: content } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "旧的重复回答。" }] }, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} });
+  const html = render(AssistantTurn, { turn: { user: { message_id: "u", content: "近一年有什么异常交易吗" }, tasks: [{ task_id: "t", status: "COMPLETED", output: { transaction_anomaly_snapshot: { analysis_period_started_at: "2025-10-07T15:05:00Z", analysis_period_ended_at: "2026-10-07T15:05:00Z" }, transaction_anomaly_answer: content } }], plans: [], workflows: [], reports: [], replies: [{ message_id: "a", role: "ASSISTANT", content: "旧的重复回答。" }] }, activityRevision: 0, onRefresh: async () => {} });
   assert.equal((html.match(/异常交易分析/g) ?? []).length, 1);
   assert.match(html, /8600\.00/); assert.match(html, /190\.90/);
   assert.doesNotMatch(html, /助理说明|旧的重复回答|violet|¥|HIGH/);

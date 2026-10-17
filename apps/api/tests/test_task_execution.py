@@ -92,8 +92,9 @@ async def test_claims_only_due_runnable_tasks(app) -> None:
 
 
 class BlockingExecutor:
-    def __init__(self, factory) -> None:  # type: ignore[no-untyped-def]
+    def __init__(self, factory, *, clock=lambda: datetime.now(UTC)) -> None:  # type: ignore[no-untyped-def]
         self.factory = factory
+        self.clock = clock
         self.started = asyncio.Event()
         self.release = asyncio.Event()
         self.completed = False
@@ -107,7 +108,7 @@ class BlockingExecutor:
                 task_id=claim.task_id,
                 lease_owner=claim.lease_owner,
                 attempt=claim.attempt,
-                now=datetime.now(UTC),
+                now=self.clock(),
                 for_update=True,
             )
             if task is None:
@@ -126,7 +127,8 @@ class BlockingExecutor:
 async def test_heartbeat_renews_long_task_and_blocks_reclaim(app) -> None:
     factory = app.state.test_session_factory
     _, accepted = await create_task(app)
-    executor = BlockingExecutor(factory)
+    clock = [datetime.now(UTC)]
+    executor = BlockingExecutor(factory, clock=lambda: clock[0])
     configured = policy()
     worker = TaskExecutionWorker(
         factory,
@@ -136,6 +138,7 @@ async def test_heartbeat_renews_long_task_and_blocks_reclaim(app) -> None:
         batch_size=1,
         max_concurrency=1,
         worker_id="heartbeat-owner",
+        clock=lambda: clock[0],
     )
     running = asyncio.create_task(worker.run_task_once(accepted.task_id))
     await asyncio.wait_for(executor.started.wait(), timeout=1)
@@ -144,15 +147,26 @@ async def test_heartbeat_renews_long_task_and_blocks_reclaim(app) -> None:
         assert initial and initial.lease_expires_at
         initial_expiry = initial.lease_expires_at
 
-    await asyncio.sleep(0.06)
+    # OS scheduling must not expire a 120 ms test lease while SQLite does I/O.
+    # Advance logical time before renewal, then test beyond the original expiry.
+    clock[0] = initial_expiry.replace(tzinfo=UTC) - timedelta(seconds=0.02)
+
+    async def wait_for_renewal():
+        while True:
+            async with factory() as session:
+                renewed = await TaskRepository(session).get(accepted.task_id)
+                if renewed and renewed.lease_expires_at > initial_expiry:
+                    return renewed
+            await asyncio.sleep(0.01)
+
+    renewed = await asyncio.wait_for(wait_for_renewal(), timeout=5)
+    clock[0] = initial_expiry.replace(tzinfo=UTC) + timedelta(seconds=0.01)
+    assert renewed.lease_expires_at.replace(tzinfo=UTC) > clock[0]
     async with factory() as session:
-        renewed = await TaskRepository(session).get(accepted.task_id)
-        assert renewed and renewed.lease_expires_at
-        assert renewed.lease_expires_at > initial_expiry
         claims = await TaskRepository(session).claim_due(
             lease_owner="other-worker",
-            now=datetime.now(UTC),
-            lease_expires_at=datetime.now(UTC) + timedelta(seconds=1),
+            now=clock[0],
+            lease_expires_at=clock[0] + timedelta(seconds=1),
             limit=1,
         )
         await session.rollback()

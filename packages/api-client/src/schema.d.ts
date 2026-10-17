@@ -806,7 +806,8 @@ export interface paths {
         get: operations["get_aa_api_v1_aa_requests__request_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete Aa */
+        delete: operations["delete_aa_api_v1_aa_requests__request_id__delete"];
         options?: never;
         head?: never;
         /** Update Aa */
@@ -916,6 +917,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/{notification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification */
+        get: operations["get_notification_api_v1_notifications__notification_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Notification */
+        delete: operations["delete_notification_api_v1_notifications__notification_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications/{notification_id}/read": {
         parameters: {
             query?: never;
@@ -928,23 +947,6 @@ export interface paths {
         /** Read Notification */
         post: operations["read_notification_api_v1_notifications__notification_id__read_post"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notifications/{notification_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Notification */
-        delete: operations["delete_notification_api_v1_notifications__notification_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2122,6 +2124,7 @@ export interface components {
             created_at: string;
             /** Read At */
             read_at: string | null;
+            anomaly_snapshot?: components["schemas"]["TransactionAnomalySnapshot"] | null;
         };
         /** NotificationInbox */
         NotificationInbox: {
@@ -6357,6 +6360,39 @@ export interface operations {
             };
         };
     };
+    delete_aa_api_v1_aa_requests__request_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AAAction"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_aa_api_v1_aa_requests__request_id__patch: {
         parameters: {
             query?: never;
@@ -6602,7 +6638,7 @@ export interface operations {
             };
         };
     };
-    read_notification_api_v1_notifications__notification_id__read_post: {
+    get_notification_api_v1_notifications__notification_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -6650,6 +6686,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_notification_api_v1_notifications__notification_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
             };
             /** @description Validation Error */
             422: {

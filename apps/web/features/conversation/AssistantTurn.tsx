@@ -39,10 +39,9 @@ function ReadPreview({ output }: { output: Record<string, unknown> }) {
   );
 }
 
-export function AssistantTurn({ turn, activityRevision, highlightedResult, onRefresh }: {
+export function AssistantTurn({ turn, activityRevision, onRefresh }: {
   turn: ConversationTurn;
   activityRevision: number;
-  highlightedResult: string | null;
   onRefresh: () => Promise<void>;
 }) {
   const outputs = [
@@ -58,7 +57,6 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
   } | undefined;
   const historicalYearMismatch = Boolean(anomalySnapshot && turn.user && /(?:近|最近|过去)(?:一|1)年/.test(turn.user.content)
     && new Date(anomalySnapshot.analysis_period_ended_at).getTime() - new Date(anomalySnapshot.analysis_period_started_at).getTime() < 364 * 86400000);
-  const highlight = (id: string) => highlightedResult === id ? "rounded-xl ring-2 ring-cyan-500 ring-offset-4" : "";
   const hasAnswer = turn.replies.some((message) => message.role === "ASSISTANT");
   const accounts = accountResults(outputs);
   const statements = outputs.flatMap((output) => Array.isArray(output.statement_results)
@@ -101,15 +99,15 @@ export function AssistantTurn({ turn, activityRevision, highlightedResult, onRef
 
           {turn.reports.map((report) => {
             const id = `report-${report.report_id}`;
-            return <div key={id} id={resultElementId(id)} tabIndex={-1} className={highlight(id)}><ReportCard report={report} /></div>;
+            return <div key={id} id={resultElementId(id)} tabIndex={-1}><ReportCard report={report} /></div>;
           })}
           {turn.tasks.filter((task) => typeof task.output?.report_id === "string" && task.output?.report_deleted !== true && !turn.reports.some((report) => report.report_id === task.output?.report_id)).map((task) => {
             const id = `report-${task.output!.report_id}`;
-            return <div key={id} id={resultElementId(id)} tabIndex={-1} className={highlight(id)}><ReportCard task={task} /></div>;
+            return <div key={id} id={resultElementId(id)} tabIndex={-1}><ReportCard task={task} /></div>;
           })}
           {turn.workflows.map((workflow) => {
             const id = `workflow-${workflow.workflow_id}`;
-            return <div key={id} id={resultElementId(id)} tabIndex={-1} className={highlight(id)}>
+            return <div key={id} id={resultElementId(id)} tabIndex={-1}>
               {isConfirmedWorkflow(workflow) ? <WorkflowReceipt workflow={workflow} />
                 : workflow.workflow_type.startsWith("WEALTH_") ? <WealthWorkflowCard workflow={workflow} onRefresh={onRefresh} />
                 : workflow.workflow_type === "TRANSFER" ? <TransferWorkflowCard workflow={workflow} onRefresh={onRefresh} />

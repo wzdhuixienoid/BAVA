@@ -34,7 +34,7 @@ test("assistant gives one grounded answer without cards or duplicate LLM prose",
     plans: [], workflows: [], reports: [],
   };
   const html = renderToStaticMarkup(createElement(AssistantTurn, {
-    turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {},
+    turn, activityRevision: 0, onRefresh: async () => {},
   }));
   assert.doesNotMatch(html, /你的余额是 1 元。|助理说明|账户查询结果|<section/);
   assert.match(html, /aria-label="账户查询回复"/);
@@ -89,7 +89,7 @@ test("combined banking answer keeps the typed balance and consumption explanatio
     } }], plans: [], workflows: [], reports: [],
   };
   const html = renderToStaticMarkup(createElement(AssistantTurn, {
-    turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {},
+    turn, activityRevision: 0, onRefresh: async () => {},
   }));
   assert.match(html, /¥23,864\.52/);
   assert.match(html, /八月消费主要集中在住房和购物/);
@@ -107,7 +107,7 @@ test("combined balance and anomaly result preserves both facts while replacing d
     } }], plans: [], workflows: [], reports: [],
   };
   const html = renderToStaticMarkup(createElement(AssistantTurn, {
-    turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {},
+    turn, activityRevision: 0, onRefresh: async () => {},
   }));
   assert.match(html, /¥23,864\.52/);
   assert.match(html, /发现值得核对的交易/);
@@ -135,7 +135,7 @@ test("statement with account lookup shows bank rows and pagination instead of fa
       statement_results: [statement],
     } }], plans: [], workflows: [], reports: [],
   };
-  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} }));
+  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, onRefresh: async () => {} }));
   assert.match(html, /账单查询回复|李小雨|-¥123\.45|输入“下一页”/);
   assert.match(html, /2026年10月14日 20:00/);
   assert.doesNotMatch(html, /没有任何工具|transfer:internal-id|账户查询回复/);
@@ -148,7 +148,7 @@ test("combined statement and balance never hides either typed result", () => {
     tasks: [{ task_id: "t", status: "COMPLETED", output: { account_results: [balance], statement_results: [statement] } }],
     plans: [], workflows: [], reports: [],
   };
-  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} }));
+  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, onRefresh: async () => {} }));
   assert.match(html, /账单查询回复/);
   assert.match(html, /账户查询回复/);
   assert.match(html, /¥23,864\.52/);
@@ -162,7 +162,7 @@ test("empty statement explains posted scope without inventing transactions", () 
       statement_results: [{ ...statement, transactions: [], total_count: 0, next_offset: null }],
     } }], plans: [], workflows: [], reports: [],
   };
-  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} }));
+  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, onRefresh: async () => {} }));
   assert.match(html, /没有已入账记录/);
   assert.match(html, /待处理和失败不等于已入账/);
   assert.doesNotMatch(html, /李小雨|下一页|123\.45/);
@@ -210,7 +210,7 @@ test("transfer reply renders period totals recipient groups insights and recent 
     tasks: [{ task_id: "t", status: "COMPLETED", output: { statement_results: [transferAnalysis] } }],
     plans: [], workflows: [], reports: [],
   };
-  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} }));
+  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, onRefresh: async () => {} }));
   assert.match(html, /<h2>转账总览<\/h2>/);
   assert.match(html, /<h2>按收款人／付款方汇总<\/h2>/);
   assert.match(html, /<h2>解读<\/h2>/);
@@ -225,7 +225,7 @@ test("partial historical rows never invent a total or pretend to be a full analy
     id: "legacy", replies: [], tasks: [{ task_id: "t", status: "COMPLETED", output: { statement_results: [statement] } }],
     plans: [], workflows: [], reports: [],
   };
-  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, highlightedResult: null, onRefresh: async () => {} }));
+  const html = renderToStaticMarkup(createElement(AssistantTurn, { turn, activityRevision: 0, onRefresh: async () => {} }));
   assert.match(html, /历史结果只有部分明细/);
   assert.doesNotMatch(html, /<h2>转账总览|¥1,481\.40/);
 });

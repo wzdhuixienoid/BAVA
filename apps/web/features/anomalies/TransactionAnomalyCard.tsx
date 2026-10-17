@@ -16,19 +16,21 @@ export function TransactionAnomalyCard({ snapshot }: { snapshot: TransactionAnom
       <p className="mt-1 text-xs text-slate-500">分析区间：{dateTime(snapshot.analysis_period_started_at)} 至 {dateTime(snapshot.analysis_period_ended_at)}</p>
       <p className="mt-1 text-xs text-slate-500">异常提示 ≠ 已确认欺诈；请核对交易，不会自动触发安全锁定。</p>
       {snapshot.anomalies.length === 0 ? <p className="mt-3 text-sm text-slate-600">本次规则分析未发现明显异常。</p> : (
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className={`mt-4 grid gap-4 ${snapshot.anomalies.length > 1 ? "md:grid-cols-2" : ""}`}>
           {snapshot.anomalies.map((item) => (
             <article key={item.transaction_id} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div><p className="font-semibold">{item.merchant_display}</p><time dateTime={item.occurred_at} className="text-xs text-slate-500">{dateTime(item.occurred_at)}</time></div>
                 <div className="text-right"><p className="font-bold">{item.amount_display}</p><p className={item.severity === "HIGH" ? "text-xs text-red-700" : "text-xs text-amber-700"}>{item.severity === "HIGH" ? "高度关注" : "中等关注"} · {item.currency}</p></div>
               </div>
+              <div className={snapshot.anomalies.length === 1 && item.anomaly_types.length > 1 ? "grid gap-x-4 md:grid-cols-2" : ""}>
               {item.anomaly_types.map((rule) => <div key={rule} className="mt-3 rounded-lg bg-slate-50 p-3 text-xs">
                 <p className="font-semibold text-slate-900">{rules[rule]}</p>
                 <p className="mt-1 text-slate-500">规则：{rule}</p>
                 <p className="mt-1">原因：{rules[rule]}，建议核对相关扣费。</p>
                 <ul className="mt-1 space-y-1 text-slate-600">{(item.evidence_display?.[rule] ?? []).map((line, index) => <li key={index}>{line}</li>)}</ul>
               </div>)}
+              </div>
             </article>
           ))}
         </div>

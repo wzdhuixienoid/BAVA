@@ -21,6 +21,9 @@ const errorLabels: Record<string, string> = {
   WORKFLOW_VERSION_CONFLICT: "业务状态已更新，请刷新后继续操作。",
   OPERATION_VERSION_CONFLICT: "银行操作状态已更新，请刷新后继续操作。",
   PLAN_ROLLBACK_NOT_SAFE: "该范围包含写流程，不能安全回退。",
+  AA_VERSION_CONFLICT: "收款状态已变化，请核对最新状态后重试。",
+  ONLY_FULLY_CANCELLED_AA_CAN_BE_DELETED: "仅可删除全部份额已取消、且没有付款提交记录的收款请求。",
+  AA_NOT_FOUND: "该收款请求不存在或无权访问。",
 };
 
 // Presentation only: the server still decides whether any action is allowed.

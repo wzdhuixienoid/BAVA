@@ -1,53 +1,63 @@
 # 文档导航
 
-当前版本为 **v0.11.3 / Alembic 0034**，整理日期为 2026-10-15。先从 [项目 README](../README.md) 了解产品，再按需要阅读下列文档。
+当前版本为 **v1.0.0**，数据库迁移 head 为 **0036**。本文档集只说明当前代码与交互；应用版本以包配置为准，Skill 资源、接口契约和业务资料各自独立版本化。
 
-## 使用 Agent
-
-| 文档 | 内容 |
-| --- | --- |
-| [账户、账单与报告](guides/financial-analysis.md) | 查询示例、分析期间、异常提示、报告与数据范围 |
-| [转账、预约与 AA](guides/transfers.md) | 核对和授权、周期规则、参与者付款、状态与取消 |
-| [模拟理财](guides/wealth.md) | 产品、风险测评、推荐、申购赎回、异步结算、资料及测试入口 |
-| [订阅与消息](guides/subscriptions.md) | 识别、确认取消、恢复、续费提醒及模拟扣费 |
-
-## 理解和开发系统
+## 使用指南
 
 | 文档 | 内容 |
 | --- | --- |
-| [设计原则](architecture/design-principles.md) | 长期架构基线；最初制定于 v0.1，未来组件不视为已实现 |
-| [系统架构](architecture/system.md) | Agent、Skill、Workflow、Tool、计划、Worker 与持久化职责 |
-| [PersonalBankingAgent](architecture/personal-banking.md) | 统一银行查询与消费分析、按需 Skill、权限与旧任务兼容 |
-| [Tool 使用与审计](architecture/tools.md) | 27 个工具清单、调用路径、协议与权限修复、验证 |
-| [Skill 使用与审计](architecture/skills.md) | 实际调用清单、规范边界、修复与运行验证 |
-| [金融计算与计划约束](architecture/algorithms.md) | Decimal、期间、异常规则、条件 grounding、幂等恢复 |
-| [安全与事实边界](architecture/security.md) | 身份、权限、风险、强验证、安全熔断、审计与已知限制 |
-| [环境配置与升级](development/setup.md) | Docker、本地开发、关键配置、OIDC 和迁移 |
-| [测试与演示](development/testing.md) | 自动化检查、隔离数据库、数据校验、Smoke、preflight 与 reset |
+| [项目入口](../README.md) | 能力、启动、页面、示例与限制 |
+| [账户、账单与消费报告](guides/financial-analysis.md) | 查询期间、分页、总览、报告与异常通知 |
+| [转账与收款](guides/transfers.md) | 转账分析、收款人、即时／预约／周期转账与 AA |
+| [订阅与消息](guides/subscriptions.md) | 识别、取消、恢复、模拟扣费及站内提醒 |
+| [模拟理财](guides/wealth.md) | 目录、测评、推荐、追问、申赎和异步状态 |
+| [多步骤任务与条件](guides/plans.md) | 计划能力、条件证据、用户等待、手动接管与安全回退 |
 
-本轮版本统一为 0.11.3；历史更新说明保留当时版本，Skill 资源有独立版本。
+## 系统架构与六层职责
 
-## 更新与历史
+先读 [系统架构](architecture/system.md)，再按同一职责框架阅读六层说明。
 
-- [当前 v0.11.3 个人银行账单与转账查询修复](releases/release-notes-v0.11.3.md)
-- [v0.11.3 个人银行真实模型验收](development/personal-banking-v0.11.3-evaluation.md)
+| 层 | 独立说明 | 当前实现 |
+| --- | --- | --- |
+| Agent | [Agents 总览](architecture/agents/README.md) | PersonalBanking、SubscriptionAnalysis、WealthAdvisor 三个只读业务执行者 |
+| Agent Skill | [Skills](architecture/skills.md) | 八个标准包、三个 Python 业务绑定、按需加载与资源校验 |
+| Tool | [Tools](architecture/tools.md) | 19 个读取、5 个提交、3 个对账能力及 caller／风险约束 |
+| Workflow | [Workflows](architecture/workflows.md) | 转账、订阅取消／恢复、理财申购／赎回的确定性办理 |
+| Plan | [Plans](architecture/plans.md) | 静态高层能力、持久 DAG、条件、等待与受限回退 |
+| Domain API | [Domain APIs](architecture/domain-api.md) | 页面资源、明确用户动作、身份归属及前端契约 |
 
-- [v0.11.0 更新说明](releases/release-notes-v0.11.0.md)
-- [v0.10.3 更新说明](releases/release-notes-v0.10.3.md)
-- [v0.10.2 更新说明](releases/release-notes-v0.10.2.md)
-- [历史档案索引](archive/README.md)：各版本实现与测试、旧审查、架构图和验证来源。
+### 三个 Agent 的同规格详情
 
-旧 `report/` 已并入档案区。历史文档保留其记录日期和测试结论，带有明确历史标识；旧风险阈值、旧页面截图和当时待办不代表当前行为。当前指南发生变化时更新对应主题，版本执行证据留在更新说明或历史档案中。
+| Agent | 说明 | 覆盖内容 |
+| --- | --- | --- |
+| PersonalBankingAgent | [个人银行](architecture/agents/personal-banking.md) | ACCOUNT／SPENDING／COMBINED、账单、消费、报告与续页 |
+| SubscriptionAnalysisAgent | [订阅分析](architecture/agents/subscription-analysis.md) | 唯一分析工具、费用／续费事实、管理边界与工作流交接 |
+| WealthAdvisorAgent | [理财顾问](architecture/agents/wealth-advisor.md) | 七项读取、按场景技能、事实／证据、追问、降级及交易交接 |
 
-- [v0.11.1 理财修复与体验优化](releases/release-notes-v0.11.1.md)
+三个详情均按职责与入口、Skill 与工具、执行与结果、边界与失败处理、源码与验证组织。
 
-- [v0.11.2 理财分析、知识与连续追问](releases/release-notes-v0.11.2.md)
-- [理财知识维护与检索评估](../apps/api/src/banking_api/knowledge/README.md)
+### 跨层规则
 
-- [v0.11.3 语义、Agent Skills与模型正文](releases/release-notes-v0.11.3.md)
-- [应用Agent Skills](../apps/api/src/banking_api/agent_skills/README.md)
+| 文档 | 内容 |
+| --- | --- |
+| [金融计算与规则](architecture/algorithms.md) | Decimal、消费口径、异常规则、幂等与条件计算 |
+| [安全与事实边界](architecture/security.md) | 身份、授权、风险、证据与结果可信度 |
 
-- [v0.11.3 真实模型与隔离验收记录](development/wealth-v0.11.3-evaluation.md)
+## 开发与维护
 
-- [v0.12.1 工作台导航与消费筛选](releases/release-notes-v0.12.1.md)
-- [v0.11.4 策略画像与推荐修复](releases/release-notes-v0.11.4.md)
+| 文档 | 内容 |
+| --- | --- |
+| [环境配置与升级](development/setup.md) | Docker、本地开发、开关、OIDC 和数据库迁移 |
+| [测试与演示](development/testing.md) | 自动检查、隔离数据库、合成数据及真实模型评估 |
+| [运行与文档维护](development/operations.md) | 启停、备份、状态排查、恢复和文档维护规则 |
+
+## 模块说明与运行资源
+
+源码目录 README 只解释模块职责及维护入口，细节以对应架构／指南为准。
+
+- [Agents](../apps/api/src/banking_api/agents/README.md)、[Tools](../apps/api/src/banking_api/tools/README.md)、[Workflows](../apps/api/src/banking_api/workflows/README.md)
+- [Agent Skills 包](../apps/api/src/banking_api/agent_skills/README.md)、[Python 业务绑定](../apps/api/src/banking_api/skills/README.md)
+- [知识维护](../apps/api/src/banking_api/knowledge/README.md)、[审计](../apps/api/src/banking_api/audit/README.md)、[上下文范围](../apps/api/src/banking_api/memory/README.md)
+- [PostgreSQL](../infra/postgres/README.md)
+
+`agent_skills/**/SKILL.md` 和 references 是实际加载的指令，知识 JSON、产品资料及测试基准也是运行／验证资源。其版本和来源日期不是应用发布记录；更新需遵守对应绑定、hash 和历史证据约束。

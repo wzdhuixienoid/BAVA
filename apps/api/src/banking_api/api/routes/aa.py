@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import jwt
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from banking_api.api.dependencies import (
@@ -78,6 +78,27 @@ async def update_aa(
         )
     except (OperationActionError, SecurityWriteLockedError) as exc:
         fail(exc)
+
+
+@router.delete("/aa-requests/{request_id}", status_code=204)
+async def delete_aa(
+    request_id: UUID,
+    body: AAAction,
+    request: Request,
+    session: SessionDependency,
+    principal: PrincipalDependency,
+    bus: EventBusDependency,
+    engine: TransferWorkflowEngineDependency,
+):
+    try:
+        await service(request, session, bus, engine).delete_cancelled(
+            request_id, principal.user_id, body.expected_version
+        )
+    except OperationActionError as exc:
+        if str(exc) == "AA_NOT_FOUND":
+            raise HTTPException(404, detail=str(exc)) from exc
+        fail(exc)
+    return Response(status_code=204)
 
 
 @router.post("/aa-requests/{request_id}/actions/publish")

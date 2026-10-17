@@ -1,7 +1,7 @@
-# Agent
+# 只读业务 Agents
 
-应用版本 0.11.3。当前登记 PersonalBankingAgent、SubscriptionAnalysisAgent、WealthAdvisorAgent 三个只读 Agent。
+开发／测试登记 PersonalBankingAgent、SubscriptionAnalysisAgent、WealthAdvisorAgent，生产不登记 Mock 理财 Agent。定义固定技能绑定与能力上限，运行时按请求缩小权限，不承担金融授权或提交。
 
-PersonalBankingAgent 使用统一身份 agent:personal-banking，执行前选择 ACCOUNT、SPENDING、COMBINED 配置，分别加载 banking-assistance、financial-analysis 或两者。只有报告请求额外加载 report-source.md；纯账户查询不加载消费规则。Tool 权限按所选配置校验，完整异常工具仍须本轮明确要求。资金提交和结算不向 Agent 开放。
+PersonalBankingAgent 共享一个身份，按 ACCOUNT／SPENDING／COMBINED 加载账户与消费技能。订阅 Agent 仅分析周期费用，理财 Agent 查询目录、推荐、比较、资料及本人持仓／订单。
 
-旧 MinimalBankingAgent 与 FinancialAnalysisAgent 定义已移除，仅在兼容映射中保留历史 Task 标识。计划 ACCOUNT_QUERY、FINANCIAL_ANALYSIS 两种高层能力继续分开，但由同一个 Agent 按相应配置执行。详见 [个人银行 Agent](../../../../../docs/architecture/personal-banking.md)。
+旧任务标识只保留显式读取和恢复映射，不另登记旧 Agent。三个 Agent 的职责、技能、工具和持久结果见 [Agents 总览](../../../../../docs/architecture/agents/README.md)，整体职责见 [系统架构](../../../../../docs/architecture/system.md)。

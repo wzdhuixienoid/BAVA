@@ -9,7 +9,7 @@ const product = {product_id:"mock-wealth-01",name:"演示稳享日日",risk:"R1"
 const output = {wealth_results:[{products:[product,{...product,product_id:"mock-wealth-02",name:"演示进取成长"}]},{products:[product],selected_reasons:{"mock-wealth-01":["符合用款时间及起购要求，已按风险偏好、开放安排与费用排序"]},reasons:["依据有效Mock测评和本次明确需求确定性筛选；模拟净值型产品不保本"]}]};
 test("historical wealth reply shows final selection once, without model provenance or raw source paths",()=>{
  const turn={user:{content:"推荐理财"},tasks:[{task_id:"t",status:"COMPLETED",output}],plans:[],workflows:[],reports:[],replies:[{message_id:"m",role:"ASSISTANT",content:"工具返回，未做调整 mock-wealth-01 /api/v1/wealth/documents/123 工具原文"}]};
- const html=renderToStaticMarkup(createElement(AssistantTurn,{turn,activityRevision:0,highlightedResult:null,onRefresh:async()=>{}}));
+ const html=renderToStaticMarkup(createElement(AssistantTurn,{turn,activityRevision:0,onRefresh:async()=>{}}));
  for(const text of ["100.00 元","R1","1.008387","2026-10-09","产品说明书","不保证本金或收益"]) assert.ok(html.includes(text),text);
  for(const text of ["工具返回","工具原文","mock-wealth-01","/api/v1/","确定性","排序","演示进取成长"]) assert.ok(!html.includes(text),text);
  assert.equal(html.split("演示稳享日日（模拟）").length-1,1);

@@ -26,7 +26,8 @@ test("overview opens in current month and supports historical years and independ
     assert.ok(r.root.findByProps({id:"dashboard-year"}).findAllByType("option").some(n=>n.props.value==="2025"));
     const nav=text(r.root.findByProps({"aria-label":"金融服务"}));
     assert.doesNotMatch(nav,/订阅总览|消费报告/);
-    assert.match(nav,/预约与周期转账/);
+    assert.equal(nav,"对话工作台");
+    assert.doesNotMatch(nav,/预约与周期转账|AA 收款与付款|收款人管理/);
     await act(async()=>r.root.findByProps({id:"dashboard-year"}).props.onChange({target:{value:"2025"}}));
     assert.equal(calls.at(-1),`2025-${currentMonth().slice(5)}`);
     await act(async()=>r.root.findByProps({id:"dashboard-month"}).props.onChange({target:{value:"08"}}));

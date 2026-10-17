@@ -1,182 +1,104 @@
 # AI Banking Agent
 
-面向中文用户的个人银行智能助理。通过自然语言查询账户、分析账单、管理订阅和发起转账，并在工作台中展示核对、授权、执行与结果。
+面向中文用户的个人银行智能助理。通过对话查询账户和账单、分析消费、管理订阅、办理转账和模拟理财，并展示核对、授权、处理过程及可追溯结果。
 
-**当前版本：v0.11.3 · 数据库迁移：0034**
+**当前版本：v1.0.0 · 数据库迁移：0036**
 
-项目目前是可运行的模拟银行原型：银行数据为合成数据，转账、订阅扣费、强身份验证和 AA 参与者身份均使用 Mock。尚未连接真实银行、商户或支付渠道。
+当前是可运行的模拟银行原型。账户及初始交易为合成数据，转账、订阅扣费、理财执行和强身份验证均使用 Mock；尚未连接真实银行或支付渠道。
 
-本轮交付版本为 **0.11.3**，保留现有功能；PersonalBankingAgent 可查询已入账转账、购物、收入、订阅扣费与理财现金流水，与金融总览共用账单事实。当前登记 27 个工具。见 [个人银行架构](docs/architecture/personal-banking.md)、[工具清单](docs/architecture/tools.md) 和 [本轮更新说明](docs/releases/release-notes-v0.11.3.md)。历史发布记录保留原版本。
+## 当前能力
 
-## 当前可以做什么
-
-| 场景 | 当前能力 |
+| 场景 | 能力 |
 | --- | --- |
-| 个人银行查询 | 账户、余额、收款人与已入账账单；转账转入/转出、消费、订阅扣费和理财资金流水，支持筛选、全期间总额与按收款人分析、连续翻页 |
-| 账单分析 | 按账户、自然月、自然年、最近 N 天或明确区间分析收入、支出、分类、主要交易及期间变化 |
-| 消费报告 | 生成月度、年度报告，保存数据快照；支持历史查看、删除与恢复 |
-| 异常提示 | 检查金额突增、短时重复、新商户大额和订阅涨价；普通分析附简短核对提示，明确询问时展开明细 |
-| 订阅管理 | 识别周期扣费、费用与涨价；可管理订阅支持页面确认取消、对话取消及恢复续费授权 |
-| 续费与消息 | 站内续费提醒、模拟自动扣费与结果消息；支持查看、标为已读和删除消息 |
-| 即时转账 | 选择银行卡收款人和付款账户，核对金额与备注，确认并完成 Mock 强验证后提交 |
-| 预约与周期转账 | 单次预约、有限次按月转账；预先核对并授权，到时重新校验执行，可管理未提交的预约 |
-| AA 收款 | 平均或手动精确分摊；发布请求后，其他参与者以各自身份独立授权付款 |
-| 多步骤任务 | 将已有能力组合为持久化计划；支持明确数值条件、等待用户操作、有限回退与人工接管 |
-| 模拟理财 | 8个开放式净值型虚构产品、测评、推荐、对比、说明书、持仓和订单；申购与赎回确认及强验证，异步成交到账 |
-| 工作台管理 | 消费总览、报告、订阅、收款人、预约和 AA 页面；对话命名、删除、处理过程与审计链 |
+| 个人银行 | 账户、余额、收款人、已入账账单；按期间、账户、类别、方向及对手方查询，连续翻页 |
+| 转账分析 | 查询已入账转入／转出，计算全期间总额、笔数与对手方分组，并展示最近明细 |
+| 消费分析与报告 | 自然月、自然年、最近 N 天及明确区间的汇总、分类、期间比较；生成和保存月报／年报，删除与恢复报告 |
+| 异常提醒 | 确定性规则检查金额突增、同账户重复扣款、新商户大额及订阅涨价；后台生成站内提醒并保存证据 |
+| 订阅 | 周期扣费识别、涨价分析、页面确认取消、对话取消／恢复；可选模拟自动扣费与续费通知 |
+| 转账与收款 | 即时转账、单次预约、有限次按月转账、收款人管理和 AA 收款／付款 |
+| 模拟理财 | 八款虚构净值型产品、风险测评、目录、推荐、比较、资料、持仓、申购及赎回；异步成交到账 |
+| 受约束计划 | 将已注册查询和工作流组合为持久化 DAG，支持明确数值条件与等待用户操作 |
+| 工作台 | 对话命名与删除、处理过程、业务卡片、审计链、消息已读与删除 |
 
-v0.12.1 调整工作台导航与金融总览，消费明细支持年月、类别和账户组合筛选及分页加载；理财推荐与对比转入工作台对话。见 [更新说明](docs/releases/release-notes-v0.12.1.md)。
-
-v0.11.4 为八款产品增加版本化的模拟策略画像，推荐结合收益目标与亏损意愿，支持换一批与逐款定位介绍；对比覆盖收益来源、市场风险、观察期、费用和流动性。模型解释引用已核验资料，不能把模拟组合当作实际持仓或收益预测。见 [更新说明](docs/releases/release-notes-v0.11.4.md)。
-
-v0.11.3 统一理财语义、中文金额、需求更新和交易准备，接入应用Agent Skills，模型通过只读工具生成带事实引用的正文。对比直接展示，来源去重，保留历史结果与旧接口。见[更新说明](docs/releases/release-notes-v0.11.3.md)。
-
-v0.11.2 在保留订单恢复、元／份单位与交易授权的基础上，增加有依据的推荐理由、对比取舍、费用及到账情景和连续追问。“想买理财”先测评并看产品，“完成测评”在原对话接续选购；产品卡填写账户和金额后才创建核对。工作台先展示正文分析，再展示与理财中心一致的产品卡；订单受理后对话显示申请已提交，成交或到账通过消息提醒告知；查看依据可打开模拟条款或官方教育资料。详见 [更新说明](docs/releases/release-notes-v0.11.2.md) 和 [理财指南](docs/guides/wealth.md)。
-
-## 试着这样使用
-
-```text
-我有哪些账户？工资卡余额多少？
-分析一下工资卡最近30天的消费。
-生成一份2026年8月份消费报告。
-最近有没有异常交易？
-我有哪些订阅？最近有没有涨价的？
-取消星幕视频。
-从工资卡给李小雨转1元，备注餐费。
-明天早上9点从工资卡给物业转200元。
-每月1号上午9点给物业转100元，共3次。
-昨天聚餐100元，和张三、李四AA，我也参与。
-查一下工资卡余额，如果余额不少于3000元，给张三转500元。
-```
-
-收款人、账户或时间存在歧义时，需要在核对界面补充或选择。预约须显式启用，AA 多身份演示另有配置，见 [转账与 AA 指南](docs/guides/transfers.md)。
-
-## Agent 如何工作
-
-LLM 负责理解请求、选择受限工具和解释结果；后端负责金融计算、权限、风险、授权及执行状态。
-
-```mermaid
-flowchart TD
-    U[用户消息] --> T[持久化 Message / Task]
-    T --> R[请求路由]
-    R --> A[只读 Agent]
-    R --> P[受约束计划与条件]
-    R --> W[确定性业务 Workflow]
-    P --> A
-    P --> W
-    A --> F[受限工具 / 确定性金融快照]
-    F --> S[解释 / Skill / 报告]
-    W --> C[权限 / 风险 / 用户确认 / 所需强验证]
-    C --> O[Operation / Mock Provider]
-    S --> UI[结构化工作台]
-    O --> UI
-    T --> E[持久事件 / Outbox / SSE / 审计]
-    E --> UI
-```
-
-三个只读 Agent 分别为 PersonalBankingAgent、SubscriptionAnalysisAgent 和 WealthAdvisorAgent。个人银行 Agent 按账户查询、消费分析或组合请求加载 Skill；基础查询与分析共用一个执行器，交易仍由工作流处理。产品运行时使用 LangGraph；业务写操作由确定性 Workflow 或受控 Domain API 执行。后台 Worker 负责持久任务执行、预约、操作恢复、事件发布和订阅消息。
-
-- 金额、比例、分类和比较使用 Python `Decimal` 计算；前端使用后端结构化结果与展示字段。
-- 查询自动执行；取消订阅需要确认；**所有转账、理财申购/赎回及恢复订阅续费授权均需要确认和强验证**，不以金额大小豁免。
-- **任务完成、预约创建或 AA 发布不代表付款成功。** 付款结果以原 Operation 和 Provider 的权威状态为准。
-- `UNKNOWN` 表示结果仍在确认，继续查询原操作；幂等重试复用原操作，避免另建扣款。
-- 身份由服务端 Principal 决定，数据与资源按用户隔离；模型不能授予权限或绕过安全写锁。
-
-详细设计见 [系统架构](docs/architecture/system.md)、[金融计算与计划约束](docs/architecture/algorithms.md) 和 [安全与事实边界](docs/architecture/security.md)。
+工作台左侧入口依次为金融总览、转账与收款、订阅管理、理财中心、历史消费报告。业务结果在对话中查看；通知从左侧铃铛进入。
 
 ## 快速启动
 
-准备 Docker Compose，在仓库根目录执行：
+需要 Docker Compose。在仓库根目录执行：
 
 ```bash
 cp .env.example .env
 ```
 
-在 `.env` 中填写可用的 OpenAI-compatible 模型配置，并设置本地 Mock 验证码：
-
-```env
-LLM_PROVIDER=openai_compatible
-LLM_BASE_URL=https://your-provider.example/v1
-LLM_API_KEY=your-key
-LLM_MODEL=your-model
-MOCK_REAUTH_CODE=your-local-code
-```
-
-`LLM_BASE_URL` 填 API 根路径，适配器会追加 `/chat/completions`。示例配置明确启用 development 身份。预约默认关闭，需要时设置 `MOCK_SCHEDULED_TRANSFERS_ENABLED=true`。Docker development 示例启用 `MOCK_WEALTH_ENABLED=true`（Settings默认关闭，production拒绝），首次启用幂等导入产品资料，详情见理财指南。Docker 示例启用模拟订阅自动扣费，可用 `MOCK_SUBSCRIPTION_BILLING_ENABLED=false` 关闭。
+编辑 `.env`，填写可用的 OpenAI-compatible `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`，并设置自己的 `MOCK_REAUTH_CODE`。Base URL 是 API 根路径，适配器追加 `/chat/completions`。
 
 ```bash
 docker compose up --build -d
 ```
 
-API 容器启动时自动迁移数据库。已有环境升级保留业务数据，详见 [环境配置与升级](docs/development/setup.md)。
+API 容器启动自动迁移数据库。示例明确启用 development 身份、模拟订阅扣费和模拟理财；预约默认关闭。配置差异、本地开发、OIDC 与升级步骤见 [环境配置](docs/development/setup.md)。
 
-| 入口 | 地址 |
+| 页面 | 地址 |
 | --- | --- |
 | 对话工作台 | [localhost:3000](http://localhost:3000/) |
-| 消费总览 | [Dashboard](http://localhost:3000/dashboard) |
-| 消费报告 | [Reports](http://localhost:3000/reports) |
-| 模拟理财 | [Wealth](http://localhost:3000/wealth) |
-| 订阅管理 | [Subscriptions](http://localhost:3000/subscriptions) |
-| 收款人管理 | [Payees](http://localhost:3000/payees) |
-| 预约与周期任务 | [Scheduled transfers](http://localhost:3000/scheduled-transfers) |
-| AA 收款 | [AA](http://localhost:3000/aa) |
+| 金融总览 | [dashboard](http://localhost:3000/dashboard) |
+| 转账与收款 | [transfers](http://localhost:3000/transfers) |
+| 订阅管理 | [subscriptions](http://localhost:3000/subscriptions) |
+| 理财中心 | [wealth](http://localhost:3000/wealth) |
+| 历史消费报告 | [reports](http://localhost:3000/reports) |
 | API 文档 | [OpenAPI](http://localhost:8000/docs) |
 
-## 项目结构
+## 对话示例
 
 ```text
-apps/api/             FastAPI、Agent、Workflow、金融计算、持久化与测试
-apps/web/             Next.js / React 中文工作台
-packages/api-client/  OpenAPI 生成的 TypeScript 类型与客户端
+我有哪些账户？工资卡余额多少？
+我最近有哪些转账？按收款人统计总额。
+分析工资卡最近30天的消费。
+生成一份2026年8月份消费报告。
+最近有没有异常交易？
+我有哪些订阅？取消星幕视频。
+从工资卡给李小雨转1元，备注餐费。
+明天早上9点从工资卡给物业转200元。
+每月1号上午9点给物业转100元，共3次。
+聚餐100元，和张三、李四AA，我也参与。
+查工资卡余额，如果余额不少于3000元，给张三转500元。
+有哪些理财产品？比较演示稳健优选和演示进取成长。
+```
+
+预约需开启对应开关。收款人、金额、时间或产品有歧义时先补全；不会由模型代替用户确认。具体交互见 [使用指南](docs/README.md)。
+
+## Agent 与执行边界
+
+开发／测试环境登记三个只读 Agent：PersonalBankingAgent、SubscriptionAnalysisAgent、WealthAdvisorAgent。PersonalBankingAgent 按账户、消费或组合请求选择 Skill 和工具配置。生产装配不登记 Mock 理财 Agent 及其工具。
+
+八个标准 Agent Skills 包保存专业指令和按需加载的参考资料；其中三个绑定 Python 业务实现。LangGraph 提供产品工具循环和 checkpoint，Manual 保留为参考运行时。27 个开发／测试工具分为 19 个纯读取、5 个提交和 3 个可推进结算的对账工具。
+
+模型理解请求、选择获准查询并解释事实；后端负责 Decimal 计算、用户归属、风险、授权、幂等及金融状态机。资金写操作由确定性 Workflow 或受控业务 API 执行。
+
+- 查询自动执行；取消订阅需要确认。所有转账、理财申购／赎回和恢复续费授权均须确认与 Mock 强验证。
+- Task 完成、预约创建、AA 发布或理财申请受理均不等于资金成功。UNKNOWN 继续核对原 Operation，不另建扣款。
+- 页面账单与对话共用已入账投影。提醒、资金占用、待处理和失败记录不作为实际扣款。
+- 对话、报告、分析与异常通知保留当时快照；新查询读取当前事实，删除展示记录不撤销金融交易。
+
+六层职责与三个 Agent 的独立说明见 [架构导航](docs/README.md#系统架构与六层职责)。实现与限制见 [系统架构](docs/architecture/system.md)、[安全边界](docs/architecture/security.md) 和 [金融计算与规则](docs/architecture/algorithms.md)。
+
+## 项目与开发入口
+
+```text
+apps/api/             FastAPI、Agent、Skill、Workflow、计算、持久化与测试
+apps/web/             Next.js 15 / React 19 / TypeScript 工作台
+packages/api-client/  OpenAPI 生成的 TypeScript 类型
 infra/postgres/       PostgreSQL 环境说明
-scripts/              数据生成、校验、Smoke 与 Demo 工具
-docs/
-  guides/             当前使用指南
-  architecture/       设计原则、系统架构、算法与安全边界
-  development/        配置、开发、测试与演示
-  releases/           版本更新说明
-  archive/            历史实现、测试、审查与来源证据
+scripts/              数据、校验、评估与隔离演示工具
+docs/guides/          当前使用指南
+docs/architecture/    当前架构、技能、工具、算法与安全
+docs/development/     环境、测试及运行维护
 ```
 
-后端使用 Python 3.12+、FastAPI、SQLAlchemy、Alembic 和 PostgreSQL；前端使用 Next.js 15、React 19 和 TypeScript。应用业务状态与 LangGraph checkpoint 分开管理。
+后端使用 Python 3.12+、FastAPI、SQLAlchemy、Alembic 和 PostgreSQL 17。本地开发及检查命令见 [开发配置](docs/development/setup.md) 和 [验证方法](docs/development/testing.md)。完整阅读顺序见 [文档导航](docs/README.md)。
 
-## 开发与验证
+## 当前限制
 
-本地开发需要 Python 3.12+、uv、Node.js 与项目指定的 pnpm，完整步骤见 [开发配置](docs/development/setup.md)。常用检查：
+转账仅支持 CNY 银行卡收款人；预约不冻结余额，周期最多 12 次且跨度最多 366 天。计划最多 8 步、2 个条件和一个写工作流，不支持 ELSE、循环、多笔写业务或动态重规划。模拟理财不支持定投、调仓、条件自动投资、封闭式产品或受理后撤单。
 
-```bash
-# 仓库根目录
-uv run --project apps/api ruff check apps/api scripts
-uv run --project apps/api pytest apps/api/tests -m 'not postgres'
-pnpm web:lint
-pnpm web:typecheck
-pnpm --filter @banking/web test
-pnpm web:build
-```
-
-PostgreSQL 集成测试与真实模型 Smoke 使用独立测试数据库。数据再生成、演示准备及验证方法见 [测试与演示](docs/development/testing.md)。历史测试记录保留原版本与日期，不作为当前版本重新执行的结果。
-
-## 当前边界
-
-- 转账仅支持人民币银行卡收款人；不支持手机号转账、换汇或真实银行扣款。Mock 强验证不等于真实 MFA。
-- 预约和周期转账不冻结余额；到期可能因余额、安全锁或执行窗口失败。按月周期有限次，默认最多 12 次、跨度最多 366 天。
-- 订阅识别基于固定月度／年度规则与模拟商户别名。仅可管理合同支持站内取消，其他检测项需到商户管理。提醒为站内消息，无短信或外部推送。
-- 异常提示是确定性核对线索，不代表已确认欺诈，也不会自行触发安全熔断。
-- 计划最多 8 步、2 个条件和一个写 Workflow；不支持任意代码、ELSE、循环、动态重规划或多个写业务。复杂计划暂不包含报告生成能力。
-- SSE EventBus 为进程内广播，多 API 进程之间尚无实时消息代理与事件回放；业务资源 API 是事实来源。
-- 模拟理财不连接真实渠道；条件自动投资、定投、调仓、多笔交易、基金和封闭式暂不支持。尚未实现卡片写操作、通用代码沙箱或完整生日联动。模型解释也没有逐句事实蕴含验证。
-
-更多阅读入口见 [文档导航](docs/README.md)。
-
-### v0.11.2 理财顾问
-
-理财中心与对话共用基于需求、产品事实和可追溯知识的分析：说明推荐理由、候选取舍、费用与完整到账链路；支持连续追问与条件更新。未知预算/期限明确待确认，未披露资产配置不编造。旧结果保留，可主动按当前条件重新分析。[使用指南](docs/guides/wealth.md) · [知识维护](apps/api/src/banking_api/knowledge/README.md) · [更新说明](docs/releases/release-notes-v0.11.2.md)。
-
-理财选购补充：预算识别支持元/万/亿及人民币符号；推荐正文由已注册的
-`skill:wealth-recommendation` 基于已校验事实组织，不展示内部分析栏目。
-已受理订单的对话可以软删除，订单、占用、恢复及审计仍保留在理财中心。
-旧预算错误快照不自动重写，可主动按当前条件重新分析。
-
-“现在有什么理财产品”展示客观产品目录；新对话不沿用其他对话的投资需求。
-本人问卷目标只可作为明确标注的推荐参考，不被说成本次已经表达的偏好。
-本地服务更新后，长期打开的页面需刷新加载新的前端；历史分析结论不自动改写。
+通知仅站内提供，消费异常线索不等于欺诈认定。Worker 由 API 托管，SSE 为进程内广播，尚无跨进程实时代理或事件回放。没有真实银行、真实 MFA、通用代码沙箱或自主多 Agent 委派；有限正文校验也不能证明任意自然语言解释全部正确。

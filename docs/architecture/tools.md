@@ -1,10 +1,10 @@
-# Tool 使用与审计（应用版本 0.11.3）
+# Tools：契约与权限
 
-审计日期：2026-10-15。范围是应用登记的 function tools、模型协议、运行时、工作流、后台恢复以及银行数据投影。这里的 Tool 是应用能力，不是 MCP 服务；Python 文件名不需要与 MCP 工具约定混用。
+本文说明应用登记的 function tools、模型协议、运行时、工作流、后台恢复以及银行数据投影。这里的 Tool 是应用能力，不是 MCP 服务；Python 文件名不需要与 MCP 工具约定混用。
 
 ## 实际使用位置
 
-`main.create_app()` 在 development/test 环境登记 27 个工具，production 环境登记其中 16 个（11 个模拟理财工具不登记）。三个 Agent 通过 `ContextBuilder → OpenAICompatibleProvider → ManualAgentRuntime/LangGraphAgentRuntime → ToolExecutor → PolicyService` 调用允许的只读能力。金融分析和理财对话由 TaskRunner 强制使用 LangGraph；Manual 是账户等基础交互的参考运行时。运行时验证标准 Skill 绑定，Skill 指令不能扩大工具权限。
+`main.create_app()` 在 development/test 环境登记 27 个工具和三个 Agent；production 登记其中 16 个工具和两个 Agent，不登记 Mock 理财能力。Agent 通过 `ContextBuilder → OpenAICompatibleProvider → ManualAgentRuntime/LangGraphAgentRuntime → ToolExecutor → PolicyService` 调用允许的只读能力。金融分析和理财对话由 TaskRunner 强制使用 LangGraph；Manual 是账户等基础交互的参考运行时。运行时验证标准 Skill 绑定，Skill 指令不能扩大工具权限。
 
 | 使用方 | 工具能力 |
 | --- | --- |
@@ -65,25 +65,14 @@ HTTP 页面读取由业务服务提供，金融写入经 Workflow/Operation。�
 - 输入错误为可修复结构化错误，执行异常或输出契约失败为明确错误；不把任意 Provider 字符串、空结果或成功/查询状态混用当成成功。
 - R3/R4 只允许对应工作流。八个 Operation 工具均重新核对本人、业务类型、已消费且绑定该 Operation 的 Approval、workflow 和 payload hash，并重算实际 payload 摘要。已消费的授权在恢复时不重新检查原确认 TTL，避免已受理交易被错误阻断；新提交的身份验证、租约、安全锁和幂等校验仍由业务执行层处理。
 
-## 本轮发现与修复
+## 已入账投影
 
-| 原问题 | 修复与实际影响 |
-| --- | --- |
-| 转账、申购和赎回状态工具标为只读，实际可能完成入账 | 新增 R3_FINANCIAL_RECONCILE，有副作用、仅对应工作流可调用；普通持仓/订单查询仍纯读取 |
-| 只凭本人 Operation ID 读取并提交，未统一验证业务类型和持久授权 | 八个操作工具共用 `authorized_operation`；跨业务、跨用户、未消费授权、授权绑定或 payload 被改都会在 Provider 前拒绝 |
-| 工具登记缺契约校验，登记后可修改权限 | 冻结 ToolSpec，登记时重验名称、具体模型、Schema、caller 和风险/副作用一致性 |
-| 理财金额校验抛出业务异常时可能直接中断循环 | 转为可修复参数错误，不调用 handler；模型有机会修正参数 |
-| 预构造 Pydantic 对象、无效 Provider 状态或序列化异常可绕过/逃出结果校验 | 输入输出对象重新展开校验；输出序列化纳入错误边界；提交 outcome 与查询 status 限定枚举且只能二选一 |
-| Manual 丢失推理续接，原始坏 JSON 被二次编码，调用 ID 可重复 | 两个运行时保留续接与 ID 对应；坏 JSON 原样供修复；拒绝同轮重复 ID 和不合法函数名 |
-| Manual 忽略请求选择的 Agent，caller 可冒充其他执行方 | 实际 Agent 决定上下文和白名单；caller 不匹配在模型/工具执行前拒绝 |
-| 消费类工具和总览只读静态 fixture，漏掉刚成功的订阅续费 | 五个消费工具和总览使用同一已入账投影；仅成功扣费计入消费，提醒/失败/待成交不计；理财现金变动列入账单并从日常消费/收入分析排除 |
-| 18 项数据库测试缺 postgres 标记，专项未选中 | 补齐标记，71 项 PostgreSQL 测试实际运行通过 |
-| 理财工具描述仅有英文函数后缀，模型难以区分用途 | 增补每个查询的业务目的、参数作用和事实边界 |
+消费工具和总览使用同一已入账投影，仅成功订阅扣费计入消费。理财现金变动列入账单，但不计入日常消费／收入；提醒、失败、占用和待成交不是实际扣款。
 
 共享已入账投影仍支持账户归属、北京时间筛选和余额一致性。该原型无真实银行接入，不能把这些 Mock 和有限模型检查当作真实资金渠道认证。
 
 ## 验证
 
-回归文件：`test_tool_contract_audit.py`、`test_tool_executor.py`、`test_runtime_parity.py`、`test_security_adversarial.py`、`test_transfer_operations.py`、`test_account_statement.py` 及 PostgreSQL 并发/恢复套件。`test_release_version.py` 校验 Python、FastAPI OpenAPI、三个 package.json、uv.lock 和当前文档标题，并确保网页版本来自 web/package.json。
+回归文件：`test_tool_contract_audit.py`、`test_tool_executor.py`、`test_runtime_parity.py`、`test_security_adversarial.py`、`test_transfer_operations.py`、`test_account_statement.py` 及 PostgreSQL 并发/恢复套件。`test_release_version.py` 校验 Python、FastAPI OpenAPI、三个 package.json、uv.lock 和当前文档版本与导航，并确保网页版本来自 web/package.json。
 
-本轮验证结果见 [更新说明](../releases/release-notes-v0.11.3.md)。历史审计证据保留于 v0.11.2 更新说明。无新增数据库迁移，head 仍为 0034。
+检查命令见 [测试与演示](../development/testing.md)。
