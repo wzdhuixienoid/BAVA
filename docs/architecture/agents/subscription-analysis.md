@@ -16,7 +16,7 @@
 
 ## 执行与结果
 
-TaskRunner 使用该 Agent 的 Skill 指令与唯一白名单查询工具。成功工具结果保存 subscription_analysis_snapshot，客户答复经过订阅呈现清理后写入 Message；页面／对话均从结构化字段展示费用、状态和续费安排。
+TaskRunner 使用该 Agent 的 Skill 指令与唯一白名单查询工具。查询前需要本人明确授权，授权有效5分钟，不能代替取消或恢复确认。成功工具结果保存 subscription_analysis_snapshot，客户答复由本轮有类型成功结果确定性生成后写入 Message，不直接发布模型自由文本；页面／对话从结构化字段展示费用、状态和续费安排。
 
 Plan 可将其快照作为订阅月成本条件的可信源，后续取消／恢复是独立 Workflow，仍须相应确认及强验证。页面 `/subscriptions` 由 Domain API 读取同一业务服务，页面读取不必调用 Agent。
 

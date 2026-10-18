@@ -443,6 +443,8 @@ async def test_true_waits_for_user_and_reuses_immutable_decision(app, client):
     assert len(planner.requests) == 1 and len(runtime.requests) == 2
     assert (await client.post(f"/api/v1/plans/{plan.plan_id}/actions/take-over")).status_code == 200
     for action in ("approve", "start-reauth", "verify-reauth", "commit"):
+        if action in {"start-reauth", "verify-reauth"} and workflow["status"] != "REAUTH_REQUIRED":
+            continue
         response = await client.post(
             f"/api/v1/workflows/{workflow_id}/actions/{action}",
             json={

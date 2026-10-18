@@ -1,4 +1,8 @@
 const errorLabels: Record<string, string> = {
+  USER_CONFIRMATION_REQUIRED: "查询订阅前需要你的明确确认。",
+  MFA_ENROLLMENT_REQUIRED: "请先到安全中心绑定认证器。",
+  MFA_INVALID_CODE: "动态码无效、已使用或已过期。",
+  MFA_LOCKED: "认证器验证已暂时锁定，请稍后重试。",
   CONVERSATION_HAS_ACTIVE_TASKS: "该对话还有未结束的任务，请先完成或取消相关流程。",
   SUBSCRIPTION_REVIEW_CHANGED: "订阅资料已更新，请重新核对后确认。",
   SUBSCRIPTION_VERSION_CONFLICT: "订阅状态已变化，请刷新后重新发起操作。",

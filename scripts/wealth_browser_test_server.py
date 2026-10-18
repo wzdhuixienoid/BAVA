@@ -24,6 +24,7 @@ async def run(
         MOCK_WEALTH_ENABLED="true",
         DEVELOPMENT_USER_ID="dev-user-001",
         MOCK_REAUTH_CODE="246810",
+        REAUTH_PROVIDER="mock",
         CORS_ORIGINS='["http://localhost:3011"]',
     )
     from banking_api.config.settings import get_settings

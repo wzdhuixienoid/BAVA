@@ -16,6 +16,7 @@ import { SubscriptionCancellationCard } from "@/features/workflows/subscriptions
 import { MarkdownMessage } from "./MarkdownMessage";
 import { localizeFinancialAnswer, requestsAnomalyAnalysis } from "./financialAnswer";
 import { ResponseProcess } from "./ResponseProcess";
+import { SubscriptionQueryConsent } from "@/features/security/SubscriptionQueryConsent";
 import { isConfirmedWorkflow, resultElementId, type ConversationTurn } from "./timeline";
 
 
@@ -74,7 +75,15 @@ export function AssistantTurn({ turn, activityRevision, onRefresh }: {
   const replies = needsHistoricalCorrection || accountOnlyAnswer || wealthOnlyAnswer || statementOnlyAnswer
     ? turn.replies.filter((message) => message.role === "SYSTEM_NOTICE") : turn.replies;
   const subscriptionSnapshot = outputs.find(output => output.subscription_analysis_snapshot)?.subscription_analysis_snapshot as components["schemas"]["SubscriptionAnalysisSnapshot"] | undefined;
-  const replyContent = (content: string) => isFinancialAnalysis ? localizeFinancialAnswer(content, outputs) : content;
+  const ungroundedBankRead = outputs.some(output => output.agent_id === "agent:personal-banking")
+    && accounts.length === 0 && statements.length === 0 && !isFinancialAnalysis
+    && !anomalyAnswer && !outputs.some(output => output.payee_results);
+  const replyContent = (content: string) => {
+    if (ungroundedBankRead) return /^(你好|您好|hello|hi)[！!。]*$/.test(turn.user?.content.trim() ?? "")
+      ? "你好，我可以帮你查询账户、分析账单、管理订阅和办理业务。"
+      : "尚未取得本次查询的银行数据，无法确认余额、账单或交易结果。请明确查询对象后重试。";
+    return isFinancialAnalysis ? localizeFinancialAnswer(content, outputs) : content;
+  };
 
   return (
     <article aria-label="助理回复" className="min-w-0 py-2 text-sm text-slate-800">
@@ -87,6 +96,7 @@ export function AssistantTurn({ turn, activityRevision, onRefresh }: {
           <ResponseProcess turn={turn} activityRevision={activityRevision} onRefresh={onRefresh} />
         )}
         <div className="space-y-4">
+          {turn.user && turn.tasks.filter(task => task.error?.code === "USER_CONFIRMATION_REQUIRED").map(task => <SubscriptionQueryConsent key={task.task_id} conversationId={task.conversation_id} content={turn.user!.content} onRefresh={onRefresh} />)}
           {!subscriptionSnapshot && !wealthOnlyAnswer && turn.tasks.map((task) => <AuditPanel key={task.task_id} taskId={task.task_id} revision={activityRevision} />)}
           {turn.tasks.map((task) => typeof task.error?.message === "string" ? <p key={task.task_id} role="alert" className="text-red-700">{task.error.code === "REPORT_NARRATIVE_VALIDATION_FAILED" ? "报告说明未通过安全校验，请重新生成。" : task.error.message}</p> : null)}
           {!hasAnswer && outputs.map((output, index) => <ReadPreview key={index} output={output} />)}

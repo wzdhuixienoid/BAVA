@@ -1,8 +1,10 @@
 import os
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 
 os.environ.setdefault("APP_ENVIRONMENT", "test")
 os.environ.setdefault("AUTH_MODE", "development")
+os.environ.setdefault("REAUTH_PROVIDER", "mock")
 # Tests must not inherit optional demo modes from the developer's local .env.
 # Dedicated Mock and scheduling tests enable these flags explicitly.
 os.environ.setdefault("MOCK_PARTICIPANT_LOGIN_ENABLED", "false")
@@ -22,6 +24,7 @@ from banking_api.llm.models import LLMResponse
 from banking_api.main import create_app
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.database import Base, get_session
+from banking_api.persistence.models import SubscriptionReadConsentModel
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
 from banking_api.runtime.agent_runtime import AgentRuntime
@@ -37,6 +40,17 @@ async def app(tmp_path):
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+    # Most business regressions start after the owner's explicit query consent.
+    # Dedicated consent tests remove this fixture grant and exercise the 428 / confirm path.
+    async with factory() as session:
+        session.add(
+            SubscriptionReadConsentModel(
+                user_id="dev-user-001",
+                approved_at=datetime.now(UTC),
+                expires_at=datetime.now(UTC) + timedelta(minutes=5),
+            )
+        )
+        await session.commit()
 
     application = create_app()
 

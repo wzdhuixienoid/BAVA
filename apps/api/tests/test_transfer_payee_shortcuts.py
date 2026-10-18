@@ -58,7 +58,7 @@ async def test_existing_payee_selection_from_missing_name_is_atomic_and_owner_ch
     selected = response.json()
     assert selected["status"] == "READY_FOR_REVIEW"
     assert selected["state"]["review_payload"]["payee_id"] == "payee_002"
-    assert selected["risk_level"] == "RED" and selected["approval_summary"] is None
+    assert selected["risk_level"] == "YELLOW" and selected["approval_summary"] is None
     assert (
         await client.post(
             path,
@@ -147,7 +147,9 @@ async def test_shortcut_changing_payee_invalidates_previous_confirmation_and_ver
 ):
     engine, workflow = await create_draft(
         app,
-        TransferIntent(recipient_query="李小雨", amount=Decimal("1"), source_account_hint="工资卡"),
+        TransferIntent(
+            recipient_query="李小雨", amount=Decimal("2000"), source_account_hint="工资卡"
+        ),
     )
     async with app.state.test_session_factory() as session:
         workflow = await WorkflowService(session, app.state.event_bus, engine).approve(

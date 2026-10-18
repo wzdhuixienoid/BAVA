@@ -91,6 +91,11 @@ async def test_postgres_plan_source_task_unique_and_graph_persisted(postgres_fac
 
 async def use_postgres(app, factory):
     app.state.test_session_factory = factory
+    from banking_api.security.read_consent import approve_subscription_read
+
+    async with factory() as session:
+        await approve_subscription_read(session, "dev-user-001")
+        await session.commit()
 
     async def session_override():
         async with factory() as session:

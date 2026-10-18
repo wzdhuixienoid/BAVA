@@ -6,7 +6,7 @@ from banking_api.security.reauthentication.provider import ReauthenticationChall
 
 
 class MockReauthenticationProvider:
-    """Local/test provider. The configured secret is never returned or persisted."""
+    """Local verification against the environment value; never return it to clients."""
 
     def __init__(self, secret: str) -> None:
         self._secret = secret
@@ -25,4 +25,4 @@ class MockReauthenticationProvider:
         provider_reference: str | None,
         verification_code: str,
     ) -> bool:
-        return hmac.compare_digest(verification_code, self._secret)
+        return hmac.compare_digest(verification_code.encode(), self._secret.encode())

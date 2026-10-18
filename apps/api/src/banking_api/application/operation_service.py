@@ -42,6 +42,7 @@ from banking_api.security.guard import (
     SecurityWriteLockedError,
     acquire_security_user_lock,
 )
+from banking_api.security.transfer_preferences import transfer_security_preference
 from banking_api.workflows.subscription_cancel.authorization import (
     canonicalize_subscription_cancel_payload,
     subscription_cancel_payload_hash,
@@ -317,6 +318,13 @@ class OperationService:
             successful_transfer_total_today=facts.successful_total,
             in_flight_transfer_exposure_today=facts.in_flight_exposure,
             evaluated_at=now,
+            persistent_authorization=bool(state.review_payload.scheduled_for),
+            passwordless_limit=(
+                await transfer_security_preference(
+                    self.session,
+                    user_id,
+                )
+            ).passwordless_limit,
         )
         risk = self.risk_policy.retain_stricter(state.risk_decision, fresh_risk, at_commit=True)
         state.risk_decision = risk

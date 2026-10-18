@@ -9,13 +9,14 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from banking_api.audit.domain import record_action
 from banking_api.mock_bank.service import MockBankService
 from banking_api.persistence.models import (
     MockSubscriptionActionModel,
     MockSubscriptionCancellationModel,
     MockSubscriptionStateModel,
 )
-from banking_api.security.guard import SecurityGuardService
+from banking_api.security.guard import SecurityGuardService, SecurityWriteLockedError
 from banking_api.subscriptions.contracts import effective_contracts, next_billing, utc
 
 
@@ -152,6 +153,38 @@ class MockSubscriptionProvider:
                             completed_at=now,
                         )
                         session.add(row)
+                        if check_security:
+                            await record_action(
+                                session,
+                                user_id=request.user_id,
+                                action="subscription.cancel",
+                                resource_id=request.subscription_id,
+                                idempotency_key=request.idempotency_key,
+                                payload={
+                                    "subscription_id": request.subscription_id,
+                                    "contract_version": request.expected_version,
+                                },
+                                outcome="FAILED" if error else "SUCCEEDED",
+                                evidence=[
+                                    {
+                                        "stage": "user_confirmation",
+                                        "confirmed": True,
+                                        "contract_version": request.expected_version,
+                                        "risk_level": "YELLOW",
+                                    },
+                                    {"stage": "security.write_check", "allowed": True},
+                                    {
+                                        "stage": "contract.validation",
+                                        "valid": error is None,
+                                        "error_code": error,
+                                    },
+                                    {
+                                        "stage": "provider.result",
+                                        "status": row.status,
+                                        "provider_reference": row.provider_reference,
+                                    },
+                                ],
+                            )
                         if error is None:
                             state = await session.get(
                                 MockSubscriptionStateModel,
@@ -183,6 +216,30 @@ class MockSubscriptionProvider:
                                 )
                             )
                             state.updated_at = now
+            except SecurityWriteLockedError:
+                async with self.session_factory() as audit_session:
+                    async with audit_session.begin():
+                        await record_action(
+                            audit_session,
+                            user_id=request.user_id,
+                            action="subscription.cancel",
+                            resource_id=request.subscription_id,
+                            idempotency_key=request.idempotency_key,
+                            payload={
+                                "subscription_id": request.subscription_id,
+                                "contract_version": request.expected_version,
+                            },
+                            outcome="DENIED",
+                            evidence=[
+                                {"stage": "user_confirmation", "confirmed": True},
+                                {
+                                    "stage": "security.write_check",
+                                    "allowed": False,
+                                    "error_code": "SECURITY_WRITE_LOCKED",
+                                },
+                            ],
+                        )
+                raise
             except IntegrityError:
                 existing = await self._find(request.user_id, request.idempotency_key)
                 if existing is None:

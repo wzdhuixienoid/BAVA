@@ -95,7 +95,7 @@ async def test_direct_final_parity(backend: Backend) -> None:
     runtime, _ = build_runtime(backend, [LLMResponse(content="你好")])
     result = await runtime.run(request())
     assert (result.answer, result.state.step_count, result.state.tool_call_count) == (
-        "你好",
+        "尚未取得本次查询的银行数据，无法确认余额、账单或交易结果。请明确查询对象后重试。",
         1,
         0,
     )
@@ -111,7 +111,7 @@ async def test_list_accounts_parity(backend: Backend) -> None:
         ],
     )
     result = await runtime.run(request())
-    assert result.answer == "你有 4 个账户。"
+    assert result.answer == "本人账户：工资卡、储蓄卡、信用卡、旅行卡"
     assert result.state.tool_call_count == 1
     assert "acc_salary" in (provider.requests[1].messages[-1].content or "")
 
@@ -135,7 +135,7 @@ async def test_multi_tool_parity(backend: Backend) -> None:
         ],
     )
     result = await runtime.run(request("我的工资卡余额是多少？"))
-    assert result.answer == "工资卡余额为 23,864.52 元。"
+    assert result.answer == "工资卡当前余额：¥23,864.52"
     assert (result.state.step_count, result.state.tool_call_count) == (3, 2)
 
 
@@ -160,7 +160,7 @@ async def test_invalid_argument_can_be_repaired(backend: Backend) -> None:
         ],
     )
     result = await runtime.run(request())
-    assert result.answer == "已修正。"
+    assert result.answer == "工资卡当前余额：¥23,864.52"
     assert "TOOL_ARGUMENT_VALIDATION_FAILED" in (provider.requests[1].messages[-1].content or "")
 
 

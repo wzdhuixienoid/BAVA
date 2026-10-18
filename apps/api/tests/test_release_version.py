@@ -11,7 +11,7 @@ from banking_api.main import create_app
 
 def test_release_version_matches_packages_lock_api_and_current_docs():
     root = Path(__file__).resolve().parents[3]
-    assert __version__ == "1.0.0"
+    assert __version__ == "1.0.1"
     for name in ("package.json", "apps/web/package.json", "packages/api-client/package.json"):
         assert json.loads((root / name).read_text())["version"] == __version__
     project = tomllib.loads((root / "apps/api/pyproject.toml").read_text())
@@ -46,3 +46,13 @@ def test_documentation_checker_rejects_broken_links_and_missing_anchors(tmp_path
     assert len(errors) == 2
     assert "missing link: removed.md" in errors[0]
     assert "missing anchor: current.md#removed" in errors[1]
+
+
+def test_documentation_checker_rejects_removed_ui_and_public_identity_code(tmp_path):
+    root = Path(__file__).resolve().parents[3]
+    checker = runpy.run_path(str(root / "scripts/check_docs.py"))
+    path = tmp_path / "guide.md"
+    path.write_text("# 旧说明\n\n从工作台进入“安全中心与操作记录”，使用页面显示的演示验证码。\n")
+    assert len(checker["stale_instruction_errors"](path)) == 2
+    path.write_text("# 当前说明\n\n在金融总览输入本人已知的身份验证码。旧安全页面已移除。\n")
+    assert checker["stale_instruction_errors"](path) == []

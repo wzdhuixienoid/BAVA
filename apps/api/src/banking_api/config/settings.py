@@ -49,7 +49,11 @@ class Settings(BaseSettings):
     transfer_approval_ttl_seconds: int = 600
     transfer_reauth_ttl_seconds: int = 300
     transfer_reauth_max_attempts: int = 3
-    mock_reauth_code: str = "246810"
+    mock_reauth_code: str = Field(default="246810", repr=False)
+    reauth_provider: Literal["mock", "totp"] = "mock"
+    mfa_encryption_key: str = Field(default="", repr=False)
+    mfa_issuer: str = "AI Banking Agent"
+    subscription_read_consent_seconds: int = Field(default=300, ge=30, le=600)
     security_reauth_failure_limit: int = Field(default=3, ge=1)
     security_reauth_failure_window_seconds: int = Field(default=600, ge=1)
     security_bypass_limit: int = Field(default=5, ge=1)
@@ -88,6 +92,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_and_worker_settings(self) -> "Settings":
+        if self.reauth_provider == "totp":
+            from cryptography.fernet import Fernet
+
+            if not self.mfa_encryption_key:
+                raise ValueError("MFA_ENCRYPTION_KEY is required for TOTP")
+            Fernet(self.mfa_encryption_key.encode())
         if self.mock_participant_login_enabled and (
             self.app_environment == "production"
             or self.auth_mode != "development"
@@ -107,6 +117,8 @@ class Settings(BaseSettings):
             raise ValueError("Mock subscription billing is forbidden in production")
         if self.app_environment == "production" and self.auth_mode == "development":
             raise ValueError("AUTH_MODE=development is forbidden in production")
+        if self.app_environment == "production" and self.reauth_provider == "mock":
+            raise ValueError("Mock reauthentication is forbidden in production; use TOTP")
         if self.auth_mode == "oidc":
             if not self.oidc_issuer or not self.oidc_audience:
                 raise ValueError("OIDC_ISSUER and OIDC_AUDIENCE are required in OIDC mode")

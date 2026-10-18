@@ -36,6 +36,12 @@ def build_subscription_analyze_tool(
         context: ToolExecutionContext, arguments: SubscriptionAnalysisInput
     ) -> SubscriptionListOutput:
         async with session_factory() as session:
+            from banking_api.security.read_consent import require_subscription_read_consent
+
+            # A trusted workflow may read the contract to prepare its explicit action review.
+            # This does not grant the conversational analysis Agent a read consent.
+            if getattr(context.principal, "source", None) != "workflow":
+                await require_subscription_read_consent(session, context.principal.user_id)
             snapshot = await SubscriptionAnalysisService(bank, session).analyze(
                 user_id=context.principal.user_id,
                 upcoming_days=arguments.upcoming_days,

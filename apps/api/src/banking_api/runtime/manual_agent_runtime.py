@@ -119,7 +119,17 @@ class ManualAgentRuntime:
                         "agent.run.completed",
                         {"steps": state.step_count, "tool_calls": state.tool_call_count},
                     )
-                    return AgentRunResult(answer=response.content, state=state)
+                    from banking_api.runtime.grounding import ground_read_answer
+
+                    return AgentRunResult(
+                        answer=ground_read_answer(
+                            agent,
+                            request.current_task,
+                            response.content,
+                            state.successful_tool_results,
+                        ),
+                        state=state,
+                    )
 
                 state.runtime_messages.append(
                     LLMMessage(

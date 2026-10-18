@@ -195,6 +195,18 @@ def create_app() -> FastAPI:
         version=__version__,
         lifespan=lifespan,
     )
+    from fastapi.responses import JSONResponse
+
+    from banking_api.security.reauthentication.totp_provider import MfaError
+
+    @application.exception_handler(MfaError)
+    async def mfa_error_handler(request, exc):
+        return JSONResponse(
+            status_code=423 if exc.code == "MFA_LOCKED" else 409,
+            content={"detail": {"code": exc.code, "message": str(exc)}},
+            headers={"Cache-Control": "no-store"},
+        )
+
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -337,7 +349,6 @@ def create_app() -> FastAPI:
     )
     application.state.task_runner = task_runner
     from fastapi import Request
-    from fastapi.responses import JSONResponse
 
     from banking_api.wealth.calculation import WealthError
 

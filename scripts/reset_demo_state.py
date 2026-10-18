@@ -26,6 +26,7 @@ from banking_api.persistence.models import (
     ReportModel,
     SecurityGuardStateModel,
     SubscriptionNotificationCursorModel,
+    SubscriptionReadConsentModel,
     TaskModel,
     WorkflowModel,
 )
@@ -188,6 +189,10 @@ async def reset_demo_state(
             (MockSubscriptionStateModel, MockSubscriptionStateModel.user_id == user_id),
             (PayeeModel, PayeeModel.user_id == user_id),
             (SecurityGuardStateModel, SecurityGuardStateModel.user_id == user_id),
+            (
+                SubscriptionReadConsentModel,
+                SubscriptionReadConsentModel.user_id == user_id,
+            ),
         ]
         for model, scope in scopes:
             result = await session.execute(delete(model).where(scope))

@@ -90,10 +90,49 @@ class SkillExecutor:
                     raise ValueError("Narrative response is empty")
                 draft = ReportNarrativeDraft.model_validate(self._parse_json(response.content))
                 self._validate_narrative(draft, core)
+                # Free text and even valid evidence IDs do not prove a semantic claim.
+                # Publish deterministic interpretations of the verified core instead.
+                from banking_api.financial.presentation import category_label
+                from banking_api.financial.report_models import ReportInsight
+
+                largest = max(core.category_breakdown, key=lambda c: c.amount, default=None)
+                insights = [
+                    ReportInsight(
+                        type="STRUCTURE",
+                        title="消费分类概览",
+                        narrative=(
+                            f"本期消费金额最高的类别为{category_label(largest.category)}。"
+                            if largest
+                            else "当前分类数据未提供可比较的支出类别。"
+                        ),
+                        evidence_refs=[f"category_breakdown.{largest.category}.amount"]
+                        if largest
+                        else ["overview.total_spending"],
+                    )
+                ]
+                comparison = core.period_comparison
+                insights.append(
+                    ReportInsight(
+                        type="CHANGE" if comparison else "DATA_QUALITY",
+                        title="期间变化" if comparison else "比较数据范围",
+                        narrative=(
+                            "本期消费高于比较期间。"
+                            if comparison and comparison.absolute_change > 0
+                            else "本期消费低于比较期间。"
+                            if comparison and comparison.absolute_change < 0
+                            else "本期消费与比较期间持平。"
+                            if comparison
+                            else "未取得比较期间数据，不能判断消费变化。"
+                        ),
+                        evidence_refs=["period_comparison.absolute_change"]
+                        if comparison
+                        else ["data_quality.status"],
+                    )
+                )
                 return MonthlySpendingReport(
                     **core.model_dump(),
-                    headline=draft.headline,
-                    insights=draft.insights,
+                    headline="本期消费结构与变化概览",
+                    insights=insights,
                 )
             except (json.JSONDecodeError, ValidationError, TypeError, ValueError):
                 if attempt >= self.max_retries:

@@ -589,6 +589,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/security/transfer-preference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transfer Preference */
+        get: operations["get_transfer_preference_api_v1_security_transfer_preference_get"];
+        put?: never;
+        /** Save Transfer Preference */
+        post: operations["save_transfer_preference_api_v1_security_transfer_preference_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/security/status": {
         parameters: {
             query?: never;
@@ -600,6 +618,108 @@ export interface paths {
         get: operations["get_security_status_api_v1_security_status_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/subscription-read-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Subscription Read Consent */
+        post: operations["subscription_read_consent_api_v1_security_subscription_read_consent_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Action Audit */
+        get: operations["action_audit_api_v1_security_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/audit/{trace_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Action Audit Detail */
+        get: operations["action_audit_detail_api_v1_security_audit__trace_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mfa Status */
+        get: operations["mfa_status_api_v1_security_mfa_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/mfa/enrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mfa Enrollment */
+        post: operations["mfa_enrollment_api_v1_security_mfa_enrollment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/security/mfa/enrollment/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mfa Enrollment Confirm */
+        post: operations["mfa_enrollment_confirm_api_v1_security_mfa_enrollment_confirm_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1919,6 +2039,33 @@ export interface components {
             /** Reference Time */
             reference_time: string | null;
         };
+        /** DomainActionAudit */
+        DomainActionAudit: {
+            /**
+             * Trace Id
+             * Format: uuid
+             */
+            trace_id: string;
+            /** Action */
+            action: string;
+            /** Resource Id */
+            resource_id: string;
+            /** Idempotency Key */
+            idempotency_key: string | null;
+            /** Payload Hash */
+            payload_hash: string;
+            /** Outcome */
+            outcome: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** DuplicateCandidate */
         DuplicateCandidate: {
             /** Merchant */
@@ -2031,6 +2178,41 @@ export interface components {
          * @enum {string}
          */
         MessageRole: "USER" | "ASSISTANT" | "SYSTEM_NOTICE";
+        /** MfaConfirmationInput */
+        MfaConfirmationInput: {
+            /** Code */
+            code: string;
+        };
+        /** MfaEnrollment */
+        MfaEnrollment: {
+            /** Secret */
+            secret: string;
+            /** Otpauth Uri */
+            otpauth_uri: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** MfaEnrollmentInput */
+        MfaEnrollmentInput: {
+            /**
+             * Current Code
+             * @default
+             */
+            current_code: string;
+        };
+        /** MfaStatus */
+        MfaStatus: {
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "mock" | "totp";
+            /** Enrolled */
+            enrolled: boolean;
+        };
         /** MockLogin */
         MockLogin: {
             /** Identity */
@@ -2372,11 +2554,19 @@ export interface components {
             /** Error */
             error?: string | null;
         };
+        /** ReadConfirmation */
+        ReadConfirmation: {
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+        };
         /**
          * ReauthenticationMethod
          * @enum {string}
          */
-        ReauthenticationMethod: "MOCK_CODE";
+        ReauthenticationMethod: "MOCK_CODE" | "TOTP";
         /**
          * ReauthenticationStatus
          * @enum {string}
@@ -2651,7 +2841,7 @@ export interface components {
          * RiskReasonCode
          * @enum {string}
          */
-        RiskReasonCode: "FUNDS_OUTFLOW_REQUIRES_REAUTH" | "READ_ONLY_AUTOMATIC" | "DAILY_TRANSFER_WITHIN_LIMIT" | "DAILY_TRANSFER_LIMIT_EXCEEDED" | "RISK_ESCALATED_AT_COMMIT" | "RISK_NOT_DOWNGRADED";
+        RiskReasonCode: "PASSWORDLESS_LIMIT_REACHED" | "FUNDS_OUTFLOW_REQUIRES_REAUTH" | "READ_ONLY_AUTOMATIC" | "DAILY_TRANSFER_WITHIN_LIMIT" | "DAILY_TRANSFER_LIMIT_EXCEEDED" | "RISK_ESCALATED_AT_COMMIT" | "RISK_NOT_DOWNGRADED";
         /** RollbackPlanAction */
         RollbackPlanAction: {
             /**
@@ -3435,6 +3625,20 @@ export interface components {
             /** Aa Share Id */
             aa_share_id?: string | null;
         };
+        /** TransferLimitInput */
+        TransferLimitInput: {
+            /** Amount */
+            amount: number | string;
+            /** Expected Version */
+            expected_version: number;
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            /** Verification Code */
+            verification_code: string;
+        };
         /** TransferRequiredInput */
         TransferRequiredInput: {
             type: components["schemas"]["TransferRequiredInputType"];
@@ -3527,6 +3731,13 @@ export interface components {
              * Format: date-time
              */
             evaluated_at: string;
+            /** Passwordless Limit */
+            passwordless_limit?: string;
+            /**
+             * Passwordless Limit Display
+             * @default
+             */
+            passwordless_limit_display: string;
             /**
              * Requested Amount Display
              * @default
@@ -3552,6 +3763,31 @@ export interface components {
              * @default
              */
             threshold_display: string;
+        };
+        /** TransferSecurityPreference */
+        TransferSecurityPreference: {
+            /**
+             * Passwordless Limit
+             * @default 200.00
+             */
+            passwordless_limit: string;
+            /**
+             * Maximum
+             * @default 200.00
+             */
+            maximum: string;
+            /**
+             * Daily Threshold
+             * @default 1000.00
+             */
+            daily_threshold: string;
+            /**
+             * Version
+             * @default 0
+             */
+            version: number;
+            /** Passwordless Limit Display */
+            readonly passwordless_limit_display: string;
         };
         /** TransferValidationIssue */
         TransferValidationIssue: {
@@ -5913,6 +6149,59 @@ export interface operations {
             };
         };
     };
+    get_transfer_preference_api_v1_security_transfer_preference_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferSecurityPreference"];
+                };
+            };
+        };
+    };
+    save_transfer_preference_api_v1_security_transfer_preference_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferLimitInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferSecurityPreference"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_security_status_api_v1_security_status_get: {
         parameters: {
             query?: never;
@@ -5929,6 +6218,187 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SecurityStatus"];
+                };
+            };
+        };
+    };
+    subscription_read_consent_api_v1_security_subscription_read_consent_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    action_audit_api_v1_security_audit_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainActionAudit"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    action_audit_detail_api_v1_security_audit__trace_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainActionAudit"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mfa_status_api_v1_security_mfa_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaStatus"];
+                };
+            };
+        };
+    };
+    mfa_enrollment_api_v1_security_mfa_enrollment_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaEnrollmentInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaEnrollment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mfa_enrollment_confirm_api_v1_security_mfa_enrollment_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaConfirmationInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

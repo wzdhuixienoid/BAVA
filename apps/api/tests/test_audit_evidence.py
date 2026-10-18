@@ -53,7 +53,7 @@ async def trace(app, workflow):
 async def test_transfer_audit_order_approval_provider_current_state_and_owner_isolation(
     app, client
 ):
-    provider, engine, workflow = await ready(app)
+    provider, engine, workflow = await ready(app, "2000")
     workflow = await action(app, engine, workflow, "approve")
     workflow = await authenticate_workflow(app, engine, workflow)
     async with app.state.test_session_factory() as session:
@@ -98,10 +98,10 @@ async def test_transfer_audit_order_approval_provider_current_state_and_owner_is
 
 
 async def test_risk_escalation_and_approval_mutation_keep_both_authorization_semantics(app):
-    _, engine, workflow = await ready(app, "600")
+    _, engine, workflow = await ready(app, "100")
     workflow = await action(app, engine, workflow, "approve")
     workflow = await legacy_yellow_authorization(app, engine, workflow)
-    await seed_provider_fact(app, user_id=workflow.user_id, amount="600")
+    await seed_provider_fact(app, user_id=workflow.user_id, amount="950")
     async with app.state.test_session_factory() as session:
         with pytest.raises(OperationActionError, match="TRANSFER_RISK_REAUTH_REQUIRED"):
             await OperationService(session, app.state.event_bus, engine).prepare_transfer(
@@ -109,8 +109,8 @@ async def test_risk_escalation_and_approval_mutation_keep_both_authorization_sem
             )
     audit = await trace(app, workflow)
     decisions = [e.risk_decision for e in audit.entries if e.risk_decision]
-    assert decisions[0].level.value == "RED" and decisions[-1].level.value == "RED"
-    assert decisions[-1].projected_daily_total == Decimal("1200")
+    assert decisions[0].level.value == "YELLOW" and decisions[-1].level.value == "RED"
+    assert decisions[-1].projected_daily_total == Decimal("1050")
     async with app.state.test_session_factory() as session:
         current = await WorkflowService(session, app.state.event_bus, engine).get(
             workflow.workflow_id, user_id=workflow.user_id

@@ -9,6 +9,7 @@ from banking_api.domain.enums import ReauthenticationStatus
 
 class ReauthenticationMethod(StrEnum):
     MOCK_CODE = "MOCK_CODE"
+    TOTP = "TOTP"
 
 
 class Reauthentication(BaseModel):

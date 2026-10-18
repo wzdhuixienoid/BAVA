@@ -256,4 +256,6 @@ async def test_read_task_retry_converges_without_duplicate_assistant_output(app)
         )
     assert task is not None and task.status is TaskStatus.COMPLETED
     assert task.execution_attempts == 2
-    assert [message.content for message in assistant_messages] == ["余额查询已恢复。"]
+    assert [message.content for message in assistant_messages] == [
+        "尚未取得本次查询的银行数据，无法确认余额、账单或交易结果。请明确查询对象后重试。"
+    ]

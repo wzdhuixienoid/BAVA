@@ -13,7 +13,7 @@
 
 六层是职责划分，Agent 详情分别见 [个人银行](agents/personal-banking.md)、[订阅分析](agents/subscription-analysis.md)、[理财顾问](agents/wealth-advisor.md)。Skill、Tool、Workflow 和 Worker 不另计为业务 Agent。
 
-开发／测试环境登记三个 Agent；生产不登记 Mock 理财 Agent 和十一个理财工具。普通账户加消费请求由同一个 PersonalBankingAgent 完成；跨能力／工作流和条件请求进入 ConstrainedPlanner 与 PlanValidator。没有开放式 Agent 委派或任意代码执行。
+开发／测试环境登记三个 Agent；生产不登记 Mock 理财 Agent 和十一个理财工具。普通账户加消费请求由同一个 PersonalBankingAgent 完成；跨能力／工作流和条件请求进入 ConstrainedPlanner 与 PlanValidator。没有开放式 Agent 委派或银行进程内的任意代码执行。独立分析沙箱见[沙箱说明](sandbox.md)。
 
 ## 消息到结果
 
@@ -36,7 +36,7 @@ flowchart TD
 
 消息接口持久化请求后返回，TaskExecutionWorker 领取执行。LangGraph 是产品运行时，提供有预算的工具循环及 PostgreSQL checkpoint；金融分析和理财路径固定使用它。Manual 用于基础查询参考及一致性验证。二者共用技能绑定、工具执行和策略边界。
 
-消费工具计算 FinancialAnalysisSnapshot；报告技能校验核心和说明后保存 Report Artifact，异常技能解释检测器证据。账户、账单、订阅、理财结果按类型保存至 Task.output，前端从结构化事实呈现，不从自由文本推断付款成功。
+消费工具计算 FinancialAnalysisSnapshot；报告技能计算核心、校验模型草稿，并从可信核心确定性生成可见解释后保存 Report Artifact，异常技能解释检测器证据。普通银行和订阅答复从本轮成功工具结果生成。账户、账单、订阅、理财结果按类型保存至 Task.output，前端从结构化事实呈现，不从自由文本推断付款成功。
 
 Workflow 完成意图补全、校验、风险评估、确认及所需强验证；提交时重新核验并创建或复用 Operation。UNKNOWN 查询原操作。页面直接取消订阅通过 Domain API 校验归属、确认、合同版本、安全锁和幂等；不会扩大只读 Agent 权限。
 

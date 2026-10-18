@@ -37,10 +37,9 @@ from banking_api.persistence.repositories.workflows import WorkflowRepository
 from banking_api.runtime.event_bus import EventBus
 from banking_api.runtime.event_publisher import EventPublisher
 from banking_api.security.guard import SecurityGuardService
-from banking_api.security.reauthentication.mock_provider import (
-    MockReauthenticationProvider,
-)
+from banking_api.security.reauthentication.factory import reauthentication_provider
 from banking_api.security.reauthentication.provider import ReauthenticationProvider
+from banking_api.security.transfer_preferences import transfer_security_preference
 from banking_api.workflows.subscription_cancel.authorization import (
     canonicalize_subscription_cancel_payload,
     subscription_cancel_payload_hash,
@@ -121,9 +120,7 @@ class WorkflowService:
         self.security_guard = SecurityGuardService(session, clock=clock)
         self.engine = engine
         self.subscription_engine = subscription_engine
-        self.reauth_provider = reauth_provider or MockReauthenticationProvider(
-            settings.mock_reauth_code
-        )
+        self.reauth_provider = reauth_provider or reauthentication_provider(session, clock=clock)
         self.clock = clock
         self.approval_ttl = timedelta(
             seconds=(
@@ -1349,6 +1346,13 @@ class WorkflowService:
             successful_transfer_total_today=facts.successful_total,
             in_flight_transfer_exposure_today=facts.in_flight_exposure,
             evaluated_at=evaluated_at,
+            persistent_authorization=bool(state.review_payload.scheduled_for),
+            passwordless_limit=(
+                await transfer_security_preference(
+                    self.session,
+                    user_id,
+                )
+            ).passwordless_limit,
         )
         decision = self.risk_policy.retain_stricter(state.risk_decision, fresh)
         state.risk_decision = decision

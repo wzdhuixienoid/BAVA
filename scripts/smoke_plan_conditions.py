@@ -53,7 +53,7 @@ async def main() -> None:
     )
     async with AsyncClient(base_url=BASE_URL, timeout=30, trust_env=False) as client:
         conversation, task_id = await create_request(
-            client, "查一下工资卡余额，如果余额不少于999999元，给张三转500元。"
+            client, "查一下工资卡余额，如果余额不少于999999元，给张三转100元。"
         )
         await wait_task(client, task_id, {"COMPLETED"})
         plan = await load_plan(client, conversation)
@@ -85,7 +85,7 @@ async def main() -> None:
         )
 
         conversation, task_id = await create_request(
-            client, "查一下工资卡余额，如果余额不少于3000元，给张三转500元。"
+            client, "查一下工资卡余额，如果余额不少于3000元，给张三转100元。"
         )
         await wait_task(client, task_id, {"WAITING_USER"})
         plan = await load_plan(client, conversation)

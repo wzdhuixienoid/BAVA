@@ -6,7 +6,7 @@ Workflow 推进明确状态转换，处理补全、业务校验、核对、确�
 
 | 业务 | 类型／执行者 | 确认与执行 |
 | --- | --- | --- |
-| 即时转账 | TRANSFER／TransferWorkflowEngine | 所有金额确认及强验证后创建／复用 Operation |
+| 即时转账 | TRANSFER／TransferWorkflowEngine | 单笔严格小于个人免密额度（最高200元）且日累计风险暴露≤1000元时确认；否则另须强验证，提交重新评估 |
 | 预约／周期转账 | TRANSFER 草稿 + ScheduleService | 确认及强验证生成固定期次、内容和执行窗口的持久授权，到期逐项执行 |
 | 订阅取消 | SUBSCRIPTION_CANCEL／SubscriptionCancellationWorkflow | YELLOW 确认后受控取消 |
 | 订阅恢复 | SUBSCRIPTION_RESUME／同一订阅引擎 | RED 确认及强验证，恢复未来授权，不立即扣费 |

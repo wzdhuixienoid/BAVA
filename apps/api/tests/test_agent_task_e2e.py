@@ -70,6 +70,6 @@ async def test_fake_agent_runtime_e2e_persists_multistep_result(app) -> None:
     assert results[1]["balance_display"] == "¥23,864.52"
     assert task.version == 8
     assert task.executor_id == "agent:personal-banking"
-    assert loaded.messages[-1].content == "工资卡余额为 23,864.52 元。"
+    assert loaded.messages[-1].content == "工资卡当前余额：¥23,864.52"
     assert [event.event_type for event in event_rows].count("tool.call.completed") == 2
     assert all("23864.52" not in str(event.data_json) for event in event_rows)

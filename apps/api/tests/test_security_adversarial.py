@@ -111,7 +111,7 @@ async def test_injected_tool_and_principal_have_no_authority(prompt, call):
         assert error.value.code == "TOOL_NOT_FOUND"
     else:
         result, _ = await run_runtime(runtime, prompt)
-        assert result.answer == "权限不足"
+        assert "尚未取得本次查询" in result.answer
         assert "TOOL_ARGUMENT_VALIDATION_FAILED" in provider.requests[-1].messages[-1].content
     assert {t.name for t in provider.requests[0].tools} == {"list_accounts", "get_balance"}
 

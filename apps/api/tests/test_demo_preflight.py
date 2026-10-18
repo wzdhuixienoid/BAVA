@@ -85,6 +85,11 @@ async def test_readiness_is_read_only_and_production_rejects(app, client, monkey
     ):
         assert data[key] is True, (key, data)
     assert data["unresolved_operations"] == 0
+    assert data["reauthentication_mode"] == "Mock"
+    monkeypatch.setattr(get_settings(), "reauth_provider", "totp")
+    assert (await client.get("/api/v1/demo/readiness")).json()["reauthentication_mode"] == "TOTP"
+    totp_data = {**good(), "reauthentication_mode": "TOTP"}
+    assert all(preflight.evaluate(totp_data, {"info": {"version": __version__}}, "0018").values())
     assert (await client.post("/api/v1/demo/readiness")).status_code == 405
     monkeypatch.setattr(get_settings(), "app_environment", "production")
     assert (await client.get("/api/v1/demo/readiness")).status_code == 404

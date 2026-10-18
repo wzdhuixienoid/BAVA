@@ -151,7 +151,7 @@ async def test_report_create_read_list_provenance_and_idempotency(app) -> None:
     assert detail.source_snapshot_hash == source_snapshot_hash(golden_snapshot())
     assert re.fullmatch(r"[0-9a-f]{64}", detail.source_snapshot_hash)
     assert len(reports) == 1
-    assert reports[0].headline == "本月支出上升且结构集中"
+    assert reports[0].headline == "本期消费结构与变化概览"
     assert reports[0].total_spending_display == "¥16,547.30"
 
 

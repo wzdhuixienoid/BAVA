@@ -45,6 +45,54 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+class DomainActionAuditModel(Base):
+    """Durable page/security audit evidence independent of deletable conversations."""
+
+    __tablename__ = "domain_action_audits"
+    trace_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[str] = mapped_column(String(255), index=True)
+    action: Mapped[str] = mapped_column(String(100))
+    resource_id: Mapped[str] = mapped_column(String(255))
+    idempotency_key: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    outcome: Mapped[str] = mapped_column(String(50))
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class TotpCredentialModel(Base):
+    __tablename__ = "totp_credentials"
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    secret_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pending_ciphertext: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pending_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_counter: Mapped[int] = mapped_column(Integer, default=-1)
+    failure_count: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SubscriptionReadConsentModel(Base):
+    __tablename__ = "subscription_read_consents"
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TransferSecurityPreferenceModel(Base):
+    __tablename__ = "transfer_security_preferences"
+    __table_args__ = (
+        CheckConstraint(
+            "passwordless_limit >= 0 AND passwordless_limit <= 200",
+            name="ck_transfer_passwordless_limit_range",
+        ),
+    )
+    user_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    passwordless_limit: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class ConversationModel(Base):
     __tablename__ = "conversations"
 
@@ -686,6 +734,7 @@ class MockSubscriptionChargeModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     status: Mapped[str] = mapped_column(String(20))
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
 
 # Wealth mappings share the existing metadata (including SQLite test create_all).
 from banking_api.wealth import models as wealth_models  # noqa: E402, F401

@@ -16,7 +16,12 @@ def safe_text(value: object) -> str:
     text = str(value)
     settings = get_settings()
     if _SENSITIVE.search(text) or any(
-        secret and secret in text for secret in (settings.llm_api_key, settings.mock_reauth_code)
+        secret and secret in text
+        for secret in (
+            settings.llm_api_key,
+            settings.mock_reauth_code,
+            settings.mfa_encryption_key,
+        )
     ):
         return "[敏感内容已省略]"
     text = re.sub(

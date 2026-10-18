@@ -38,13 +38,29 @@ class TransferRiskPolicy:
         successful_transfer_total_today: Decimal,
         in_flight_transfer_exposure_today: Decimal,
         evaluated_at: datetime,
+        persistent_authorization: bool = False,
+        passwordless_limit: Decimal = Decimal("200.00"),
     ) -> TransferRiskDecision:
         self.require_supported_currency(currency)
         projected = (
             successful_transfer_total_today + in_flight_transfer_exposure_today + requested_amount
         )
-        level = BusinessRiskLevel.RED
-        reason_codes = [RiskReasonCode.FUNDS_OUTFLOW_REQUIRES_REAUTH]
+        level = (
+            BusinessRiskLevel.RED
+            if persistent_authorization
+            or projected > self.threshold
+            or requested_amount >= passwordless_limit
+            else BusinessRiskLevel.YELLOW
+        )
+        reason_codes = []
+        if persistent_authorization:
+            reason_codes.append(RiskReasonCode.FUNDS_OUTFLOW_REQUIRES_REAUTH)
+        if projected > self.threshold:
+            reason_codes.append(RiskReasonCode.DAILY_TRANSFER_LIMIT_EXCEEDED)
+        if requested_amount >= passwordless_limit:
+            reason_codes.append(RiskReasonCode.PASSWORDLESS_LIMIT_REACHED)
+        if not reason_codes:
+            reason_codes.append(RiskReasonCode.DAILY_TRANSFER_WITHIN_LIMIT)
         return TransferRiskDecision(
             level=level,
             required_approval=True,
@@ -58,6 +74,7 @@ class TransferRiskPolicy:
             projected_daily_total=projected,
             threshold=self.threshold,
             evaluated_at=evaluated_at,
+            passwordless_limit=passwordless_limit,
         )
 
     @staticmethod

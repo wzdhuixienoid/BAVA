@@ -14,10 +14,16 @@ type OperationResource = components["schemas"]["OperationResource"];
 type SubscriptionAnalysisSnapshot = components["schemas"]["SubscriptionAnalysisSnapshot"];
 type SubscriptionItem = components["schemas"]["SubscriptionItem"];
 type SecurityStatus = components["schemas"]["SecurityStatus"];
+type TransferPreference = components["schemas"]["TransferSecurityPreference"];
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 let accessTokenProvider: () => Promise<string | null> = async () => null;
+
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
+}
 
 export function setAccessTokenProvider(provider: () => Promise<string | null>) {
   accessTokenProvider = provider;
@@ -40,13 +46,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } | null;
     const rawDetail = payload?.detail;
     const detail = typeof rawDetail === "string" ? rawDetail : rawDetail?.message ?? rawDetail?.code ?? "请求失败";
-    throw new Error(`请求失败（${response.status}）：${errorDisplay(detail)}`);
+    throw new ApiError(response.status, `请求失败（${response.status}）：${errorDisplay(detail)}`);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
 export const api = {
+  transferPreference: () => request<TransferPreference>("/api/v1/security/transfer-preference"),
+  saveTransferPreference: (amount: string, expected_version: number, verification_code: string) => request<TransferPreference>("/api/v1/security/transfer-preference", {method: "POST", body: JSON.stringify({amount, expected_version, verification_code, confirmed: true})}),
+  confirmSubscriptionRead: () => request<{expires_at: string}>("/api/v1/security/subscription-read-consent", {method: "POST", body: JSON.stringify({confirmed: true})}),
   wealthAnalyze: (body: components["schemas"]["WealthAnalysisInput"]) => request<components["schemas"]["WealthAnalysis"]>("/api/v1/wealth/analysis", {method:"POST", body:JSON.stringify(body)}),
   wealthStatus: () => request<components["schemas"]["WealthFeatureStatus"]>("/api/v1/wealth/status"),
   wealthWorkflows: () => request<Workflow[]>("/api/v1/wealth/workflows"),

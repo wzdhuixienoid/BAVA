@@ -6,6 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from banking_api.api.dependencies import PrincipalDependency, SessionDependency
 from banking_api.security.guard import SecurityWriteLockedError
+from banking_api.security.read_consent import (
+    SubscriptionReadConsentRequired,
+    require_subscription_read_consent,
+)
 from banking_api.subscriptions.models import SubscriptionAnalysisSnapshot, SubscriptionItem
 from banking_api.subscriptions.provider import (
     SubscriptionCancellationRequest,
@@ -81,6 +85,10 @@ async def list_subscriptions(
     principal: PrincipalDependency,
     upcoming_days: int = 7,
 ) -> SubscriptionAnalysisSnapshot:
+    try:
+        await require_subscription_read_consent(session, principal.user_id)
+    except SubscriptionReadConsentRequired as exc:
+        raise HTTPException(status_code=428, detail=str(exc)) from exc
     return await SubscriptionAnalysisService(request.app.state.mock_bank, session).analyze(
         user_id=principal.user_id,
         upcoming_days=max(1, min(upcoming_days, 90)),
@@ -94,9 +102,13 @@ async def get_subscription(
     session: SessionDependency,
     principal: PrincipalDependency,
 ) -> SubscriptionItem:
+    service = SubscriptionAnalysisService(request.app.state.mock_bank, session)
     try:
-        return await SubscriptionAnalysisService(request.app.state.mock_bank, session).get(
-            subscription_id, user_id=principal.user_id
-        )
+        item = await service.get(subscription_id, user_id=principal.user_id)
     except SubscriptionNotFoundError as exc:
         raise HTTPException(status_code=404, detail="未找到该订阅") from exc
+    try:
+        await require_subscription_read_consent(session, principal.user_id)
+    except SubscriptionReadConsentRequired as exc:
+        raise HTTPException(status_code=428, detail=str(exc)) from exc
+    return item

@@ -137,8 +137,8 @@ class SecurityGuardService:
         self,
         *,
         user_id: str,
-        workflow_id: UUID,
-        conversation_id: UUID,
+        workflow_id: UUID | None,
+        conversation_id: UUID | None,
         task_id: UUID | None,
         succeeded: bool,
     ) -> SecurityStatus:
@@ -303,12 +303,31 @@ class SecurityGuardService:
         event_type: str,
         state: SecurityGuardStateModel,
         signal_type: SecuritySignalType,
-        workflow_id: UUID,
-        conversation_id: UUID,
+        workflow_id: UUID | None,
+        conversation_id: UUID | None,
         task_id: UUID | None,
         attempt_count: int,
         window: timedelta,
     ) -> None:
+        if conversation_id is None:
+            from banking_api.audit.domain import record_action
+
+            await record_action(
+                self.session,
+                user_id=state.user_id,
+                action=event_type,
+                resource_id=state.user_id,
+                payload={},
+                outcome="DENIED",
+                evidence=[
+                    {
+                        "stage": "security.verification",
+                        "attempt_count": attempt_count,
+                        "signal_type": signal_type.value,
+                    }
+                ],
+            )
+            return
         await self.publisher.persist(
             event_type=event_type,
             conversation_id=conversation_id,
@@ -326,13 +345,32 @@ class SecurityGuardService:
         self,
         *,
         state: SecurityGuardStateModel,
-        workflow_id: UUID,
-        conversation_id: UUID,
+        workflow_id: UUID | None,
+        conversation_id: UUID | None,
         task_id: UUID | None,
         signal_type: SecuritySignalType,
         attempt_count: int,
         window: timedelta,
     ) -> None:
+        if conversation_id is None:
+            from banking_api.audit.domain import record_action
+
+            await record_action(
+                self.session,
+                user_id=state.user_id,
+                action="security.write_lock_activated",
+                resource_id=state.user_id,
+                payload={},
+                outcome="DENIED",
+                evidence=[
+                    {
+                        "stage": "security.write_check",
+                        "allowed": False,
+                        "locked_until": state.locked_until.isoformat(),
+                    }
+                ],
+            )
+            return
         await self.publisher.persist(
             event_type="security.write_lock_activated",
             conversation_id=conversation_id,

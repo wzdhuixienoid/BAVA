@@ -24,7 +24,7 @@ from banking_api.persistence.repositories.reauthentications import Reauthenticat
 from banking_api.persistence.repositories.workflows import WorkflowRepository
 from banking_api.runtime.event_publisher import EventPublisher
 from banking_api.security.guard import SecurityGuardService, acquire_security_user_lock
-from banking_api.security.reauthentication.mock_provider import MockReauthenticationProvider
+from banking_api.security.reauthentication.factory import reauthentication_provider
 from banking_api.wealth.calculation import WealthError, purchase, quantity, redeem, schedule, utc
 from banking_api.wealth.catalog import digest
 from banking_api.wealth.schemas import WealthRiskDecision
@@ -41,9 +41,7 @@ class WealthWorkflow:
         self.service = WealthService(session, balances, clock)
         self.publisher = EventPublisher(session)
         self.settings = get_settings()
-        self.reauth_provider = reauth_provider or MockReauthenticationProvider(
-            self.settings.mock_reauth_code
-        )
+        self.reauth_provider = reauth_provider or reauthentication_provider(session, clock=clock)
 
     async def load(self, workflow_id, user_id, expected_version=None):
         from banking_api.application.workflow_service import (

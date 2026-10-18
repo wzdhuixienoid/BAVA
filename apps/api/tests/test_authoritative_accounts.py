@@ -99,7 +99,7 @@ async def test_false_llm_prose_cannot_pollute_persisted_or_api_balance(app, clie
         persisted = await session.get(TaskModel, task_id)
         assert persisted.output_json["account_results"] == results
     conversation = (await client.get(f"/api/v1/conversations/{task['conversation_id']}")).json()
-    assert conversation["messages"][-1]["content"] == "你的余额是 1 元。"
+    assert conversation["messages"][-1]["content"] == "工资卡当前余额：¥23,864.52"
     tasks = (
         await client.get("/api/v1/tasks", params={"conversation_id": task["conversation_id"]})
     ).json()

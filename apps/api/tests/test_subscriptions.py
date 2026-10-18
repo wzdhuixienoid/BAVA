@@ -385,6 +385,12 @@ async def test_subscription_api_is_principal_scoped(app, client) -> None:
     )
     try:
         assert (await client.get("/api/v1/subscriptions/sub_video")).status_code == 404
+        assert (
+            await client.post(
+                "/api/v1/security/subscription-read-consent",
+                json={"confirmed": True},
+            )
+        ).status_code == 200
         assert (await client.get("/api/v1/subscriptions")).json()["subscriptions"] == []
     finally:
         app.dependency_overrides.pop(get_current_principal)

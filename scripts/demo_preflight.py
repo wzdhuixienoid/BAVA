@@ -46,7 +46,7 @@ def evaluate(readiness: dict, openapi: dict, head: str) -> dict[str, bool]:
             "alembic_head": readiness.get("database_revision") == head,
             "no_unresolved_operation": readiness.get("unresolved_operations") == 0,
             "mock_provider": readiness.get("provider_mode") == "Mock",
-            "mock_reauthentication": readiness.get("reauthentication_mode") == "Mock",
+            "transaction_verification_mode": readiness.get("reauthentication_mode") in {"Mock", "TOTP"},
             "business_timezone": readiness.get("business_timezone") == "Asia/Shanghai",
         }
     )
@@ -70,6 +70,12 @@ async def run(api_url: str, web_url: str) -> dict[str, bool]:
         schema = await client.get(f"{api_url}/openapi.json")
         schema.raise_for_status()
         checks = evaluate(api.json(), schema.json(), head)
+        if api.json().get("reauthentication_mode") == "TOTP":
+            mfa = await client.get(f"{api_url}/api/v1/security/mfa")
+            mfa.raise_for_status()
+            checks["authenticator_enrolled"] = (
+                mfa.json().get("method") == "totp" and mfa.json().get("enrolled") is True
+            )
         checks["api_database_reachable"] = True
         web = await client.get(local_url(web_url))
         checks["web_reachable"] = web.status_code == 200

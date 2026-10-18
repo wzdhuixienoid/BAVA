@@ -114,7 +114,7 @@ async def test_ordinary_spending_gets_one_brief_skill_review_without_extra_tool_
         ]
     )
     result = await runtime.run(financial_request("分析2026年9月消费"))
-    assert result.answer.startswith("本月消费情况。")
+    assert "消费支出：" in result.answer
     assert result.answer.count("### 值得核对的交易") == 1
     assert result.state.tool_call_count == 1
     assert all(
@@ -131,7 +131,7 @@ async def test_explicit_opt_out_skips_automatic_check():
         ]
     )
     result = await runtime.run(financial_request("分析2026年9月消费，不要异常分析"))
-    assert result.answer == "本月消费情况。"
+    assert "消费支出：" in result.answer and "值得核对的交易" not in result.answer
     assert result.state.successful_tool_results[0].output["spending_review"] is None
 
 

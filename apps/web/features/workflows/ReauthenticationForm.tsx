@@ -13,7 +13,7 @@ export function ReauthenticationForm({ workflow, busy, act }: {
     await act(() => api.verifyTransferReauthentication(workflow.workflow_id, workflow.reauth_summary!.reauth_id, value, workflow.version));
   }
   return <div className="mt-3 rounded-lg border border-blue-200 bg-white p-3">
-    <p className="text-sm font-semibold text-blue-900">需要完成强身份验证（模拟）后才能继续</p>
+    <p className="text-sm font-semibold text-blue-900">需要完成身份验证后才能继续</p>
     {workflow.reauth_summary?.status === "PENDING" ? <div className="mt-3">
       <label htmlFor={`reauth-${workflow.workflow_id}`} className="text-xs font-semibold">身份验证码</label>
       <div className="mt-2 flex gap-2"><input id={`reauth-${workflow.workflow_id}`} type="password" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="输入验证码" className="min-w-0 flex-1 rounded border px-2 py-1.5" /><button disabled={busy || !code} onClick={() => void verify()} className="rounded bg-blue-700 px-3 py-2 text-xs text-white">验证</button></div>

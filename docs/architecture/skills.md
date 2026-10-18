@@ -11,11 +11,11 @@
 | subscription-analysis | SubscriptionAnalysisAgent | 订阅成本和续费只读指令 |
 | wealth-advisory | WealthAdvisorAgent、HTTP 分析 | 推荐、比较、定位、知识等模式按需激活 |
 | wealth-trade-assistance | 理财交易准备 | 补全和解释，提交交由确定性 Workflow |
-| monthly-spending-report | MonthlySpendingReportSkill／SkillExecutor | Python 计算报告核心，模型生成受校验说明 |
+| monthly-spending-report | MonthlySpendingReportSkill／SkillExecutor | Python 计算报告核心，模型草稿先校验，发布由核心事实确定性生成的解释 |
 | transaction-anomaly-analysis | TransactionAnomalyAnalysisSkill | Python 组织已核验异常快照或简短核对提示 |
 | wealth-recommendation | WealthRecommendationSkill | Python 将 WealthAnalysis 转为呈现 DTO，供确定性展示和降级 |
 
-Skill 资源版本与应用版本独立；准确值来自各包 YAML metadata，不应作为网页版本。三个 Python 绑定保留稳定业务 ID、类型和整数契约版本。SkillExecutor 专门负责报告文字执行，其余确定性实现由业务服务调用。
+Skill 资源版本与应用版本独立；准确值来自各包 YAML metadata，不应作为网页版本。三个 Python 绑定保留稳定业务 ID、类型和整数契约版本。SkillExecutor 专门负责报告草稿校验与确定性解释，其余确定性实现由业务服务调用。
 
 ## 发现、激活与权限
 
@@ -31,7 +31,7 @@ AgentRegistry 验证技能绑定、指令与 hash；SkillRegistry 验证业务 I
 
 三个包的 `scripts/run.py` 通过 stdin 接受 JSON、stdout 输出 JSON；输入错误写 stderr 并以 2 退出。需要 Python 3.12+ 和已安装的 banking-api 包。
 
-- 消费报告 CLI 仅返回确定性核心，不调用模型；应用 SkillExecutor 负责文字生成与校验。
+- 消费报告 CLI 仅返回确定性核心，不调用模型；应用 SkillExecutor 校验模型草稿，并从核心事实生成客户可见解释。
 - 异常 CLI 默认完整说明，`--review` 返回简短 SpendingReview；不重新检测交易。
 - 理财 CLI 返回客户 DTO；不改测评、授权、账本或交易状态。
 

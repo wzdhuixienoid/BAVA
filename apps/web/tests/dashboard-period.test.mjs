@@ -15,11 +15,12 @@ test("current month follows Beijing calendar at year boundaries", () => {
   assert.equal(currentMonth(new Date("2025-12-31T15:59:59Z")),"2025-12");
 });
 test("overview opens in current month and supports historical years and independent months", async () => {
-  const originalDashboard=api.getDashboard, originalTransactions=api.getDashboardTransactions;
+  const originalDashboard=api.getDashboard, originalTransactions=api.getDashboardTransactions, originalPreference=api.transferPreference;
   let r;
   try {
     const calls=[];
     api.getDashboard=async month=>{calls.push(month);return snapshot(month);};
+    api.transferPreference=async()=>({passwordless_limit:"20.00",passwordless_limit_display:"¥20.00",version:3});
     api.getDashboardTransactions=async()=>({transactions:[],total_count:0,offset:0,available_months:["2026-10","2025-08"],available_categories:[]});
     await act(async()=>{r=create(createElement(DashboardPage));});
     assert.equal(calls[0],currentMonth());
@@ -27,6 +28,11 @@ test("overview opens in current month and supports historical years and independ
     const nav=text(r.root.findByProps({"aria-label":"金融服务"}));
     assert.doesNotMatch(nav,/订阅总览|消费报告/);
     assert.equal(nav,"对话工作台");
+    const content = text(r.toJSON());
+    assert.ok(content.indexOf("账单明细") < content.indexOf("免密支付额度"));
+    assert.ok(content.indexOf("免密支付额度") < content.indexOf("消费年份"));
+    assert.match(content,/当前额度：¥20.00/);
+    assert.doesNotMatch(content,/安全中心|本地演示验证码|246810/);
     assert.doesNotMatch(nav,/预约与周期转账|AA 收款与付款|收款人管理/);
     await act(async()=>r.root.findByProps({id:"dashboard-year"}).props.onChange({target:{value:"2025"}}));
     assert.equal(calls.at(-1),`2025-${currentMonth().slice(5)}`);
@@ -35,6 +41,6 @@ test("overview opens in current month and supports historical years and independ
     assert.match(text(r.toJSON()),/2025年8月消费总览/);
   } finally {
     if(r)await act(async()=>r.unmount());
-    api.getDashboard=originalDashboard;api.getDashboardTransactions=originalTransactions;
+    api.getDashboard=originalDashboard;api.getDashboardTransactions=originalTransactions;api.transferPreference=originalPreference;
   }
 });

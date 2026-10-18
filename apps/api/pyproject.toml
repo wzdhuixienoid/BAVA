@@ -1,11 +1,12 @@
 [project]
 name = "banking-api"
-version = "1.0.0"
+version = "1.0.1"
 description = "支持受约束复杂任务规划与持久化 DAG 的 AI 银行助手"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.16,<2",
   "asyncpg>=0.30,<1",
+  "cryptography>=46,<51",
   "fastapi>=0.116,<1",
   "httpx>=0.28,<1",
   "langgraph>=1,<2",
@@ -36,7 +37,10 @@ packages = ["src/banking_api"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["postgres: requires TEST_DATABASE_URL pointing to an isolated PostgreSQL database"]
+markers = [
+  "postgres: requires TEST_DATABASE_URL pointing to an isolated PostgreSQL database",
+  "sandbox: requires RUN_DOCKER_SANDBOX_TESTS=1 and a built sandbox Docker image",
+]
 
 [tool.ruff]
 target-version = "py312"

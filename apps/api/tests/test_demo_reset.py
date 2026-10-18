@@ -58,6 +58,9 @@ async def test_demo_reset_restores_balance_guard_and_subscription_and_preserves_
             )
     async with app.state.test_session_factory() as session:
         guard = await session.get(SecurityGuardStateModel, "dev-user-001")
+        if guard is None:
+            guard = SecurityGuardStateModel(user_id="dev-user-001")
+            session.add(guard)
         guard.locked_until = datetime.now(UTC) + timedelta(minutes=15)
         session.add(
             MockSubscriptionCancellationModel(

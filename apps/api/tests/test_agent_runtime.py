@@ -84,7 +84,7 @@ async def test_llm_direct_answer() -> None:
 
     result, events = await run_runtime(runtime)
 
-    assert result.answer == "你好"
+    assert "尚未取得本次查询" in result.answer
     assert result.state.step_count == 1
     assert result.state.tool_call_count == 0
     assert len(provider.requests) == 1
@@ -101,7 +101,7 @@ async def test_list_accounts_then_final_answer() -> None:
 
     result, events = await run_runtime(runtime)
 
-    assert result.answer == "你有 4 个账户。"
+    assert result.answer == "本人账户：工资卡、储蓄卡、信用卡、旅行卡"
     assert result.state.tool_call_count == 1
     assert '"account_id": "acc_salary"' in provider.requests[1].messages[-1].content
     completed = [data for name, data in events if name == "tool.call.completed"]
@@ -129,7 +129,7 @@ async def test_list_accounts_get_balance_then_final_answer() -> None:
 
     assert result.state.step_count == 3
     assert result.state.tool_call_count == 2
-    assert result.answer == "工资卡余额为 23,864.52 元。"
+    assert result.answer == "工资卡当前余额：¥23,864.52"
 
 
 @pytest.mark.parametrize(
@@ -162,7 +162,7 @@ async def test_tool_error_disposition_is_enforced(
 
     if expected_code == "TOOL_ARGUMENT_VALIDATION_FAILED":
         result, _ = await run_runtime(runtime, caller=caller)
-        assert result.answer == "无法执行该请求。"
+        assert "尚未取得本次查询" in result.answer
         assert expected_code in provider.requests[1].messages[-1].content
     else:
         with pytest.raises(AgentRuntimeError) as caught:

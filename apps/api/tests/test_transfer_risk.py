@@ -82,15 +82,15 @@ async def test_read_only_is_green_and_transfer_policy_boundaries(app) -> None:
     common = {
         "currency": "CNY",
         "business_date": datetime(2026, 9, 28, tzinfo=UTC).date(),
-        "successful_transfer_total_today": Decimal("800.00"),
+        "successful_transfer_total_today": Decimal("900.00"),
         "in_flight_transfer_exposure_today": Decimal("0"),
         "evaluated_at": datetime(2026, 9, 28, tzinfo=UTC),
     }
-    yellow = policy.evaluate(requested_amount=Decimal("200.00"), **common)
-    red = policy.evaluate(requested_amount=Decimal("200.01"), **common)
-    assert yellow.level is BusinessRiskLevel.RED
+    yellow = policy.evaluate(requested_amount=Decimal("100.00"), **common)
+    red = policy.evaluate(requested_amount=Decimal("100.01"), **common)
+    assert yellow.level is BusinessRiskLevel.YELLOW
     assert yellow.projected_daily_total == Decimal("1000.00")
-    assert yellow.required_approval and yellow.required_reauthentication
+    assert yellow.required_approval and not yellow.required_reauthentication
     assert red.level is BusinessRiskLevel.RED
     assert red.projected_daily_total == Decimal("1000.01")
     assert red.required_approval and red.required_reauthentication
@@ -102,23 +102,23 @@ async def test_read_only_is_green_and_transfer_policy_boundaries(app) -> None:
     assert RiskReasonCode.RISK_NOT_DOWNGRADED in retained.reason_codes
 
 
-async def test_small_transfer_approval_requires_reauthentication_and_commits(app) -> None:
+async def test_small_transfer_approval_commits_without_reauthentication(app) -> None:
     _, _, _, engine = operation_runtime(app)
     workflow = await create_ready_workflow(
         app,
         app.state.event_bus,
         engine,
         user_id="risk-yellow-user",
-        amount=Decimal("500.00"),
+        amount=Decimal("100.00"),
     )
-    assert workflow.risk_level is BusinessRiskLevel.RED
-    assert workflow.risk_decision.projected_daily_total == Decimal("500.00")  # type: ignore[union-attr]
+    assert workflow.risk_level is BusinessRiskLevel.YELLOW
+    assert workflow.risk_decision.projected_daily_total == Decimal("100.00")  # type: ignore[union-attr]
 
     ready = await approve(app, engine, workflow)
-    assert ready.status is WorkflowStatus.REAUTH_REQUIRED
+    assert ready.status is WorkflowStatus.READY_FOR_COMMIT
     ready = await authenticate_workflow(app, engine, ready)
     assert ready.status is WorkflowStatus.READY_FOR_COMMIT
-    assert ready.reauth_summary is not None
+    assert ready.reauth_summary is None
     async with app.state.test_session_factory() as session:
         reauth_count = await session.scalar(select(func.count()).select_from(ReauthenticationModel))
         operation = await OperationService(session, app.state.event_bus, engine).commit_workflow(
@@ -126,20 +126,20 @@ async def test_small_transfer_approval_requires_reauthentication_and_commits(app
             user_id=ready.user_id,
             expected_version=ready.version,
         )
-    assert reauth_count == 1
+    assert reauth_count == 0
     assert operation.status is OperationStatus.SUCCEEDED
 
 
 @pytest.mark.parametrize(
     ("user_id", "amount", "expected"),
     [
-        ("risk-boundary-yellow-user", "200.00", BusinessRiskLevel.RED),
-        ("risk-boundary-red-user", "200.01", BusinessRiskLevel.RED),
+        ("risk-boundary-yellow-user", "100.00", BusinessRiskLevel.YELLOW),
+        ("risk-boundary-red-user", "100.01", BusinessRiskLevel.RED),
     ],
 )
 async def test_daily_success_boundary_is_exact(app, user_id, amount, expected) -> None:  # type: ignore[no-untyped-def]
     _, _, _, engine = operation_runtime(app)
-    await seed_provider_fact(app, user_id=user_id, amount="800.00")
+    await seed_provider_fact(app, user_id=user_id, amount="900.00")
     workflow = await create_ready_workflow(
         app,
         app.state.event_bus,

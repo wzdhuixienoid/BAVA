@@ -184,7 +184,7 @@ async def test_reasoning_continuation_and_call_identity_survive_tool_roundtrip(b
             LLMResponse(content="已查询"),
         ],
     )
-    assert (await runtime.run(request())).answer == "已查询"
+    assert (await runtime.run(request())).answer == "本人账户：工资卡、储蓄卡、信用卡、旅行卡"
     messages = provider.requests[-1].messages
     assistant = next(m for m in messages if m.tool_calls)
     assert assistant.reasoning_content == "continuation"

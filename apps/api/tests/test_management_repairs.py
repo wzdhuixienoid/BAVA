@@ -39,7 +39,7 @@ from banking_api.workflows.transfer.risk import TransferRiskPolicy
 
 
 @pytest.mark.parametrize("amount", ["0.01", "1.00", "500.00", "1000.00", "1000.01", "20000.00"])
-def test_every_outflow_requires_confirmation_and_reauthentication(amount):
+def test_every_outflow_requires_confirmation_and_large_outflows_require_reauthentication(amount):
     risk = TransferRiskPolicy().evaluate(
         requested_amount=Decimal(amount),
         currency="CNY",
@@ -48,8 +48,9 @@ def test_every_outflow_requires_confirmation_and_reauthentication(amount):
         in_flight_transfer_exposure_today=Decimal("0"),
         evaluated_at=datetime.now(UTC),
     )
-    assert risk.level.value == "RED"
-    assert risk.required_approval and risk.required_reauthentication
+    large = Decimal(amount) >= Decimal("200")
+    assert risk.level.value == ("RED" if large else "YELLOW")
+    assert risk.required_approval and risk.required_reauthentication is large
 
 
 async def test_delete_is_idempotent_and_preserves_records(app, client):
@@ -445,7 +446,7 @@ async def test_resume_price_change_invalidates_confirmation_and_verification(app
         )
 
 
-async def test_legacy_draft_projects_red_without_rewriting_stored_risk(app):
+async def test_legacy_draft_projects_current_threshold_without_rewriting_stored_risk(app):
     from banking_test_helpers import legacy_yellow_authorization
     from test_transfer_authorization import create_ready_workflow
 
@@ -460,7 +461,9 @@ async def test_legacy_draft_projects_red_without_rewriting_stored_risk(app):
             draft.workflow_id, user_id=draft.user_id, expected_version=draft.version
         )
     current = await legacy_yellow_authorization(app, engine, approved)
-    assert current.risk_level.value == "RED" and current.presentation.reauthentication_required
+    assert (
+        current.risk_level.value == "YELLOW" and not current.presentation.reauthentication_required
+    )
     async with app.state.test_session_factory() as session:
         stored = await session.get(WorkflowModel, current.workflow_id)
         assert stored.state_json["risk_decision"]["level"] == "YELLOW"

@@ -215,7 +215,7 @@ async def test_financial_route_persists_executor_snapshot_and_routing_event(app)
             conversation_id=conversation.conversation_id,
             user_id="dev-user-001",
         )
-    assert detail.messages[-1].content.startswith("8月消费为")
+    assert "2026-08" in detail.messages[-1].content and "¥16,547.30" in detail.messages[-1].content
 
 
 async def test_account_route_selects_personal_agent_without_spending_snapshot(app) -> None:

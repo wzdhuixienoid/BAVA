@@ -96,6 +96,22 @@ def link_errors(path: Path, root: Path) -> list[str]:
     return errors
 
 
+def stale_instruction_errors(path: Path) -> list[str]:
+    """Reject instructions for removed UI and the former public-code behavior."""
+    content = prose(path.read_text())
+    removed_instructions = (
+        "直接显示演示验证码",
+        "页面显示的演示验证码",
+        "页面显示的演示码",
+        "从工作台进入“安全中心与操作记录”",
+    )
+    return [
+        f"{path.name}: stale user instruction: {phrase}"
+        for phrase in removed_instructions
+        if phrase in content
+    ]
+
+
 def markdown_files(root: Path) -> list[Path]:
     result = []
     for directory, children, names in os.walk(root):
@@ -143,6 +159,7 @@ def validate(root: Path = ROOT) -> tuple[list[str], int]:
     paths, errors = markdown_files(root), []
     for path in paths:
         errors.extend(link_errors(path, root))
+        errors.extend(stale_instruction_errors(path))
         # Runtime skill instructions have their own Catalog format and binding checks.
         runtime_skill = "agent_skills" in path.parts and path.name != "README.md"
         if not runtime_skill:
@@ -187,5 +204,5 @@ if __name__ == "__main__":
     if errors:
         sys.exit(1)
     print(
-        f"PASS {count} Markdown files: local links, anchors, titles, navigation, version and migration"
+        f"PASS {count} Markdown files: links, titles, navigation, version, migration, stale instructions"
     )

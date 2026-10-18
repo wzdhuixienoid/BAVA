@@ -20,6 +20,7 @@ SUBSCRIPTION_CANCEL_RISK_LEVEL = BusinessRiskLevel.YELLOW
 
 
 class RiskReasonCode(StrEnum):
+    PASSWORDLESS_LIMIT_REACHED = "PASSWORDLESS_LIMIT_REACHED"
     FUNDS_OUTFLOW_REQUIRES_REAUTH = "FUNDS_OUTFLOW_REQUIRES_REAUTH"
     READ_ONLY_AUTOMATIC = "READ_ONLY_AUTOMATIC"
     DAILY_TRANSFER_WITHIN_LIMIT = "DAILY_TRANSFER_WITHIN_LIMIT"
@@ -43,6 +44,8 @@ class TransferRiskDecision(BaseModel):
     projected_daily_total: Decimal
     threshold: Decimal
     evaluated_at: datetime
+    passwordless_limit: Decimal = Decimal("200.00")
+    passwordless_limit_display: str = ""
     requested_amount_display: str = ""
     daily_successful_total_display: str = ""
     daily_in_flight_exposure_display: str = ""
@@ -58,6 +61,7 @@ class TransferRiskDecision(BaseModel):
             "daily_in_flight_exposure",
             "projected_daily_total",
             "threshold",
+            "passwordless_limit",
         ):
             setattr(self, f"{field}_display", formatter.money(getattr(self, field), self.currency))
         return self
@@ -68,6 +72,7 @@ class TransferRiskDecision(BaseModel):
         "requested_amount",
         "projected_daily_total",
         "threshold",
+        "passwordless_limit",
     )
     def serialize_decimal(self, value: Decimal) -> str:
         return format(value, "f")

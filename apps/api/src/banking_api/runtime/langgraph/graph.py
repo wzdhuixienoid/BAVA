@@ -524,7 +524,19 @@ class LangGraphAgentRuntime:
             "agent.run.completed",
             {"steps": state.step_count, "tool_calls": state.tool_call_count},
         )
-        return AgentRunResult(answer=graph_state["final_answer"], state=state)
+        from banking_api.runtime.grounding import ground_read_answer
+
+        return AgentRunResult(
+            answer=graph_state["financial_clarification"]
+            if graph_state.get("financial_clarification")
+            else ground_read_answer(
+                self._resolve_agent(request),
+                request.current_task,
+                graph_state["final_answer"],
+                state.successful_tool_results,
+            ),
+            state=state,
+        )
 
     def _resolve_agent(self, request: AgentRunRequest) -> AgentDefinition:
         agent = request.agent or self.agent

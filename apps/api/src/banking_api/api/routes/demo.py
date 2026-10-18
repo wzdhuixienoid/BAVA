@@ -105,8 +105,7 @@ async def readiness(request: Request, session: SessionDependency, principal: Pri
         if isinstance(transfer, MockTransferProvider)
         and isinstance(request.app.state.subscription_provider, MockSubscriptionProvider)
         else "Unsupported",
-        # WorkflowService registers only Mock reauthentication.
-        reauthentication_mode="Mock",
+        reauthentication_mode="TOTP" if settings.reauth_provider == "totp" else "Mock",
         llm_configured=bool(settings.llm_base_url and settings.llm_api_key and settings.llm_model),
         business_timezone=settings.banking_business_timezone,
         reference_time=settings.demo_reference_time,

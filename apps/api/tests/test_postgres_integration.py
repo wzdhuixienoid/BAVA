@@ -172,7 +172,9 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE notifications, subscription_notification_cursors, "
+                "TRUNCATE transfer_security_preferences, domain_action_audits, "
+                "totp_credentials, subscription_read_consents, "
+                "notifications, subscription_notification_cursors, "
                 "mock_subscription_charges, "
                 "security_guard_states, identity_mappings, mock_bank_transfers, "
                 "mock_subscription_cancellations, mock_subscription_actions, "
@@ -186,7 +188,9 @@ async def postgres_factory():
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE notifications, subscription_notification_cursors, "
+                "TRUNCATE transfer_security_preferences, domain_action_audits, "
+                "totp_credentials, subscription_read_consents, "
+                "notifications, subscription_notification_cursors, "
                 "mock_subscription_charges, "
                 "security_guard_states, identity_mappings, mock_bank_transfers, "
                 "mock_subscription_cancellations, mock_subscription_actions, "
@@ -535,7 +539,7 @@ async def test_postgres_migration_persistence_and_fake_agent_e2e(postgres_factor
         "requested_output": "ANSWER",
     }
     assert task.model_dump(mode="json")["output"]["account_results"][1]["balance"] == "23864.52"
-    assert detail.messages[-1].content == "工资卡余额为 23,864.52 元。"
+    assert detail.messages[-1].content == "工资卡当前余额：¥23,864.52"
     assert [event.sequence for event in events] == sorted(event.sequence for event in events)
     assert [event.event_type for event in events].count("tool.call.completed") == 2
     assert events[-2].event_type == "task.completed"
@@ -1333,7 +1337,7 @@ async def test_postgres_checkpoint_persistence_and_resume(postgres_factory) -> N
         saver_two,
     )
     result = await runtime_two.resume(request)
-    assert result.answer == "工资卡余额为 23,864.52 元。"
+    assert result.answer == "工资卡当前余额：¥23,864.52"
     assert counts == {"list_accounts": 1, "get_balance": 1}
     tuple_ = await saver_two.aget_tuple({"configurable": {"thread_id": str(task_id)}})
     assert tuple_ is not None
@@ -1822,7 +1826,7 @@ async def test_postgres_task_worker_crash_lease_expiry_and_recovery(
     assert event_count == outbox_count == 1
 
 
-async def test_legacy_yellow_commits_require_reauth_even_when_concurrent(
+async def test_concurrent_yellow_commits_escalate_second_above_daily_limit(
     postgres_factory,
 ) -> None:
     factory = postgres_factory
@@ -1847,14 +1851,14 @@ async def test_legacy_yellow_commits_require_reauth_even_when_concurrent(
             accepted = await ConversationService(session, bus).accept_message(
                 conversation_id=conversation.conversation_id,
                 user_id=user_id,
-                content="给张三转600",
+                content="给张三转100",
             )
         async with factory() as session:
             workflow = await WorkflowService(session, bus, engine).create_transfer(
                 user_id=user_id,
                 conversation_id=conversation.conversation_id,
                 source_task_id=accepted.task_id,
-                intent=TransferIntent(recipient_query="张三", amount="600.00"),
+                intent=TransferIntent(recipient_query="张三", amount="100.00"),
             )
         async with factory() as session:
             workflow = await WorkflowService(session, bus, engine).select_payee(
@@ -1887,6 +1891,15 @@ async def test_legacy_yellow_commits_require_reauth_even_when_concurrent(
             await session.commit()
             return await WorkflowService(session, bus, engine).get(row.workflow_id, user_id=user_id)
 
+    async with factory() as session:
+        session.add(MockBankTransferModel(
+            provider_reference=f"risk_{uuid4().hex}", idempotency_key=uuid4(),
+            user_id=user_id, source_account_id="acc_savings", payee_id="payee_003",
+            amount=Decimal("900"), currency="CNY", status="SUCCEEDED",
+            applied_at=datetime.now(UTC), created_at=datetime.now(UTC),
+        ))
+        await session.commit()
+
     workflow_a = await create_yellow_workflow()
     workflow_b = await create_yellow_workflow()
     assert workflow_a.status is WorkflowStatus.READY_FOR_COMMIT
@@ -1901,7 +1914,7 @@ async def test_legacy_yellow_commits_require_reauth_even_when_concurrent(
             )
 
     results = await asyncio.gather(prepare(workflow_a), prepare(workflow_b), return_exceptions=True)
-    assert all(isinstance(result, OperationActionError) for result in results)
+    assert sum(isinstance(result, OperationActionError) for result in results) == 1
     rejected = next(result for result in results if isinstance(result, Exception))
     assert isinstance(rejected, OperationActionError)
     assert str(rejected) == "TRANSFER_RISK_REAUTH_REQUIRED"
@@ -1917,9 +1930,10 @@ async def test_legacy_yellow_commits_require_reauth_even_when_concurrent(
                 await session.execute(select(WorkflowModel).where(WorkflowModel.user_id == user_id))
             ).scalars()
         )
-    assert operation_count == 0
+    assert operation_count == 1
     assert {workflow.status for workflow in workflows} == {
         WorkflowStatus.REAUTH_REQUIRED,
+        WorkflowStatus.COMMITTING,
     }
 
 

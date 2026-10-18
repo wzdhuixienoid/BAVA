@@ -1,2 +1,2 @@
-"""Empty, typed capability boundaries for future iterations."""
+"""Typed Agent, Skill and Tool registration with explicit capability boundaries."""
 

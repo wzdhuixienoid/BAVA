@@ -6,6 +6,7 @@
 
 ```bash
 cp .env.example .env
+chmod 600 .env
 docker compose up --build -d
 ```
 
@@ -26,6 +27,9 @@ docker compose up --build -d
 | `SCHEDULED_TRANSFER_MIN_ADVANCE_SECONDS`／`SCHEDULED_TRANSFER_MAX_DAYS`／`SCHEDULED_TRANSFER_LATE_WINDOW_SECONDS` | 默认 60 秒／30 天／300 秒 |
 | `RECURRING_TRANSFER_MAX_OCCURRENCES`／`RECURRING_TRANSFER_MAX_DAYS` | 默认 12 次／366 天，只可在代码范围内收紧 |
 | `TRANSFER_APPROVAL_TTL_SECONDS`／`TRANSFER_REAUTH_TTL_SECONDS` | 默认 600／300 秒，预约使用独立授权 |
+| `REAUTH_PROVIDER` | mock仅开发／测试；totp使用本人动态码，production必须totp |
+| `MFA_ENCRYPTION_KEY`／`MFA_ISSUER` | TOTP密钥加密key与认证器显示名；key必须持久、私密，不可在重启时重新生成 |
+| `SUBSCRIPTION_READ_CONSENT_SECONDS` | 订阅查询确认的有效期，默认300秒 |
 | `BANKING_BUSINESS_TIMEZONE` | 默认 Asia/Shanghai |
 | `LANGGRAPH_CHECKPOINT_DATABASE_URL` | 可独立配置，否则复用应用数据库地址 |
 | `DEMO_REFERENCE_TIME` | 可选带时区的合成数据读取参考时间，production 拒绝 |
@@ -36,7 +40,9 @@ Docker 只传递 [Compose](../../docker-compose.yml) 的 environment 中声明�
 
 ## 本地开发
 
-需要 Python 3.12+、uv、支持 `--experimental-strip-types` 的 Node.js 22.6+ 和根 package.json 指定的 pnpm 11.19.0。先准备 `.env` 和数据库：
+本地身份验证码仅保存在后端私密环境，金融总览提供免密额度设置；可选真实认证器后端配置见[身份验证指南](../guides/security.md)。独立代码沙箱不在API中执行，构建与验证见[沙箱](../architecture/sandbox.md)。
+
+需要 Python 3.12+、uv、Node.js 22.15+ 和根 package.json 指定的 pnpm 11.19.0。前端测试除类型剥离外还使用 `node:module.registerHooks`，该API从22.15.0开始提供，见[Node官方说明](https://nodejs.org/api/module.html#moduleregisterhooksoptions)。先准备 `.env` 和数据库：
 
 ```bash
 docker compose up -d postgres
@@ -77,7 +83,7 @@ uv run --env-file ../../.env python -m banking_api.security.authentication.provi
 
 ## 升级数据库
 
-当前迁移 head 为 **0036**。已有环境先备份并暂停新写入，同步代码后按迁移链升级；不清库、不用 reset 代替迁移。
+当前迁移 head 为 **0038**。已有环境先备份并暂停新写入，同步代码后按迁移链升级；不清库、不用 reset 代替迁移。
 
 Docker API 启动自动升级。手动操作在已配置目标数据库的 `apps/api` 目录执行：
 

@@ -1,4 +1,4 @@
-"""One-time generator for the committed v0.3.3 deterministic report core."""
+"""Regenerate the deterministic report core for the committed, versioned fixture."""
 
 import json
 from pathlib import Path

@@ -70,7 +70,13 @@ class PolicyService:
                     if reconcile_allowed
                     else "read-only capability allowed"
                 ),
-                business_risk_level=(BusinessRiskLevel.GREEN if read_allowed else None),
+                business_risk_level=(
+                    BusinessRiskLevel.YELLOW
+                    if read_allowed and spec.capability_id == "subscription.analyze"
+                    else BusinessRiskLevel.GREEN
+                    if read_allowed
+                    else None
+                ),
             )
         return PolicyResult(
             decision=PolicyDecision.DENY,

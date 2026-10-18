@@ -14,7 +14,7 @@ RequestRouter 的 ACCOUNT_QUERY、FINANCIAL_ANALYSIS、PERSONAL_BANKING 路由�
 | SPENDING | financial-analysis、analysis-rules.md | `account.list`、`transaction.spending_summary`、`transaction.category_breakdown`、`transaction.compare_periods`、`transaction.top_transactions`、`transaction.detect_anomalies` |
 | COMBINED | 上述两个 Skill | 两种配置的并集，共十项 |
 
-普通消费请求去掉完整异常工具，本次明确要求才开放；报告额外加载 report-source.md，再由 monthly-spending-report Python 绑定与 SkillExecutor 生成并校验报告。transaction-anomaly-analysis 组织已核验异常说明，不重新计算规则。
+普通消费请求去掉完整异常工具，本次明确要求才开放；报告额外加载 report-source.md，再由 monthly-spending-report Python 绑定计算核心事实，SkillExecutor 校验模型草稿并从核心确定性生成客户解释。普通银行答复同样从本轮成功工具结果生成。transaction-anomaly-analysis 组织已核验异常说明，不重新计算规则。
 
 每次执行先缩小工具与技能范围，模型自行输出 COMBINED 或调用其他工具不能扩大权限。工具预算由运行时统一限制，可用一次列账户及逐卡余额查询完成四卡结果，不使用固定四次限制。
 

@@ -30,7 +30,7 @@ async def wait_task(client: AsyncClient, task_id: str, statuses: set[str]) -> di
 
 async def create_request(client: AsyncClient, query: str) -> tuple[str, str]:
     response = await client.post(
-        "/api/v1/conversations", json={"title": "v0.8.1 产品 Smoke"}
+        "/api/v1/conversations", json={"title": "计划产品 Smoke"}
     )
     response.raise_for_status()
     conversation_id = response.json()["conversation_id"]
@@ -70,6 +70,10 @@ async def main() -> None:
             flush=True,
         )
 
+        consent = await client.post(
+            "/api/v1/security/subscription-read-consent", json={"confirmed": True}
+        )
+        consent.raise_for_status()
         conversation, task_id = await create_request(
             client, "先看看我有哪些订阅，然后取消星幕视频。"
         )

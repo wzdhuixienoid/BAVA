@@ -8,6 +8,7 @@ from banking_api.domain.principal import ExecutionPrincipal, Principal
 from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
 from banking_api.policy.service import PolicyService
 from banking_api.registries.tool_registry import ToolRegistry
+from banking_api.security.exceptions import SubscriptionReadConsentRequired
 from banking_api.tools.models import (
     ToolError,
     ToolErrorCode,
@@ -67,6 +68,12 @@ class ToolExecutor:
             raw_output = spec.handler(ToolExecutionContext(principal), validated_input)
             if inspect.isawaitable(raw_output):
                 raw_output = await raw_output
+        except SubscriptionReadConsentRequired as exc:
+            return self._error(
+                ToolErrorCode.USER_CONFIRMATION_REQUIRED,
+                str(exc),
+                capability_id=spec.capability_id,
+            )
         except FinancialDomainError as exc:
             return self._error(
                 exc.code,

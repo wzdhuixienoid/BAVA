@@ -44,6 +44,12 @@ def assemble(wealth, monkeypatch, route, responses, requested_output="ANSWER"):
 
 async def interact(app, runner, factory, content):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        assert (
+            await client.post(
+                "/api/v1/security/subscription-read-consent",
+                json={"confirmed": True},
+            )
+        ).status_code == 200
         created = await client.post("/api/v1/conversations", json={"title": "Skill 路径核验"})
         assert created.status_code == 201
         cid = created.json()["conversation_id"]
