@@ -1,0 +1,41 @@
+{
+  "outputs": [
+    {
+      "file": "BAVA-subscriptions-40s-silent.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 1200,
+      "bytes": 5331125,
+      "duration_seconds": 40.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    },
+    {
+      "file": "BAVA-preview-95s-silent.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 2850,
+      "bytes": 12201259,
+      "duration_seconds": 95.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    }
+  ],
+  "previous_video_sha256_unchanged": {
+    "opening/BAVA-opening-15s-silent.mp4": true,
+    "bills/BAVA-bills-40s-silent.mp4": true,
+    "bills/BAVA-opening-and-bills-55s-silent.mp4": true
+  },
+  "previous_55s_frames_preserved_in_joined_preview": true,
+  "third_segment_frames_preserved_in_joined_preview": true,
+  "previous_narration_unchanged": true,
+  "caption_timeline_continuous_0_to_95": true,
+  "business_evidence_passed": true,
+  "business_check_count": 22
+}

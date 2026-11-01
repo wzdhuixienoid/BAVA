@@ -1,0 +1,19 @@
+[
+  {
+    "trace_id": "bfc8aaeb-381f-4d64-a08a-bfd99d6a1687",
+    "action": "subscription.read.confirm",
+    "resource_id": "dev-user-001",
+    "idempotency_key": null,
+    "payload_hash": "3c1ddc393cf2584fd8e272f4e6aae99900276f768a24331e3d9426b007aed8b3",
+    "outcome": "APPROVED",
+    "evidence": [
+      {
+        "stage": "user_confirmation",
+        "confirmed": true,
+        "risk_level": "YELLOW",
+        "timestamp": "2026-11-01T02:53:46.573535+00:00"
+      }
+    ],
+    "created_at": "2026-11-01T02:53:46.574695Z"
+  }
+]

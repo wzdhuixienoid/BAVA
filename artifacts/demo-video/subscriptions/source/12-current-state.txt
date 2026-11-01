@@ -1,0 +1,153 @@
+- alert
+- main:
+  - paragraph: 查看订阅与续费安排
+  - heading "订阅管理" [level=1]
+  - paragraph: 查看费用、续费时间，按需取消或重新订阅。
+  - link "返回工作台":
+    - /url: /
+  - paragraph: 活跃订阅
+  - paragraph: "4"
+  - paragraph: 月度成本
+  - paragraph: ¥230.00
+  - paragraph: 预计年度成本
+  - paragraph: ¥2,760.00
+  - paragraph: 即将续费：3 项
+  - paragraph: 价格变动：1 项
+  - paragraph: 订阅分析
+  - paragraph: 6 项周期扣费
+  - paragraph: 每月费用 ¥230.00
+  - article:
+    - paragraph: 云笺存储
+    - paragraph: 50 GB
+    - generic: 可管理
+    - term: 状态
+    - definition:
+      - generic "订阅处于活跃状态":
+        - generic: ◉
+        - text: 活跃
+    - term: 月度成本
+    - definition: ¥18.00
+    - term: 预计年度成本
+    - definition: ¥216.00
+    - term: 周期
+    - definition: 每月
+    - term: 最近扣费
+    - definition: 2026-09-16
+    - term: 当前金额
+    - definition: ¥18.00
+    - term: 下次扣款
+    - definition: 2026-11-16 20:00:00
+    - button "取消订阅"
+  - article:
+    - paragraph: 像素设计
+    - paragraph: 专业版
+    - generic: 可管理
+    - term: 状态
+    - definition:
+      - generic "订阅处于活跃状态":
+        - generic: ◉
+        - text: 活跃
+    - term: 月度成本
+    - definition: ¥88.00
+    - term: 预计年度成本
+    - definition: ¥1,056.00
+    - term: 周期
+    - definition: 每月
+    - term: 最近扣费
+    - definition: 2026-09-20
+    - term: 当前金额
+    - definition: ¥88.00
+    - term: 下次扣款
+    - definition: 2026-11-20 20:00:00
+    - button "取消订阅"
+  - article:
+    - paragraph: 晨光健身*月卡
+    - paragraph: 套餐未提供
+    - generic: 到商户管理
+    - term: 状态
+    - definition:
+      - generic "订阅处于活跃状态":
+        - generic: ◉
+        - text: 活跃
+    - term: 月度成本
+    - definition: ¥109.00
+    - term: 预计年度成本
+    - definition: ¥1,308.00
+    - term: 周期
+    - definition: 每月
+    - term: 最近扣费
+    - definition: 2025-05-25
+    - term: 当前金额
+    - definition: ¥109.00
+    - term: 预计下次扣款
+    - definition: 待确认
+    - paragraph: 最近一期变动 +¥10.00（+10.1%）
+    - paragraph: 请前往对应商户确认续费安排或取消订阅。
+  - article:
+    - paragraph: 海浪音乐
+    - paragraph: 个人会员
+    - generic: 可管理
+    - term: 状态
+    - definition:
+      - generic "订阅处于活跃状态":
+        - generic: ◉
+        - text: 活跃
+    - term: 月度成本
+    - definition: ¥15.00
+    - term: 预计年度成本
+    - definition: ¥180.00
+    - term: 周期
+    - definition: 每月
+    - term: 最近扣费
+    - definition: 2026-09-12
+    - term: 当前金额
+    - definition: ¥15.00
+    - term: 下次扣款
+    - definition: 2026-11-12 20:00:00
+    - button "取消订阅"
+  - article:
+    - paragraph: 星幕视频
+    - paragraph: 标准会员
+    - generic: 可管理
+    - term: 状态
+    - definition:
+      - generic "该流程或订阅已取消":
+        - generic: −
+        - text: 已取消
+    - term: 月度成本
+    - definition: ¥0.00
+    - term: 预计年度成本
+    - definition: ¥0.00
+    - term: 周期
+    - definition: 每月
+    - term: 最近扣费
+    - definition: 2026-09-08
+    - term: 当前金额
+    - definition: ¥28.00
+    - term: 下次扣款
+    - definition: 已取消
+    - link "重新订阅":
+      - /url: /?resume=%E6%98%9F%E5%B9%95%E8%A7%86%E9%A2%91
+  - article:
+    - paragraph: 活力健身
+    - paragraph: 月卡
+    - generic: 可管理
+    - term: 状态
+    - definition:
+      - generic "该流程或订阅已取消":
+        - generic: −
+        - text: 已取消
+    - term: 月度成本
+    - definition: ¥0.00
+    - term: 预计年度成本
+    - definition: ¥0.00
+    - term: 周期
+    - definition: 每月
+    - term: 最近扣费
+    - definition: 暂无扣费记录
+    - term: 当前金额
+    - definition: ¥128.00
+    - term: 下次扣款
+    - definition: 已取消
+    - link "重新订阅":
+      - /url: /?resume=%E6%B4%BB%E5%8A%9B%E5%81%A5%E8%BA%AB

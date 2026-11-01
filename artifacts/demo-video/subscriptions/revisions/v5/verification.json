@@ -1,0 +1,191 @@
+{
+  "revision": 5,
+  "outputs": [
+    {
+      "file": "BAVA-subscriptions-40s-stable-v5.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 1200,
+      "bytes": 2000655,
+      "duration_seconds": 40.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    },
+    {
+      "file": "BAVA-preview-95s-stable-v5.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 2850,
+      "bytes": 8870826,
+      "duration_seconds": 95.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    }
+  ],
+  "question_zoom_retained": [
+    {
+      "start": 0,
+      "focus_changes_pixels": true,
+      "returns_to_original_framing": true
+    },
+    {
+      "start": 17.5,
+      "focus_changes_pixels": true,
+      "returns_to_original_framing": true
+    }
+  ],
+  "stationary_reading_and_focus_holds": [
+    {
+      "beat": "query_focus_hold",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -0.00071,
+        -0.00027
+      ],
+      "correlation": 0.99717
+    },
+    {
+      "beat": "read_consent",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -4e-05,
+        -0.0
+      ],
+      "correlation": 0.99979
+    },
+    {
+      "beat": "contracts",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        8e-05,
+        -3e-05
+      ],
+      "correlation": 0.99999
+    },
+    {
+      "beat": "analysis",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -0.0016,
+        -0.00015
+      ],
+      "correlation": 0.9872
+    },
+    {
+      "beat": "cancel_focus_hold",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        0.00045,
+        -0.00075
+      ],
+      "correlation": 0.99481
+    },
+    {
+      "beat": "review",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        0.00011,
+        -7e-05
+      ],
+      "correlation": 0.99998
+    },
+    {
+      "beat": "approved",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -2e-05,
+        0.0
+      ],
+      "correlation": 0.99996
+    },
+    {
+      "beat": "success",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        0.00034,
+        -0.00045
+      ],
+      "correlation": 0.99985
+    },
+    {
+      "beat": "comparison",
+      "rendered_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -7e-05,
+        1e-05
+      ],
+      "correlation": 0.99999
+    }
+  ],
+  "scroll_measured_in_encoded_frames": [
+    {
+      "frame": 308,
+      "x": 0.0017,
+      "y": -4.9914,
+      "expected_y": -4.9796,
+      "correlation": 0.8699
+    },
+    {
+      "frame": 316,
+      "x": 0.0015,
+      "y": -13.1983,
+      "expected_y": -13.3801,
+      "correlation": 0.8379
+    },
+    {
+      "frame": 324,
+      "x": -0.0064,
+      "y": -19.9697,
+      "expected_y": -19.646,
+      "correlation": 0.8211
+    },
+    {
+      "frame": 332,
+      "x": -0.0019,
+      "y": -21.0054,
+      "expected_y": -20.7451,
+      "correlation": 0.7775
+    },
+    {
+      "frame": 340,
+      "x": -0.0044,
+      "y": -16.2904,
+      "expected_y": -16.1985,
+      "correlation": 0.7959
+    },
+    {
+      "frame": 348,
+      "x": -0.0025,
+      "y": -7.9979,
+      "expected_y": -8.0811,
+      "correlation": 0.836
+    },
+    {
+      "frame": 352,
+      "x": -0.0082,
+      "y": -3.954,
+      "expected_y": -4.0299,
+      "correlation": 0.8889
+    }
+  ],
+  "composer_fixed_during_scroll": true,
+  "brand_frame_fixed_during_scroll": true,
+  "confirmation_panel_fixed_during_receipt_reveal": true,
+  "previous_55s_frames_preserved": true,
+  "third_segment_frames_preserved_in_combined": true,
+  "prior_subscription_artifacts_all_unchanged": true,
+  "previous_video_sha256_unchanged": {
+    "opening/BAVA-opening-15s-silent.mp4": true,
+    "bills/BAVA-bills-40s-silent.mp4": true,
+    "bills/BAVA-opening-and-bills-55s-silent.mp4": true
+  },
+  "business_checks_passed": true,
+  "business_actions_repeated": false,
+  "narration_and_srt_unchanged": true
+}

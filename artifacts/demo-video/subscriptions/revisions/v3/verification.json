@@ -1,0 +1,178 @@
+{
+  "revision": 3,
+  "outputs": [
+    {
+      "file": "BAVA-subscriptions-40s-stable-v3.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 1200,
+      "bytes": 1929805,
+      "duration_seconds": 40.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    },
+    {
+      "file": "BAVA-preview-95s-stable-v3.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 2850,
+      "bytes": 8799931,
+      "duration_seconds": 95.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    }
+  ],
+  "prior_files_sha256_unchanged": {
+    "opening/BAVA-opening-15s-silent.mp4": true,
+    "bills/BAVA-bills-40s-silent.mp4": true,
+    "bills/BAVA-opening-and-bills-55s-silent.mp4": true,
+    "subscriptions/BAVA-preview-95s-stable-v2.mp4": true,
+    "subscriptions/BAVA-preview-95s-silent.mp4": true,
+    "subscriptions/BAVA-subscriptions-40s-silent.mp4": true,
+    "subscriptions/BAVA-subscriptions-40s-stable-v2.mp4": true,
+    "subscriptions/build_subscriptions.py": true,
+    "subscriptions/manifest.json": true,
+    "subscriptions/verification.json": true,
+    "subscriptions/narration-55-95.json": true,
+    "subscriptions/narration-00-95.json": true,
+    "subscriptions/BAVA-subscriptions.srt": true,
+    "subscriptions/BAVA-00-95.srt": true
+  },
+  "previous_55s_frames_preserved_in_joined_preview": true,
+  "third_segment_frames_preserved_in_joined_preview": true,
+  "within_shot_stability": [
+    {
+      "start": 0,
+      "end": 2.5,
+      "composition": "query",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -4e-05,
+        0.00037
+      ],
+      "correlation_response": 0.9989
+    },
+    {
+      "start": 2.5,
+      "end": 7,
+      "composition": "consent",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        0.00049,
+        9e-05
+      ],
+      "correlation_response": 0.99846
+    },
+    {
+      "start": 7,
+      "end": 11.5,
+      "composition": "contracts",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -0.0005,
+        -0.0058
+      ],
+      "correlation_response": 0.98975
+    },
+    {
+      "start": 11.5,
+      "end": 14,
+      "composition": "cost",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -8e-05,
+        -0.00031
+      ],
+      "correlation_response": 0.99972
+    },
+    {
+      "start": 14,
+      "end": 17.5,
+      "composition": "boundary",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        0.00234,
+        -0.00652
+      ],
+      "correlation_response": 0.98752
+    },
+    {
+      "start": 17.5,
+      "end": 20,
+      "composition": "cancel",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        2e-05,
+        -0.00021
+      ],
+      "correlation_response": 0.9988
+    },
+    {
+      "start": 20,
+      "end": 23.5,
+      "composition": "risk",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -1e-05,
+        0.0006
+      ],
+      "correlation_response": 0.99961
+    },
+    {
+      "start": 23.5,
+      "end": 27,
+      "composition": "details",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -0.001,
+        -9e-05
+      ],
+      "correlation_response": 0.98774
+    },
+    {
+      "start": 27,
+      "end": 30.5,
+      "composition": "approved",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        -0.00027,
+        0.00046
+      ],
+      "correlation_response": 0.99982
+    },
+    {
+      "start": 30.5,
+      "end": 35,
+      "composition": "success",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        0.00084,
+        -0.00023
+      ],
+      "correlation_response": 0.99239
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "composition": "comparison",
+      "rendered_interior_pixels_identical": true,
+      "encoded_shift_pixels": [
+        7e-05,
+        0.00029
+      ],
+      "correlation_response": 0.99964
+    }
+  ],
+  "maximum_within_shot_translation_pixels": 0.00652,
+  "business_checks_passed": true,
+  "business_check_count": 22,
+  "business_actions_repeated": false,
+  "chart_matches_verified_before_and_after": true,
+  "narration_timing_unchanged": true
+}

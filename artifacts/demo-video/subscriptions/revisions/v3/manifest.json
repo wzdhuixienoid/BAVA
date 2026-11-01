@@ -1,0 +1,125 @@
+{
+  "revision": 3,
+  "duration_seconds": 40,
+  "global_start_seconds": 55,
+  "output": "BAVA-subscriptions-40s-stable-v3.mp4",
+  "combined_preview": "BAVA-preview-95s-stable-v3.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "camera_motion": false,
+  "scrolling": false,
+  "ui_framing_changes_within_conversation": false,
+  "emphasis_methods": [
+    "fixed spotlight",
+    "single-row underline",
+    "static outline",
+    "side-by-side confirmation and receipt",
+    "verified recurring-cost comparison chart"
+  ],
+  "review_stitch": "Two overlapping screenshots of the same pending-review card; joined once inside a blank gutter; no financial text re-rendered",
+  "financial_ui_text_recreated": false,
+  "editorial_chart": {
+    "source": "evidence/verification.json",
+    "before": "258.00",
+    "after": "230.00",
+    "scope": "Monthly recurring-cost projection; not a refund"
+  },
+  "business_evidence": {
+    "subscription_id": "sub_video",
+    "merchant": "星幕视频",
+    "workflow_id": "b0f548f5-b93c-45ed-b187-0773ed95fd63",
+    "source_task_id": "3da611a4-1b4a-4bbf-9a51-6c06a39fd32c",
+    "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+    "provider_reference": "mocksub_c5e0173578b64157984f6f3f677c2dd6",
+    "monthly_cost_before": "258.00",
+    "monthly_cost_after": "230.00",
+    "monthly_projection_reduction": "28.00",
+    "completed_at": "2026-11-01T02:55:44.678617Z",
+    "checks": {
+      "mock_provider": true,
+      "read_consent_recorded": true,
+      "query_completed_with_actual_snapshot": true,
+      "same_subscription": true,
+      "original_active_contract": true,
+      "yellow_confirmation_required": true,
+      "yellow_no_mfa_required": true,
+      "approval_bound_to_workflow": true,
+      "approval_consumed": true,
+      "read_and_cancel_authorizations_distinct": true,
+      "read_consent_precedes_cancel": true,
+      "review_binds_original_version": true,
+      "workflow_and_operation_succeeded": true,
+      "provider_reference_returned": true,
+      "audit_confirms_business_success": true,
+      "contract_cancelled_and_version_advanced": true,
+      "cancelled_contract_monthly_cost_zero": true,
+      "monthly_cost_delta_matches_contract": true,
+      "yearly_projection_delta_matches_contract": true,
+      "other_subscription_statuses_unchanged": true,
+      "query_not_presented_as_cash_refund": true,
+      "previous_videos_unchanged": true
+    }
+  },
+  "beats": [
+    {
+      "start": 0,
+      "end": 2.5,
+      "composition": "query"
+    },
+    {
+      "start": 2.5,
+      "end": 7,
+      "composition": "consent"
+    },
+    {
+      "start": 7,
+      "end": 11.5,
+      "composition": "contracts"
+    },
+    {
+      "start": 11.5,
+      "end": 14,
+      "composition": "cost"
+    },
+    {
+      "start": 14,
+      "end": 17.5,
+      "composition": "boundary"
+    },
+    {
+      "start": 17.5,
+      "end": 20,
+      "composition": "cancel"
+    },
+    {
+      "start": 20,
+      "end": 23.5,
+      "composition": "risk"
+    },
+    {
+      "start": 23.5,
+      "end": 27,
+      "composition": "details"
+    },
+    {
+      "start": 27,
+      "end": 30.5,
+      "composition": "approved"
+    },
+    {
+      "start": 30.5,
+      "end": 35,
+      "composition": "success"
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "composition": "comparison"
+    }
+  ],
+  "prior_versions_overwritten": false,
+  "business_actions_repeated": false
+}

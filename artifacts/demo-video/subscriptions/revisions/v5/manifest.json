@@ -1,0 +1,81 @@
+{
+  "revision": 5,
+  "output": "BAVA-subscriptions-40s-stable-v5.mp4",
+  "combined_preview": "BAVA-preview-95s-stable-v5.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_seconds": 40,
+  "global_start_seconds": 55,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "intentional_question_focus": "Retained twice, with smooth in/hold/out and subpixel placement",
+  "reading_camera": "Locked width, height, scale and horizontal position",
+  "analysis_scroll": {
+    "start": 10,
+    "end": 12,
+    "source_distance_pixels": 490,
+    "rasterization": "Once before animation",
+    "interpolation": "Floating point vertical offset, bicubic sampling, quintic easing"
+  },
+  "page_changes": "Clean cuts at actions; no whole-page crossfades, blank frames or text overlaps",
+  "receipt_reveal": "Opacity only within a fixed right-side panel; left confirmation panel and arrow stay unchanged",
+  "source": "Previously verified native screenshots; same-state response stitch and existing same-state review stitch",
+  "financial_ui_text_recreated": false,
+  "business_actions_repeated": false,
+  "narration_timing_unchanged": true,
+  "prior_artifacts_overwritten": false,
+  "beats": [
+    {
+      "start": 0,
+      "end": 2.5,
+      "composition": "query_focus"
+    },
+    {
+      "start": 2.5,
+      "end": 7,
+      "composition": "consent"
+    },
+    {
+      "start": 7,
+      "end": 10,
+      "composition": "contracts_hold"
+    },
+    {
+      "start": 10,
+      "end": 12,
+      "composition": "one_vertical_scroll"
+    },
+    {
+      "start": 12,
+      "end": 17.5,
+      "composition": "analysis_hold"
+    },
+    {
+      "start": 17.5,
+      "end": 20,
+      "composition": "cancel_focus"
+    },
+    {
+      "start": 20,
+      "end": 27,
+      "composition": "review"
+    },
+    {
+      "start": 27,
+      "end": 30.5,
+      "composition": "approved"
+    },
+    {
+      "start": 30.5,
+      "end": 35,
+      "composition": "success"
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "composition": "comparison"
+    }
+  ],
+  "business_check_count": 22
+}

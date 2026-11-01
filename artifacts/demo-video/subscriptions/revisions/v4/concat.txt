@@ -1,0 +1,2 @@
+file '/Users/zhouz/zhou/项目/banking-agent/artifacts/demo-video/bills/BAVA-opening-and-bills-55s-silent.mp4'
+file '/Users/zhouz/zhou/项目/banking-agent/artifacts/demo-video/subscriptions/BAVA-subscriptions-40s-stable-v4.mp4'

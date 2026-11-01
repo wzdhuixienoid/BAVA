@@ -1,0 +1,87 @@
+{
+  "revision": 7,
+  "output": "BAVA-subscriptions-40s-stable-v7.mp4",
+  "combined_preview": "BAVA-preview-95s-stable-v7.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_seconds": 40,
+  "global_start_seconds": 55,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "question_focus_reference": "opening/build_opening.py::chat",
+  "question_focus": {
+    "intervals": [
+      [
+        0,
+        2.5
+      ],
+      [
+        17.5,
+        20
+      ]
+    ],
+    "base": "Full native product screen, as in the opening",
+    "ease": "Opening ease-out, local .45 to 1.05 seconds",
+    "input_crop": [
+      270,
+      730,
+      1433,
+      807
+    ],
+    "width": [
+      1308,
+      1510
+    ],
+    "x": [
+      454,
+      205
+    ],
+    "y": [
+      923,
+      635
+    ],
+    "blur_radius": "1.8*q",
+    "dim": ".28*q",
+    "shadow_blur_radius": 18
+  },
+  "stable_reading_and_scroll": "Exact v5 compositions retained outside focus and 27-35s business views",
+  "business_display": "Full captured approved business area at 27-30.5s and full receipt at 30.5-35s, with reference label and value omitted",
+  "business_card_anchor": {
+    "x": 428,
+    "y": 123,
+    "width": 1064
+  },
+  "approved_source_crop": [
+    472,
+    77,
+    1260,
+    621
+  ],
+  "receipt_source_crops": [
+    [
+      472,
+      171,
+      1260,
+      558
+    ],
+    [
+      472,
+      588,
+      1260,
+      621
+    ]
+  ],
+  "receipt_omitted_reference_row": [
+    472,
+    558,
+    1260,
+    588
+  ],
+  "reference_number_visible": false,
+  "financial_text_recreated": false,
+  "business_actions_repeated": false,
+  "narration_timing_unchanged": true,
+  "prior_artifacts_overwritten": false,
+  "business_check_count": 22
+}

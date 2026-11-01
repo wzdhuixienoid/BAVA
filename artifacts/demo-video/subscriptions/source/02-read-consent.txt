@@ -1,0 +1,51 @@
+- alert
+- main:
+  - complementary "对话导航":
+    - button "消息提醒，3 条未读":
+    - paragraph: 智能银行服务
+    - generic: v1.0.1
+    - heading "银行助理工作台" [level=1]
+    - button "+ 新建对话"
+    - navigation "功能导航":
+      - link "金融总览 Dashboard":
+        - /url: /dashboard
+      - link "转账与收款":
+        - /url: /transfers
+      - link "订阅管理":
+        - /url: /subscriptions
+      - link "理财中心":
+        - /url: /wealth
+      - link "历史消费报告":
+        - /url: /reports
+    - paragraph: 最近对话
+    - navigation:
+      - button "新对话":
+        - generic: 新对话
+      - button "编辑对话：新对话": 编辑
+      - button "删除对话：新对话": 删除
+      - button "分析2026年8月消费，生成报告":
+        - generic: 分析2026年8月消费，生成报告
+      - button "编辑对话：分析2026年8月消费，生成报告": 编辑
+      - button "删除对话：分析2026年8月消费，生成报告": 删除
+  - heading "新对话" [level=2]
+  - paragraph: 处理过程与结果都在对话中
+  - generic: ● 实时连接正常
+  - region "对话工作区":
+    - generic "对话消息与回复":
+      - article "用户消息":
+        - paragraph: 我有哪些订阅？
+      - article "助理回复":
+        - generic: B
+        - text: 银行助理
+        - generic "! 处理未完成 查看过程 ›":
+          - generic: "!"
+          - generic: 处理未完成
+          - text: 查看过程
+          - generic: ›
+        - paragraph: 查询订阅、费用和续费安排需要你的确认。查询授权有效期为5分钟。
+        - button "确认读取订阅"
+        - button "查看审计链"
+        - alert: 请先确认读取订阅、费用和续费安排（授权5分钟）。
+    - textbox "消息":
+      - /placeholder: 输入消息…
+    - button "发送" [disabled]

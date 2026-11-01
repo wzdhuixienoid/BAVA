@@ -1,0 +1,44 @@
+{
+  "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+  "user_id": "dev-user-001",
+  "title": "我有哪些订阅？",
+  "created_at": "2026-11-01T02:53:13.577166Z",
+  "updated_at": "2026-11-01T02:53:51.939551Z",
+  "messages": [
+    {
+      "message_id": "ad00b7ac-9e19-496b-9acc-78f2993ec012",
+      "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+      "role": "USER",
+      "content": "我有哪些订阅？",
+      "created_at": "2026-11-01T02:53:23.024857Z"
+    },
+    {
+      "message_id": "3ead1e32-9eaf-4eaf-8517-bf8261963c86",
+      "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+      "role": "USER",
+      "content": "我有哪些订阅？",
+      "created_at": "2026-11-01T02:53:46.582281Z"
+    },
+    {
+      "message_id": "8a65bc31-3e11-4c70-8cdd-3b55ec638747",
+      "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+      "role": "ASSISTANT",
+      "content": "订阅费用：\n- 每月 ¥258.00\n\n- 云笺存储：¥18.00，有效\n- 像素设计：¥88.00，有效\n- 星幕视频：¥28.00，有效\n- 晨光健身*月卡：¥109.00，有效\n- 海浪音乐：¥15.00，有效\n- 活力健身：¥0.00，已取消\n\n详细信息可在左侧「订阅管理」查看。",
+      "created_at": "2026-11-01T02:53:51.940890Z"
+    },
+    {
+      "message_id": "2824bd7a-0055-4334-a711-40af06d56caf",
+      "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+      "role": "USER",
+      "content": "取消星幕视频",
+      "created_at": "2026-11-01T02:54:32.159473Z"
+    },
+    {
+      "message_id": "5596c0b9-056b-49b8-a52c-734037d6aa16",
+      "conversation_id": "8e60a6a3-a90b-4b35-b68f-dee92275f04b",
+      "role": "ASSISTANT",
+      "content": "取消订阅流程已建立，请在业务卡片中核对订阅及最终执行状态。\n\n详细信息可在左侧「订阅管理」查看。",
+      "created_at": "2026-11-01T02:54:34.685173Z"
+    }
+  ]
+}

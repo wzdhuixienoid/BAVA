@@ -1,0 +1,197 @@
+{
+  "outputs": [
+    {
+      "file": "BAVA-subscriptions-40s-stable-v2.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 1200,
+      "bytes": 1552399,
+      "duration_seconds": 40.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    },
+    {
+      "file": "BAVA-preview-95s-stable-v2.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 2850,
+      "bytes": 8422629,
+      "duration_seconds": 95.0,
+      "has_audio_stream": false,
+      "h264": true,
+      "pixel_format_yuv420p": true,
+      "full_decode_passed": true
+    }
+  ],
+  "revision": 2,
+  "previous_video_sha256_unchanged": {
+    "opening/BAVA-opening-15s-silent.mp4": true,
+    "bills/BAVA-bills-40s-silent.mp4": true,
+    "bills/BAVA-opening-and-bills-55s-silent.mp4": true
+  },
+  "previous_55s_frames_preserved_in_joined_preview": true,
+  "third_segment_frames_preserved_in_joined_preview": true,
+  "previous_narration_unchanged": true,
+  "caption_timeline_continuous_0_to_95": true,
+  "business_evidence_passed": true,
+  "business_check_count": 22,
+  "previous_edit_videos_and_narration_unchanged": {
+    "BAVA-subscriptions-40s-silent.mp4": true,
+    "BAVA-preview-95s-silent.mp4": true,
+    "narration-55-95.json": true,
+    "narration-00-95.json": true,
+    "BAVA-subscriptions.srt": true,
+    "BAVA-00-95.srt": true
+  },
+  "within_shot_camera_stability": [
+    {
+      "start": 0,
+      "end": 2.5,
+      "capture": "01-query",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -0.00012,
+        9e-05
+      ],
+      "correlation_response": 0.99991
+    },
+    {
+      "start": 2.5,
+      "end": 6,
+      "capture": "02-read-consent",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -0.00012,
+        8e-05
+      ],
+      "correlation_response": 0.99945
+    },
+    {
+      "start": 6,
+      "end": 7,
+      "capture": "03-read-authorized",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -0.00015,
+        -7e-05
+      ],
+      "correlation_response": 0.99995
+    },
+    {
+      "start": 7,
+      "end": 10.5,
+      "capture": "05-managed-and-detected",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        0.00288,
+        0.00123
+      ],
+      "correlation_response": 0.98502
+    },
+    {
+      "start": 10.5,
+      "end": 14,
+      "capture": "06-cost-and-renewal",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        1e-05,
+        -7e-05
+      ],
+      "correlation_response": 0.99999
+    },
+    {
+      "start": 14,
+      "end": 17.5,
+      "capture": "06-cost-and-renewal",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        5e-05,
+        -6e-05
+      ],
+      "correlation_response": 0.99995
+    },
+    {
+      "start": 17.5,
+      "end": 20,
+      "capture": "07-cancel-request",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        0.00084,
+        0.00131
+      ],
+      "correlation_response": 0.99643
+    },
+    {
+      "start": 20,
+      "end": 23.5,
+      "capture": "08-review-full",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        0.00037,
+        0.00039
+      ],
+      "correlation_response": 0.99832
+    },
+    {
+      "start": 23.5,
+      "end": 27,
+      "capture": "08-review",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -0.00013,
+        -8e-05
+      ],
+      "correlation_response": 0.99988
+    },
+    {
+      "start": 27,
+      "end": 30.5,
+      "capture": "09-approved",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        0.00016,
+        0.00012
+      ],
+      "correlation_response": 0.99958
+    },
+    {
+      "start": 30.5,
+      "end": 35,
+      "capture": "11-cancel-receipt",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -0.00074,
+        -0.00239
+      ],
+      "correlation_response": 0.98369
+    },
+    {
+      "start": 35,
+      "end": 37.5,
+      "capture": "12-current-state",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -4e-05,
+        -0.00035
+      ],
+      "correlation_response": 0.99985
+    },
+    {
+      "start": 37.5,
+      "end": 40,
+      "capture": "13-cancelled-contract",
+      "rendered_interior_pixels_identical": true,
+      "encoded_ui_shift_pixels": [
+        -4e-05,
+        -7e-05
+      ],
+      "correlation_response": 0.99998
+    }
+  ],
+  "max_within_shot_ui_translation_pixels": 0.00288,
+  "static_crop_and_static_red_annotations": true
+}

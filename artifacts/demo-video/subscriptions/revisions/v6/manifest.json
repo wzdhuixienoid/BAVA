@@ -1,0 +1,52 @@
+{
+  "revision": 6,
+  "output": "BAVA-subscriptions-40s-stable-v6.mp4",
+  "combined_preview": "BAVA-preview-95s-stable-v6.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_seconds": 40,
+  "global_start_seconds": 55,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "question_focus": "Original v1 framing/easing/timing restored at 0-2.5 and 17.5-20; no floating input substitute",
+  "stable_reading_and_scroll": "Unchanged v5 frames outside the explicitly revised ranges",
+  "business_display": "27-30.5 full captured approved business area; 30.5-35 full receipt with native timestamp, omitting the reference row",
+  "business_card_anchor": {
+    "x": 428,
+    "y": 123,
+    "width": 1064
+  },
+  "approved_source_crop": [
+    472,
+    77,
+    1260,
+    621
+  ],
+  "receipt_source_crops": [
+    [
+      472,
+      171,
+      1260,
+      558
+    ],
+    [
+      472,
+      588,
+      1260,
+      621
+    ]
+  ],
+  "receipt_omitted_reference_row": [
+    472,
+    558,
+    1260,
+    588
+  ],
+  "reference_number_visible": false,
+  "financial_text_recreated": false,
+  "business_actions_repeated": false,
+  "narration_timing_unchanged": true,
+  "prior_artifacts_overwritten": false,
+  "business_check_count": 22
+}

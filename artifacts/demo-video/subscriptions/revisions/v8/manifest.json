@@ -1,0 +1,76 @@
+{
+  "revision": 8,
+  "output": "BAVA-subscriptions-40s-stable-v8.mp4",
+  "combined_preview": "BAVA-preview-95s-stable-v8.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_seconds": 40,
+  "global_start_seconds": 55,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "around_28_seconds": "One continuous native screenshot including every visible execution step, approval state, subscription details, warning, commit and cancel controls, plus surrounding explanation",
+  "approved_source_crops": [
+    [
+      440,
+      263,
+      1280,
+      355
+    ],
+    [
+      440,
+      117,
+      1280,
+      698
+    ]
+  ],
+  "approved_heading_stitch": "Unchanged native timeline heading and already-completed steps 1-2 from the same workflow; approved-dependent steps 3-7 and all controls use the actual approved screenshot",
+  "receipt_source_crops": [
+    [
+      440,
+      121,
+      1280,
+      558
+    ],
+    [
+      440,
+      588,
+      1280,
+      698
+    ]
+  ],
+  "omitted_reference_row": [
+    440,
+    558,
+    1280,
+    588
+  ],
+  "reference_label_and_value_visible": false,
+  "business_panel_box": [
+    428,
+    106,
+    1492,
+    970
+  ],
+  "conversation_panel_box": [
+    195,
+    112,
+    1725,
+    962
+  ],
+  "review_image_box": [
+    448,
+    120,
+    1472,
+    966
+  ],
+  "footer_separator_y": 987,
+  "maximum_image_bottom_y": 970,
+  "minimum_gap_above_separator_pixels": 17,
+  "question_focus_and_scroll": "Latest v7 animation and v5 stable scroll preserved with a constant fit inside the safe image area",
+  "business_financial_text_recreated": false,
+  "business_actions_repeated": false,
+  "narration_and_timing_changed": false,
+  "previous_artifacts_overwritten": false,
+  "business_check_count": 22
+}

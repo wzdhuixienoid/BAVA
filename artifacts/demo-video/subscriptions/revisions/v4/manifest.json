@@ -1,0 +1,72 @@
+{
+  "revision": 4,
+  "output": "BAVA-subscriptions-40s-stable-v4.mp4",
+  "combined_preview": "BAVA-preview-95s-stable-v4.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_seconds": 40,
+  "global_start_seconds": 55,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "camera_motion": false,
+  "scrolling": false,
+  "zoom": false,
+  "page_transition": "Fade through a fixed white page matte for conversation changes, navy for editorial layout changes; never overlap two text positions",
+  "within_page_transition": "Opacity only; same pixel coordinates",
+  "fewer_beats": "Nine stable compositions, with a six-second analysis hold, seven-second review hold and five-second final check",
+  "source": "Existing verified native UI captures and same-state review-card stitch from v3",
+  "editorial_comparison": "Clearly separate navy chart using verified recurring-cost projection 258 to 230; not a refund",
+  "financial_ui_text_recreated": false,
+  "business_actions_repeated": false,
+  "narration_timing_unchanged": true,
+  "prior_artifacts_overwritten": false,
+  "beats": [
+    {
+      "start": 0,
+      "end": 2.5,
+      "composition": "query"
+    },
+    {
+      "start": 2.5,
+      "end": 7,
+      "composition": "consent"
+    },
+    {
+      "start": 7,
+      "end": 11.5,
+      "composition": "contracts"
+    },
+    {
+      "start": 11.5,
+      "end": 17.5,
+      "composition": "analysis"
+    },
+    {
+      "start": 17.5,
+      "end": 20,
+      "composition": "cancel"
+    },
+    {
+      "start": 20,
+      "end": 27,
+      "composition": "review"
+    },
+    {
+      "start": 27,
+      "end": 30.5,
+      "composition": "approved"
+    },
+    {
+      "start": 30.5,
+      "end": 35,
+      "composition": "success"
+    },
+    {
+      "start": 35,
+      "end": 40,
+      "composition": "comparison"
+    }
+  ],
+  "business_check_count": 22
+}
