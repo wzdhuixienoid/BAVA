@@ -1,0 +1,137 @@
+[
+  {
+    "plan_id": "a16b04b2-705a-48cf-9e43-d97ca80fe074",
+    "conversation_id": "20900106-e1c5-4888-923a-ee741c186767",
+    "source_task_id": "ca32fdf7-17bc-43cd-b683-c5c3d0050a8f",
+    "goal_summary": "查询工资卡余额，并在余额达到用户指定阈值时执行转账。",
+    "status": "WAITING_USER",
+    "version": 13,
+    "manual_takeover": false,
+    "steps": [
+      {
+        "step_id": "ac705174-e0c3-44bb-be97-f278755371d2",
+        "step_key": "account_balance_check",
+        "display_title": "查询工资卡余额",
+        "step_kind": "CAPABILITY",
+        "capability": "ACCOUNT_QUERY",
+        "condition_spec": null,
+        "condition_decision": null,
+        "guard_condition_step_id": null,
+        "status": "COMPLETED",
+        "depends_on": [],
+        "linked_workflow_id": null,
+        "result_summary": {
+          "account_results": [
+            {
+              "kind": "ACCOUNT_LIST",
+              "accounts": [
+                {
+                  "account_id": "acc_salary",
+                  "display_name": "工资卡",
+                  "account_type": "DEBIT",
+                  "masked_number": "****6688",
+                  "currency": "CNY",
+                  "status": "ACTIVE"
+                },
+                {
+                  "account_id": "acc_savings",
+                  "display_name": "储蓄卡",
+                  "account_type": "SAVINGS",
+                  "masked_number": "****1024",
+                  "currency": "CNY",
+                  "status": "ACTIVE"
+                },
+                {
+                  "account_id": "acc_credit",
+                  "display_name": "信用卡",
+                  "account_type": "CREDIT",
+                  "masked_number": "****9527",
+                  "currency": "CNY",
+                  "status": "ACTIVE"
+                },
+                {
+                  "account_id": "acc_travel",
+                  "display_name": "旅行卡",
+                  "account_type": "DEBIT",
+                  "masked_number": "****3366",
+                  "currency": "CNY",
+                  "status": "ACTIVE"
+                }
+              ],
+              "as_of": "2026-11-01T10:54:56.937318Z"
+            },
+            {
+              "kind": "ACCOUNT_BALANCE",
+              "account_id": "acc_salary",
+              "display_name": "工资卡",
+              "masked_number": "****6688",
+              "account_type": "DEBIT",
+              "currency": "CNY",
+              "balance": "23764.52",
+              "balance_display": "¥23,764.52",
+              "as_of": "2026-11-01T10:54:57.722117Z"
+            }
+          ],
+          "payee_results": []
+        },
+        "error_code": null,
+        "rollback_allowed": false
+      },
+      {
+        "step_id": "37fab6ac-db6f-4092-b25b-8033701f7823",
+        "step_key": "balance_condition",
+        "display_title": "判断余额是否达标",
+        "step_kind": "CONDITION",
+        "capability": null,
+        "condition_spec": {
+          "predicate": "ACCOUNT_BALANCE_AT_LEAST",
+          "source_step_key": "account_balance_check",
+          "threshold": "3000",
+          "currency": "CNY"
+        },
+        "condition_decision": {
+          "predicate": "ACCOUNT_BALANCE_AT_LEAST",
+          "source_step_id": "ac705174-e0c3-44bb-be97-f278755371d2",
+          "source_output_hash": "fbe84cf0e9c0e56c95009a634375556e157d0509257c72abcf26598b1d326821",
+          "actual_value": "23764.52",
+          "threshold_value": "3000",
+          "currency": "CNY",
+          "outcome": "TRUE",
+          "evaluated_at": "2026-11-01T10:54:58.662422Z",
+          "actual_display": "¥23,764.52",
+          "threshold_display": "¥3,000.00"
+        },
+        "guard_condition_step_id": null,
+        "status": "COMPLETED",
+        "depends_on": [
+          "ac705174-e0c3-44bb-be97-f278755371d2"
+        ],
+        "linked_workflow_id": null,
+        "result_summary": null,
+        "error_code": null,
+        "rollback_allowed": false
+      },
+      {
+        "step_id": "5d959b87-96b1-4919-b713-9d23d8aa9b9e",
+        "step_key": "transfer_execution",
+        "display_title": "执行转账",
+        "step_kind": "CAPABILITY",
+        "capability": "TRANSFER_WORKFLOW",
+        "condition_spec": null,
+        "condition_decision": null,
+        "guard_condition_step_id": "37fab6ac-db6f-4092-b25b-8033701f7823",
+        "status": "WAITING_USER",
+        "depends_on": [
+          "37fab6ac-db6f-4092-b25b-8033701f7823"
+        ],
+        "linked_workflow_id": "f5f3ccee-3a9c-4d3a-908f-b503915ef213",
+        "result_summary": null,
+        "error_code": null,
+        "rollback_allowed": false
+      }
+    ],
+    "created_at": "2026-11-01T10:54:55.818723Z",
+    "updated_at": "2026-11-01T10:58:19.144214Z",
+    "completed_at": null
+  }
+]

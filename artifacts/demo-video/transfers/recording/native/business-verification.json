@@ -1,0 +1,38 @@
+{
+  "checks": {
+    "zero_initial_transfers": true,
+    "initial_salary_correct": true,
+    "exactly_two_transfer_workflows": true,
+    "yellow_payee_and_remark_match_plan": true,
+    "red_payee_matches_plan": true,
+    "yellow_policy": true,
+    "red_policy": true,
+    "yellow_approval_does_not_submit": true,
+    "red_confirmation_does_not_submit": true,
+    "mock_code_pending": true,
+    "verification_does_not_submit": true,
+    "same_bound_challenge": true,
+    "same_approval": true,
+    "one_plan": true,
+    "three_dependent_steps": true,
+    "real_balance_and_threshold": true,
+    "guard_binds_condition": true,
+    "manual_takeover_paused_same_plan": true,
+    "same_plan_completed": true,
+    "final_business_success": true,
+    "approvals_consumed_once": true,
+    "final_salary_exact_debits": true,
+    "unique_execution_1200": true,
+    "unique_execution_100": true,
+    "original_questions_exact": true,
+    "previous_three_sections_unchanged": true
+  },
+  "all_passed": true,
+  "workflow_ids": [
+    "b135bcf6-a03a-4e1d-96f7-675c84e215a4",
+    "f5f3ccee-3a9c-4d3a-908f-b503915ef213"
+  ],
+  "plan_id": "a16b04b2-705a-48cf-9e43-d97ca80fe074",
+  "before_balance": "23864.52",
+  "after_balance": "22564.52"
+}

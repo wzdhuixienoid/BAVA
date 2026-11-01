@@ -1,0 +1,594 @@
+[
+  {
+    "workflow_id": "d04d57cc-8540-40ed-aba0-00d597cf7e75",
+    "user_id": "dev-user-001",
+    "conversation_id": "b3acb328-a54e-479a-8c69-382fc198e68d",
+    "source_task_id": "aaaa05be-2fd3-46f4-b303-40e72f6b001b",
+    "workflow_type": "TRANSFER",
+    "status": "WAITING_FOR_INPUT",
+    "version": 2,
+    "state": {
+      "draft": {
+        "recipient_query": "张三",
+        "payee_id": null,
+        "amount": "1200",
+        "currency": "CNY",
+        "source_account_hint": "工资卡",
+        "source_account_id": null,
+        "remark": "",
+        "recurrence": null,
+        "recurrence_text": null,
+        "schedule_requested": false,
+        "schedule_time_error": null,
+        "scheduled_for": null,
+        "execute_deadline": null,
+        "business_timezone": "Asia/Shanghai",
+        "schedule_id": null,
+        "aa_share_id": null
+      },
+      "required_input": {
+        "type": "PAYEE_SELECTION",
+        "options": [
+          {
+            "payee_id": "payee_001",
+            "display_name": "张三",
+            "bank_name": "星河银行（虚构）",
+            "masked_account": "****2231",
+            "phone_alias": "手机尾号 1001"
+          },
+          {
+            "payee_id": "payee_002",
+            "display_name": "张三",
+            "bank_name": "蓝海银行（虚构）",
+            "masked_account": "****9102",
+            "phone_alias": "手机尾号 1002"
+          }
+        ],
+        "message": "找到可能匹配的收款人，请核对并选择具体收款人。"
+      },
+      "validation": null,
+      "review_payload": null,
+      "risk_decision": null,
+      "authorization": null,
+      "payee_options": [
+        {
+          "payee_id": "payee_001",
+          "display_name": "张三",
+          "bank_name": "星河银行（虚构）",
+          "masked_account": "****2231",
+          "phone_alias": "手机尾号 1001"
+        },
+        {
+          "payee_id": "payee_002",
+          "display_name": "张三",
+          "bank_name": "蓝海银行（虚构）",
+          "masked_account": "****9102",
+          "phone_alias": "手机尾号 1002"
+        }
+      ],
+      "source_account_options": []
+    },
+    "risk_level": null,
+    "risk_decision": null,
+    "wealth_risk_decision": null,
+    "approval_summary": null,
+    "reauth_summary": null,
+    "operation_summary": null,
+    "presentation": {
+      "wealth_state": null,
+      "business_success": false,
+      "approval_required": null,
+      "reauthentication_required": null,
+      "amount_display": null,
+      "transfer_state": {
+        "draft": {
+          "recipient_query": "张三",
+          "payee_id": null,
+          "amount": "1200",
+          "currency": "CNY",
+          "source_account_hint": "工资卡",
+          "source_account_id": null,
+          "remark": "",
+          "recurrence": null,
+          "recurrence_text": null,
+          "schedule_requested": false,
+          "schedule_time_error": null,
+          "scheduled_for": null,
+          "execute_deadline": null,
+          "business_timezone": "Asia/Shanghai",
+          "schedule_id": null,
+          "aa_share_id": null
+        },
+        "required_input": {
+          "type": "PAYEE_SELECTION",
+          "options": [
+            {
+              "payee_id": "payee_001",
+              "display_name": "张三",
+              "bank_name": "星河银行（虚构）",
+              "masked_account": "****2231",
+              "phone_alias": "手机尾号 1001"
+            },
+            {
+              "payee_id": "payee_002",
+              "display_name": "张三",
+              "bank_name": "蓝海银行（虚构）",
+              "masked_account": "****9102",
+              "phone_alias": "手机尾号 1002"
+            }
+          ],
+          "message": "找到可能匹配的收款人，请核对并选择具体收款人。"
+        },
+        "validation": null,
+        "review_payload": null,
+        "risk_decision": null,
+        "authorization": null,
+        "payee_options": [
+          {
+            "payee_id": "payee_001",
+            "display_name": "张三",
+            "bank_name": "星河银行（虚构）",
+            "masked_account": "****2231",
+            "phone_alias": "手机尾号 1001"
+          },
+          {
+            "payee_id": "payee_002",
+            "display_name": "张三",
+            "bank_name": "蓝海银行（虚构）",
+            "masked_account": "****9102",
+            "phone_alias": "手机尾号 1002"
+          }
+        ],
+        "source_account_options": []
+      },
+      "subscription_state": null,
+      "account_options": [],
+      "payee_options": [
+        {
+          "payee_id": "payee_001",
+          "display_name": "张三",
+          "bank_name": "星河银行（虚构）",
+          "masked_account": "****2231",
+          "phone_alias": "手机尾号 1001"
+        },
+        {
+          "payee_id": "payee_002",
+          "display_name": "张三",
+          "bank_name": "蓝海银行（虚构）",
+          "masked_account": "****9102",
+          "phone_alias": "手机尾号 1002"
+        }
+      ],
+      "stages": [
+        {
+          "key": "intent",
+          "label": "需求解析",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "payee",
+          "label": "收款人确认",
+          "status": "WAITING_USER"
+        },
+        {
+          "key": "account",
+          "label": "付款账户确认",
+          "status": "PENDING"
+        },
+        {
+          "key": "validation",
+          "label": "金额与余额校验",
+          "status": "PENDING"
+        },
+        {
+          "key": "risk",
+          "label": "风险评估",
+          "status": "PENDING"
+        },
+        {
+          "key": "approval",
+          "label": "用户确认",
+          "status": "PENDING"
+        },
+        {
+          "key": "reauth",
+          "label": "强身份验证",
+          "status": "PENDING"
+        },
+        {
+          "key": "submit",
+          "label": "提交执行",
+          "status": "PENDING"
+        },
+        {
+          "key": "provider",
+          "label": "Provider 处理",
+          "status": "PENDING"
+        },
+        {
+          "key": "final",
+          "label": "最终结果",
+          "status": "PENDING"
+        }
+      ]
+    },
+    "created_at": "2026-11-01T12:09:00.522068Z",
+    "updated_at": "2026-11-01T12:09:00.527480Z"
+  },
+  {
+    "workflow_id": "d6086cb7-3dba-47e4-bb26-ce3f6f948dee",
+    "user_id": "dev-user-001",
+    "conversation_id": "a04b85ff-a4a0-41ad-8e29-9ec198d98ec0",
+    "source_task_id": "4329175d-0644-40de-aca4-86357b1f7b25",
+    "workflow_type": "TRANSFER",
+    "status": "SUCCEEDED",
+    "version": 6,
+    "state": {
+      "draft": {
+        "recipient_query": "李小雨",
+        "payee_id": "payee_003",
+        "amount": "100",
+        "currency": "CNY",
+        "source_account_hint": "工资卡",
+        "source_account_id": "acc_salary",
+        "remark": "餐费",
+        "recurrence": null,
+        "recurrence_text": null,
+        "schedule_requested": false,
+        "schedule_time_error": null,
+        "scheduled_for": null,
+        "execute_deadline": null,
+        "business_timezone": "Asia/Shanghai",
+        "schedule_id": null,
+        "aa_share_id": null
+      },
+      "required_input": null,
+      "validation": {
+        "is_valid": true,
+        "validated_at": "2026-11-01T12:06:43.291809Z",
+        "available_balance": "23864.52",
+        "issues": []
+      },
+      "review_payload": {
+        "recurrence": null,
+        "payee_target_version": null,
+        "aa_request_id": null,
+        "aa_share_id": null,
+        "destination_user_id": null,
+        "destination_account_id": null,
+        "remark": "餐费",
+        "scheduled_for": null,
+        "execute_deadline": null,
+        "business_timezone": "Asia/Shanghai",
+        "source_account_id": "acc_salary",
+        "source_account_display_name": "工资卡",
+        "source_account_masked_number": "****6688",
+        "payee_id": "payee_003",
+        "payee_display_name": "李小雨",
+        "payee_bank_name": "星河银行（虚构）",
+        "payee_masked_account": "****4815",
+        "amount": "100",
+        "currency": "CNY"
+      },
+      "risk_decision": {
+        "level": "YELLOW",
+        "required_approval": true,
+        "required_reauthentication": false,
+        "reason_codes": [
+          "DAILY_TRANSFER_WITHIN_LIMIT"
+        ],
+        "business_date": "2026-11-01",
+        "currency": "CNY",
+        "daily_successful_total": "0",
+        "daily_in_flight_exposure": "0",
+        "requested_amount": "100",
+        "projected_daily_total": "100",
+        "threshold": "1000.00",
+        "evaluated_at": "2026-11-01T12:06:43.280171Z",
+        "passwordless_limit": "200.00",
+        "passwordless_limit_display": "¥200.00",
+        "requested_amount_display": "¥100.00",
+        "daily_successful_total_display": "¥0.00",
+        "daily_in_flight_exposure_display": "¥0.00",
+        "projected_daily_total_display": "¥100.00",
+        "threshold_display": "¥1,000.00"
+      },
+      "authorization": {
+        "approval_id": "4d57ab21-b0e0-4eac-9571-d0f2aab21a61",
+        "approval_payload_hash": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865",
+        "approval_expires_at": "2026-11-01T12:16:27.824543Z",
+        "reauth_id": null,
+        "reauth_verified_at": null,
+        "reauth_expires_at": null
+      },
+      "payee_options": [
+        {
+          "payee_id": "payee_003",
+          "display_name": "李小雨",
+          "bank_name": "星河银行（虚构）",
+          "masked_account": "****4815",
+          "phone_alias": "手机尾号 1003"
+        }
+      ],
+      "source_account_options": [
+        {
+          "account_id": "acc_salary",
+          "display_name": "工资卡",
+          "account_type": "DEBIT",
+          "masked_number": "****6688",
+          "currency": "CNY",
+          "status": "ACTIVE",
+          "available_balance": "23864.52"
+        },
+        {
+          "account_id": "acc_savings",
+          "display_name": "储蓄卡",
+          "account_type": "SAVINGS",
+          "masked_number": "****1024",
+          "currency": "CNY",
+          "status": "ACTIVE",
+          "available_balance": "78620.00"
+        },
+        {
+          "account_id": "acc_travel",
+          "display_name": "旅行卡",
+          "account_type": "DEBIT",
+          "masked_number": "****3366",
+          "currency": "CNY",
+          "status": "ACTIVE",
+          "available_balance": "12680.40"
+        }
+      ]
+    },
+    "risk_level": "YELLOW",
+    "risk_decision": {
+      "level": "YELLOW",
+      "required_approval": true,
+      "required_reauthentication": false,
+      "reason_codes": [
+        "DAILY_TRANSFER_WITHIN_LIMIT"
+      ],
+      "business_date": "2026-11-01",
+      "currency": "CNY",
+      "daily_successful_total": "0",
+      "daily_in_flight_exposure": "0",
+      "requested_amount": "100",
+      "projected_daily_total": "100",
+      "threshold": "1000.00",
+      "evaluated_at": "2026-11-01T12:06:43.280171Z",
+      "passwordless_limit": "200.00",
+      "passwordless_limit_display": "¥200.00",
+      "requested_amount_display": "¥100.00",
+      "daily_successful_total_display": "¥0.00",
+      "daily_in_flight_exposure_display": "¥0.00",
+      "projected_daily_total_display": "¥100.00",
+      "threshold_display": "¥1,000.00"
+    },
+    "wealth_risk_decision": null,
+    "approval_summary": {
+      "approval_id": "4d57ab21-b0e0-4eac-9571-d0f2aab21a61",
+      "status": "CONSUMED",
+      "expires_at": "2026-11-01T12:16:27.824543Z"
+    },
+    "reauth_summary": null,
+    "operation_summary": {
+      "operation_id": "226de371-17df-42c3-a37b-f8e6370974fc",
+      "status": "SUCCEEDED",
+      "provider_reference": "mocktr_e10046ac1b2e476cb4e9958c841fc763",
+      "error_code": null,
+      "created_at": "2026-11-01T12:06:43.293998Z",
+      "completed_at": "2026-11-01T12:06:43.326705Z"
+    },
+    "presentation": {
+      "wealth_state": null,
+      "business_success": true,
+      "approval_required": true,
+      "reauthentication_required": false,
+      "amount_display": "¥100.00",
+      "transfer_state": {
+        "draft": {
+          "recipient_query": "李小雨",
+          "payee_id": "payee_003",
+          "amount": "100",
+          "currency": "CNY",
+          "source_account_hint": "工资卡",
+          "source_account_id": "acc_salary",
+          "remark": "餐费",
+          "recurrence": null,
+          "recurrence_text": null,
+          "schedule_requested": false,
+          "schedule_time_error": null,
+          "scheduled_for": null,
+          "execute_deadline": null,
+          "business_timezone": "Asia/Shanghai",
+          "schedule_id": null,
+          "aa_share_id": null
+        },
+        "required_input": null,
+        "validation": {
+          "is_valid": true,
+          "validated_at": "2026-11-01T12:06:43.291809Z",
+          "available_balance": "23864.52",
+          "issues": []
+        },
+        "review_payload": {
+          "recurrence": null,
+          "payee_target_version": null,
+          "aa_request_id": null,
+          "aa_share_id": null,
+          "destination_user_id": null,
+          "destination_account_id": null,
+          "remark": "餐费",
+          "scheduled_for": null,
+          "execute_deadline": null,
+          "business_timezone": "Asia/Shanghai",
+          "source_account_id": "acc_salary",
+          "source_account_display_name": "工资卡",
+          "source_account_masked_number": "****6688",
+          "payee_id": "payee_003",
+          "payee_display_name": "李小雨",
+          "payee_bank_name": "星河银行（虚构）",
+          "payee_masked_account": "****4815",
+          "amount": "100",
+          "currency": "CNY"
+        },
+        "risk_decision": {
+          "level": "YELLOW",
+          "required_approval": true,
+          "required_reauthentication": false,
+          "reason_codes": [
+            "DAILY_TRANSFER_WITHIN_LIMIT"
+          ],
+          "business_date": "2026-11-01",
+          "currency": "CNY",
+          "daily_successful_total": "0",
+          "daily_in_flight_exposure": "0",
+          "requested_amount": "100",
+          "projected_daily_total": "100",
+          "threshold": "1000.00",
+          "evaluated_at": "2026-11-01T12:06:43.280171Z",
+          "passwordless_limit": "200.00",
+          "passwordless_limit_display": "¥200.00",
+          "requested_amount_display": "¥100.00",
+          "daily_successful_total_display": "¥0.00",
+          "daily_in_flight_exposure_display": "¥0.00",
+          "projected_daily_total_display": "¥100.00",
+          "threshold_display": "¥1,000.00"
+        },
+        "authorization": {
+          "approval_id": "4d57ab21-b0e0-4eac-9571-d0f2aab21a61",
+          "approval_payload_hash": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865",
+          "approval_expires_at": "2026-11-01T12:16:27.824543Z",
+          "reauth_id": null,
+          "reauth_verified_at": null,
+          "reauth_expires_at": null
+        },
+        "payee_options": [
+          {
+            "payee_id": "payee_003",
+            "display_name": "李小雨",
+            "bank_name": "星河银行（虚构）",
+            "masked_account": "****4815",
+            "phone_alias": "手机尾号 1003"
+          }
+        ],
+        "source_account_options": [
+          {
+            "account_id": "acc_salary",
+            "display_name": "工资卡",
+            "account_type": "DEBIT",
+            "masked_number": "****6688",
+            "currency": "CNY",
+            "status": "ACTIVE",
+            "available_balance": "23864.52"
+          },
+          {
+            "account_id": "acc_savings",
+            "display_name": "储蓄卡",
+            "account_type": "SAVINGS",
+            "masked_number": "****1024",
+            "currency": "CNY",
+            "status": "ACTIVE",
+            "available_balance": "78620.00"
+          },
+          {
+            "account_id": "acc_travel",
+            "display_name": "旅行卡",
+            "account_type": "DEBIT",
+            "masked_number": "****3366",
+            "currency": "CNY",
+            "status": "ACTIVE",
+            "available_balance": "12680.40"
+          }
+        ]
+      },
+      "subscription_state": null,
+      "account_options": [
+        {
+          "account_id": "acc_salary",
+          "display_name": "工资卡",
+          "masked_number": "****6688",
+          "currency": "CNY",
+          "available_balance_display": "¥23,864.52"
+        },
+        {
+          "account_id": "acc_savings",
+          "display_name": "储蓄卡",
+          "masked_number": "****1024",
+          "currency": "CNY",
+          "available_balance_display": "¥78,620.00"
+        },
+        {
+          "account_id": "acc_travel",
+          "display_name": "旅行卡",
+          "masked_number": "****3366",
+          "currency": "CNY",
+          "available_balance_display": "¥12,680.40"
+        }
+      ],
+      "payee_options": [
+        {
+          "payee_id": "payee_003",
+          "display_name": "李小雨",
+          "bank_name": "星河银行（虚构）",
+          "masked_account": "****4815",
+          "phone_alias": "手机尾号 1003"
+        }
+      ],
+      "stages": [
+        {
+          "key": "intent",
+          "label": "需求解析",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "payee",
+          "label": "收款人确认",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "account",
+          "label": "付款账户确认",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "validation",
+          "label": "金额与余额校验",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "risk",
+          "label": "风险评估",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "approval",
+          "label": "用户确认",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "reauth",
+          "label": "强身份验证",
+          "status": "SKIPPED"
+        },
+        {
+          "key": "submit",
+          "label": "提交执行",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "provider",
+          "label": "Provider 处理",
+          "status": "COMPLETED"
+        },
+        {
+          "key": "final",
+          "label": "最终结果",
+          "status": "COMPLETED"
+        }
+      ]
+    },
+    "created_at": "2026-11-01T12:05:31.995625Z",
+    "updated_at": "2026-11-01T12:06:43.328465Z"
+  }
+]

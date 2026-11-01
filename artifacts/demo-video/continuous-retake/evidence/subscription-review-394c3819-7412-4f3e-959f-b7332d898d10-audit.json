@@ -1,0 +1,272 @@
+{
+  "trace_id": "7c882d52-7a90-46b2-8db0-d7dbe396e56d",
+  "source_task_id": "7c882d52-7a90-46b2-8db0-d7dbe396e56d",
+  "generated_at": "2026-11-01T12:50:17.527863Z",
+  "task_status": "COMPLETED",
+  "entries": [
+    {
+      "event_id": "5610df54-21fe-4efc-b0ee-58ce1fbb0544",
+      "sequence": 69,
+      "timestamp": "2026-11-01T12:48:45.742832Z",
+      "category": "CONVERSATION",
+      "event_type": "conversation.message.created",
+      "actor_type": "USER",
+      "resource_type": "MESSAGE",
+      "resource_id": "2d8ebefd-b005-4f5e-9f54-1acfec24e0b1",
+      "status": null,
+      "decision_summary": "用户请求已接收（原文见当前对话）",
+      "related_resource_ids": {
+        "message_id": "2d8ebefd-b005-4f5e-9f54-1acfec24e0b1"
+      },
+      "facts": [],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "aa73a2c9-71b5-496e-9716-71e0b7fde16f",
+      "sequence": 70,
+      "timestamp": "2026-11-01T12:48:45.744204Z",
+      "category": "TASK",
+      "event_type": "task.created",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "7c882d52-7a90-46b2-8db0-d7dbe396e56d",
+      "status": "PENDING",
+      "decision_summary": "任务已创建",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "PENDING"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "3ec89e42-d5d4-4841-a425-e3d221924d6e",
+      "sequence": 71,
+      "timestamp": "2026-11-01T12:48:46.250741Z",
+      "category": "TASK",
+      "event_type": "task.started",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "7c882d52-7a90-46b2-8db0-d7dbe396e56d",
+      "status": "RUNNING",
+      "decision_summary": "任务开始执行",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "RUNNING"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "14676cdd-1f13-438c-ae1f-c354c33d6014",
+      "sequence": 73,
+      "timestamp": "2026-11-01T12:48:47.329178Z",
+      "category": "REQUEST",
+      "event_type": "request.routed",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "7c882d52-7a90-46b2-8db0-d7dbe396e56d",
+      "status": null,
+      "decision_summary": "请求已路由至注册执行者",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "route",
+          "label": "路由",
+          "value": "SUBSCRIPTION_CANCEL"
+        },
+        {
+          "key": "executor_id",
+          "label": "注册执行者",
+          "value": "workflow:subscription-cancel"
+        },
+        {
+          "key": "requested_output",
+          "label": "输出类型",
+          "value": "WORKFLOW"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "6ba7a5a6-5548-46ed-9732-884abefad71c",
+      "sequence": 74,
+      "timestamp": "2026-11-01T12:48:48.060374Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.created",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "394c3819-7412-4f3e-959f-b7332d898d10",
+      "status": "DRAFT",
+      "decision_summary": "创建业务草稿并保存提取意图",
+      "related_resource_ids": {
+        "workflow_id": "394c3819-7412-4f3e-959f-b7332d898d10"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "DRAFT"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "394c3819-7412-4f3e-959f-b7332d898d10"
+        },
+        {
+          "key": "subscription_query",
+          "label": "订阅查询",
+          "value": "星幕视频"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "4634006e-b293-4919-ba38-fb87b446867d",
+      "sequence": 75,
+      "timestamp": "2026-11-01T12:48:48.072269Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.ready_for_review",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "394c3819-7412-4f3e-959f-b7332d898d10",
+      "status": "READY_FOR_REVIEW",
+      "decision_summary": "业务校验完成，等待用户确认",
+      "related_resource_ids": {
+        "workflow_id": "394c3819-7412-4f3e-959f-b7332d898d10"
+      },
+      "facts": [
+        {
+          "key": "risk_level",
+          "label": "后端风险等级",
+          "value": "YELLOW"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "READY_FOR_REVIEW"
+        },
+        {
+          "key": "required_approval",
+          "label": "需要用户确认",
+          "value": "True"
+        },
+        {
+          "key": "required_reauthentication",
+          "label": "需要 Mock 强验证",
+          "value": "False"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "394c3819-7412-4f3e-959f-b7332d898d10"
+        },
+        {
+          "key": "subscription_query",
+          "label": "订阅查询",
+          "value": "星幕视频"
+        },
+        {
+          "key": "subscription_id",
+          "label": "订阅身份",
+          "value": "sub_video"
+        },
+        {
+          "key": "merchant",
+          "label": "商户",
+          "value": "星幕视频"
+        },
+        {
+          "key": "management_type",
+          "label": "管理类型",
+          "value": "MANAGED"
+        },
+        {
+          "key": "cancellable",
+          "label": "后端可取消能力",
+          "value": "True"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "bc5006b7-30db-4e4d-a1d1-3e0082b23bd6",
+      "sequence": 76,
+      "timestamp": "2026-11-01T12:48:48.092805Z",
+      "category": "TASK",
+      "event_type": "task.completed",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "7c882d52-7a90-46b2-8db0-d7dbe396e56d",
+      "status": "COMPLETED",
+      "decision_summary": "任务完成；写业务结果仍由 Workflow / Operation 决定",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "4"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "COMPLETED"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    }
+  ],
+  "resources": [],
+  "write_evidence": {
+    "workflow_count": 1,
+    "approval_count": 0,
+    "operation_count": 0,
+    "provider_ledger_count": 0,
+    "provider_submission_count": 0,
+    "skipped_write_step_ids": [],
+    "business_success": false,
+    "no_write_started": false
+  },
+  "history_truncated": false,
+  "history_note": "时间线来自持久 Event；资源详情是当前快照。旧版本未记录的细节不会补造。原文见所属对话；不复制完整 Prompt 或模型推理。"
+}

@@ -1,0 +1,889 @@
+[
+  {
+    "label": "prep_dashboard",
+    "epoch": 1793533119.093,
+    "rect": {
+      "height": 40,
+      "width": 219,
+      "x": 20,
+      "y": 160
+    }
+  },
+  {
+    "label": "opening_dashboard",
+    "epoch": 1793533134.444
+  },
+  {
+    "label": "opening_dashboard_valid",
+    "epoch": 1793533163.695
+  },
+  {
+    "label": "opening_workbench",
+    "epoch": 1793533168.247,
+    "rect": {
+      "height": 38,
+      "width": 96,
+      "x": 1200,
+      "y": 90
+    }
+  },
+  {
+    "label": "opening_new_conversation",
+    "epoch": 1793533168.87,
+    "rect": {
+      "height": 44,
+      "width": 219,
+      "x": 20,
+      "y": 96
+    }
+  },
+  {
+    "label": "bill_typing_start",
+    "epoch": 1793533169.452,
+    "text": "分析2026年8月消费，生成报告"
+  },
+  {
+    "label": "bill_typing_end",
+    "epoch": 1793533171.198
+  },
+  {
+    "label": "bill_send",
+    "epoch": 1793533172.232,
+    "rect": {
+      "height": 50,
+      "width": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "label": "bill_result",
+    "epoch": 1793533185.125
+  },
+  {
+    "label": "bill_complete_card",
+    "epoch": 1793533202.176
+  },
+  {
+    "label": "bill_open_report",
+    "epoch": 1793533205.218,
+    "rect": {
+      "height": 28,
+      "width": 72,
+      "x": 521,
+      "y": 430.75
+    }
+  },
+  {
+    "label": "bill_report_top",
+    "epoch": 1793533205.957
+  },
+  {
+    "label": "bill_scroll_categories",
+    "epoch": 1793533210.467
+  },
+  {
+    "label": "bill_categories_hold",
+    "epoch": 1793533215.112
+  },
+  {
+    "label": "bill_scroll_insights",
+    "epoch": 1793533221.928
+  },
+  {
+    "label": "bill_scroll_transactions",
+    "epoch": 1793533224.737
+  },
+  {
+    "label": "bill_transactions_hold",
+    "epoch": 1793533229.039
+  },
+  {
+    "label": "bill_history_open",
+    "epoch": 1793533229.347,
+    "rect": {
+      "height": 20,
+      "width": 72.453125,
+      "x": 208,
+      "y": 32
+    }
+  },
+  {
+    "label": "bill_history_hold",
+    "epoch": 1793533237.898
+  },
+  {
+    "label": "subscription_back_workbench",
+    "epoch": 1793533240.446,
+    "rect": {
+      "height": 38,
+      "width": 104,
+      "x": 1128,
+      "y": 66
+    }
+  },
+  {
+    "label": "subscription_new_conversation",
+    "epoch": 1793533241.063,
+    "rect": {
+      "height": 44,
+      "width": 219,
+      "x": 20,
+      "y": 96
+    }
+  },
+  {
+    "label": "subscription_query_typing_start",
+    "epoch": 1793533241.633,
+    "text": "我有哪些订阅？"
+  },
+  {
+    "label": "subscription_query_typing_end",
+    "epoch": 1793533242.458
+  },
+  {
+    "label": "subscription_query_send",
+    "epoch": 1793533243.497,
+    "rect": {
+      "height": 50,
+      "width": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "label": "subscription_consent_visible",
+    "epoch": 1793533257.825
+  },
+  {
+    "label": "subscription_confirm_read",
+    "epoch": 1793533260.374,
+    "rect": {
+      "height": 36,
+      "width": 116,
+      "x": 521,
+      "y": 294
+    }
+  },
+  {
+    "label": "subscription_summary_observed",
+    "epoch": 1793533278.259
+  },
+  {
+    "label": "subscription_summary_scroll_up",
+    "epoch": 1793533285.337
+  },
+  {
+    "label": "subscription_summary_table_hold",
+    "epoch": 1793533289.491
+  },
+  {
+    "label": "subscription_summary_fees_hold",
+    "epoch": 1793533292.775
+  },
+  {
+    "label": "subscription_cancel_typing_start",
+    "epoch": 1793533292.904,
+    "text": "取消星幕视频"
+  },
+  {
+    "label": "subscription_cancel_typing_end",
+    "epoch": 1793533293.637
+  },
+  {
+    "label": "subscription_cancel_send",
+    "epoch": 1793533294.673,
+    "rect": {
+      "height": 50,
+      "width": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "label": "subscription_review",
+    "epoch": 1793533309.972
+  },
+  {
+    "label": "subscription_approve",
+    "epoch": 1793533312.657,
+    "rect": {
+      "height": 32,
+      "width": 72,
+      "x": 517,
+      "y": 579.875
+    }
+  },
+  {
+    "name": "second_recording_start",
+    "epoch": 1793533803.728
+  },
+  {
+    "name": "subscription_commit",
+    "epoch": 1793533807.528,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 517,
+      "y": 534.875
+    }
+  },
+  {
+    "name": "subscription_success",
+    "epoch": 1793533820.156
+  },
+  {
+    "name": "subscription_open_management",
+    "epoch": 1793533832.424,
+    "rect": {
+      "h": 42,
+      "w": 219,
+      "x": 20,
+      "y": 266
+    }
+  },
+  {
+    "name": "subscription_requery_consent",
+    "epoch": 1793533838.249,
+    "rect": {
+      "h": 36,
+      "w": 116,
+      "x": 233,
+      "y": 253
+    }
+  },
+  {
+    "name": "subscription_management_result",
+    "epoch": 1793533848.874
+  },
+  {
+    "name": "subscription_management_totals_hold",
+    "epoch": 1793533861.834
+  },
+  {
+    "name": "subscription_cancelled_contract_hold",
+    "epoch": 1793533862.49
+  },
+  {
+    "name": "transfer_return_workbench",
+    "epoch": 1793533872.527,
+    "rect": {
+      "h": 38,
+      "w": 104,
+      "x": 1192,
+      "y": 90
+    }
+  },
+  {
+    "name": "transfer_new_conversation",
+    "epoch": 1793533872.988,
+    "rect": {
+      "h": 44,
+      "w": 219,
+      "x": 20,
+      "y": 96
+    }
+  },
+  {
+    "name": "yellow_typing_start",
+    "epoch": 1793533886.524,
+    "text": "从工资卡给李小雨转100元，备注餐费"
+  },
+  {
+    "name": "yellow_typing_end",
+    "epoch": 1793533888.434
+  },
+  {
+    "name": "yellow_send",
+    "epoch": 1793533888.493,
+    "rect": {
+      "h": 50,
+      "w": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "name": "yellow_review",
+    "epoch": 1793533902.974
+  },
+  {
+    "name": "yellow_scroll_to_risk",
+    "epoch": 1793533913.95
+  },
+  {
+    "name": "yellow_risk_hold",
+    "epoch": 1793533914.449
+  },
+  {
+    "name": "yellow_scroll_to_details",
+    "epoch": 1793533932.963
+  },
+  {
+    "name": "yellow_details_hold",
+    "epoch": 1793533933.522
+  },
+  {
+    "name": "yellow_approve",
+    "epoch": 1793533943.017,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 530,
+      "y": 527.5
+    }
+  },
+  {
+    "name": "yellow_commit",
+    "epoch": 1793533963.712,
+    "rect": {
+      "h": 32,
+      "w": 72,
+      "x": 530,
+      "y": 527.5
+    }
+  },
+  {
+    "name": "yellow_success",
+    "epoch": 1793533975.287
+  },
+  {
+    "name": "yellow_receipt_top",
+    "epoch": 1793533982.445
+  },
+  {
+    "name": "yellow_dashboard",
+    "epoch": 1793533982.464,
+    "rect": {
+      "h": 40,
+      "w": 219,
+      "x": 20,
+      "y": 160
+    }
+  },
+  {
+    "name": "yellow_balance_hold",
+    "epoch": 1793534001.433
+  },
+  {
+    "name": "yellow_filtered_ledger",
+    "epoch": 1793534002.381
+  },
+  {
+    "name": "yellow_ledger_hold",
+    "epoch": 1793534036.913
+  },
+  {
+    "name": "condition_back_workbench",
+    "epoch": 1793534037.419,
+    "rect": {
+      "h": 38,
+      "w": 96,
+      "x": 1200,
+      "y": 90
+    }
+  },
+  {
+    "name": "condition_typing_start",
+    "epoch": 1793534037.873,
+    "text": "查工资卡余额，如果余额不少于3000元，给张三转1200元"
+  },
+  {
+    "name": "condition_typing_end",
+    "epoch": 1793534040.987
+  },
+  {
+    "name": "condition_send",
+    "epoch": 1793534041.091,
+    "rect": {
+      "h": 50,
+      "w": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "name": "condition_plan_observed",
+    "epoch": 1793534059.963
+  },
+  {
+    "name": "condition_scroll_dag",
+    "epoch": 1793534071.287
+  },
+  {
+    "name": "condition_full_dag_hold",
+    "epoch": 1793534071.783
+  },
+  {
+    "name": "plan_pause",
+    "epoch": 1793534103.726,
+    "rect": {
+      "h": 26,
+      "w": 98,
+      "x": 517,
+      "y": 686.796875
+    }
+  },
+  {
+    "name": "plan_resume",
+    "epoch": 1793534117.768,
+    "rect": {
+      "h": 24,
+      "w": 96,
+      "x": 517,
+      "y": 730.796875
+    }
+  },
+  {
+    "name": "red_scroll_to_payees",
+    "epoch": 1793534124.809
+  },
+  {
+    "name": "red_payee_candidates_hold",
+    "epoch": 1793534125.433
+  },
+  {
+    "name": "red_choose_payee",
+    "epoch": 1793534134.968,
+    "rect": {
+      "h": 86,
+      "w": 364,
+      "x": 530,
+      "y": 512.296875
+    }
+  },
+  {
+    "name": "plan_align_resume",
+    "epoch": 1793534163.27
+  },
+  {
+    "name": "plan_resume_actual",
+    "epoch": 1793534170.742,
+    "rect": {
+      "h": 24,
+      "w": 96,
+      "x": 517,
+      "y": 666.796875
+    }
+  },
+  {
+    "name": "red_scroll_to_risk",
+    "epoch": 1793534197.287
+  },
+  {
+    "name": "red_risk_hold",
+    "epoch": 1793534197.94
+  },
+  {
+    "name": "red_scroll_to_details",
+    "epoch": 1793534212.834
+  },
+  {
+    "name": "red_review_details_hold",
+    "epoch": 1793534213.307
+  },
+  {
+    "name": "red_approve",
+    "epoch": 1793534223.772,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 530,
+      "y": 553.296875
+    }
+  },
+  {
+    "name": "red_start_verification",
+    "epoch": 1793534229.855,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 530,
+      "y": 551.296875
+    }
+  },
+  {
+    "name": "red_masked_code_start",
+    "epoch": 1793534246.22
+  },
+  {
+    "name": "red_masked_code_filled",
+    "epoch": 1793534246.738
+  },
+  {
+    "name": "red_verify",
+    "epoch": 1793534246.755,
+    "rect": {
+      "h": 34,
+      "w": 48,
+      "x": 1218,
+      "y": 549.296875
+    }
+  },
+  {
+    "name": "red_commit",
+    "epoch": 1793534273.799,
+    "rect": {
+      "h": 32,
+      "w": 72,
+      "x": 530,
+      "y": 551.296875
+    }
+  },
+  {
+    "name": "red_success",
+    "epoch": 1793534274.361
+  },
+  {
+    "name": "red_scroll_receipt_top",
+    "epoch": 1793534280.519
+  },
+  {
+    "name": "red_receipt_top_hold",
+    "epoch": 1793534281.153
+  },
+  {
+    "name": "red_scroll_receipt_timeline",
+    "epoch": 1793534317.295
+  },
+  {
+    "name": "red_timeline_hold",
+    "epoch": 1793534317.892
+  },
+  {
+    "name": "red_scroll_completed_plan",
+    "epoch": 1793534341.008
+  },
+  {
+    "name": "red_completed_plan_hold",
+    "epoch": 1793534341.517
+  },
+  {
+    "name": "final_dashboard",
+    "epoch": 1793534353.537,
+    "rect": {
+      "h": 40,
+      "w": 219,
+      "x": 20,
+      "y": 160
+    }
+  },
+  {
+    "name": "final_balance_hold",
+    "epoch": 1793534354.375
+  },
+  {
+    "name": "final_scroll_ledger",
+    "epoch": 1793534368.036
+  },
+  {
+    "name": "final_ledger_hold",
+    "epoch": 1793534369.025
+  },
+  {
+    "name": "recording_complete",
+    "epoch": 1793534406.321
+  },
+  {
+    "name": "ledger_pickup_start",
+    "epoch": 1793534603.845,
+    "recordingEpoch": 1793534594.141
+  },
+  {
+    "name": "ledger_pickup_balance",
+    "epoch": 1793534604.313
+  },
+  {
+    "name": "ledger_pickup_rows",
+    "epoch": 1793534669.97
+  },
+  {
+    "name": "take2_yellow_new",
+    "epoch": 1793534726.962,
+    "rect": {
+      "h": 44,
+      "w": 219,
+      "x": 20,
+      "y": 96
+    }
+  },
+  {
+    "name": "take2_yellow_typing_start",
+    "epoch": 1793534727.438,
+    "text": "从工资卡给李小雨转100元，备注餐费"
+  },
+  {
+    "name": "take2_yellow_typing_end",
+    "epoch": 1793534729.371
+  },
+  {
+    "name": "take2_yellow_send",
+    "epoch": 1793534729.439,
+    "rect": {
+      "h": 50,
+      "w": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "name": "take2_yellow_risk",
+    "epoch": 1793534763.836
+  },
+  {
+    "name": "take2_yellow_details_scroll",
+    "epoch": 1793534775.554
+  },
+  {
+    "name": "take2_yellow_details",
+    "epoch": 1793534776.227
+  },
+  {
+    "name": "take2_yellow_approve",
+    "epoch": 1793534787.506,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 530,
+      "y": 527.5
+    }
+  },
+  {
+    "name": "take2_yellow_commit",
+    "epoch": 1793534803.084,
+    "rect": {
+      "h": 32,
+      "w": 72,
+      "x": 530,
+      "y": 527.5
+    }
+  },
+  {
+    "name": "take2_yellow_receipt",
+    "epoch": 1793534804.06
+  },
+  {
+    "name": "take2_yellow_dashboard",
+    "epoch": 1793534820.716,
+    "rect": {
+      "h": 40,
+      "w": 219,
+      "x": 20,
+      "y": 160
+    }
+  },
+  {
+    "name": "take2_yellow_balance",
+    "epoch": 1793534821.248
+  },
+  {
+    "name": "take2_condition_workbench",
+    "epoch": 1793534846.433,
+    "rect": {
+      "h": 38,
+      "w": 96,
+      "x": 1200,
+      "y": 90
+    }
+  },
+  {
+    "name": "take2_condition_typing_start",
+    "epoch": 1793534847.043,
+    "text": "查工资卡余额，如果余额不少于3000元，给张三转1200元"
+  },
+  {
+    "name": "take2_condition_typing_end",
+    "epoch": 1793534850.226
+  },
+  {
+    "name": "take2_condition_send",
+    "epoch": 1793534850.321,
+    "rect": {
+      "h": 50,
+      "w": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "name": "take3_condition_new",
+    "epoch": 1793534922.578,
+    "rect": {
+      "h": 44,
+      "w": 219,
+      "x": 20,
+      "y": 96
+    }
+  },
+  {
+    "name": "take3_condition_typing_start",
+    "epoch": 1793534923.054,
+    "text": "查工资卡余额，如果余额不少于3000元，给张三转1200元"
+  },
+  {
+    "name": "take3_condition_typing_end",
+    "epoch": 1793534926.187
+  },
+  {
+    "name": "take3_condition_send",
+    "epoch": 1793534926.256,
+    "rect": {
+      "h": 50,
+      "w": 72,
+      "x": 1416,
+      "y": 749
+    }
+  },
+  {
+    "name": "take3_dag_align",
+    "epoch": 1793534980.348
+  },
+  {
+    "name": "take3_dag_hold",
+    "epoch": 1793534980.791
+  },
+  {
+    "name": "take3_plan_pause",
+    "epoch": 1793534996.525,
+    "rect": {
+      "h": 26,
+      "w": 98,
+      "x": 517,
+      "y": 682
+    }
+  },
+  {
+    "name": "take3_plan_paused_hold",
+    "epoch": 1793534997.675
+  },
+  {
+    "name": "take3_plan_resume",
+    "epoch": 1793535014.09,
+    "rect": {
+      "h": 24,
+      "w": 96,
+      "x": 517,
+      "y": 660
+    }
+  },
+  {
+    "name": "take3_plan_resumed_hold",
+    "epoch": 1793535014.637
+  },
+  {
+    "name": "take3_payee_scroll",
+    "epoch": 1793535034.334
+  },
+  {
+    "name": "take3_payee_hold",
+    "epoch": 1793535034.925
+  },
+  {
+    "name": "take3_choose_payee",
+    "epoch": 1793535056.302,
+    "rect": {
+      "h": 86,
+      "w": 364,
+      "x": 530,
+      "y": 513
+    }
+  },
+  {
+    "name": "take3_red_risk_hold",
+    "epoch": 1793535057.379
+  },
+  {
+    "name": "take3_red_details_scroll",
+    "epoch": 1793535084.725
+  },
+  {
+    "name": "take3_red_details",
+    "epoch": 1793535085.304
+  },
+  {
+    "name": "take3_red_approve",
+    "epoch": 1793535093.399,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 530,
+      "y": 551.5
+    }
+  },
+  {
+    "name": "take3_red_start_verification",
+    "epoch": 1793535099.326,
+    "rect": {
+      "h": 32,
+      "w": 96,
+      "x": 530,
+      "y": 551.5
+    }
+  },
+  {
+    "name": "take3_masked_code_start",
+    "epoch": 1793535120.161
+  },
+  {
+    "name": "take3_masked_code_filled",
+    "epoch": 1793535120.651
+  },
+  {
+    "name": "take3_red_verify",
+    "epoch": 1793535120.67,
+    "rect": {
+      "h": 34,
+      "w": 48,
+      "x": 1218,
+      "y": 549.5
+    }
+  },
+  {
+    "name": "take3_red_commit",
+    "epoch": 1793535138.842,
+    "rect": {
+      "h": 32,
+      "w": 72,
+      "x": 530,
+      "y": 551.5
+    }
+  },
+  {
+    "name": "take3_red_success",
+    "epoch": 1793535139.365
+  },
+  {
+    "name": "take3_red_receipt_top",
+    "epoch": 1793535139.961
+  },
+  {
+    "name": "take3_completed_plan_scroll",
+    "epoch": 1793535164.271
+  },
+  {
+    "name": "take3_completed_plan_hold",
+    "epoch": 1793535164.513
+  },
+  {
+    "name": "take3_final_dashboard",
+    "epoch": 1793535191.787,
+    "rect": {
+      "h": 40,
+      "w": 219,
+      "x": 20,
+      "y": 160
+    }
+  },
+  {
+    "name": "take3_final_balance_hold",
+    "epoch": 1793535192.335
+  },
+  {
+    "name": "take3_final_scroll_ledger",
+    "epoch": 1793535219.379
+  },
+  {
+    "name": "take3_final_ledger_hold",
+    "epoch": 1793535220.357
+  }
+]

@@ -1,0 +1,46 @@
+{
+  "video": "BAVA-demo-continuous-silent.mp4",
+  "duration_seconds": 284.2,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "ui_rectangle": [
+    170,
+    112,
+    1580,
+    856
+  ],
+  "corner_radius_px": 24,
+  "separator_y": 987,
+  "single_conversation_id": "6c4ec632-6481-42b1-870d-0fb5275bbc68",
+  "single_conversation_title": "BAVA 银行服务演示",
+  "all_historical_messages_preserved": true,
+  "same_mock_fixture_throughout": true,
+  "narration": "产品讲解稿与时间轴.md",
+  "srt": "BAVA-demo-continuous.srt",
+  "business_checks_passed": 34,
+  "media_checks_passed": 15,
+  "video_sha256": "522b8c966dd93fbb391b598b5eceb5472f761d0437727c9209cdfa43ad401721",
+  "native_sources": [
+    {
+      "file": "raw/01-bills.mp4",
+      "sha256": "0f29dde14586af60db068c64ffccc603605b65268b61d0dc4809d2ec2f668d95"
+    },
+    {
+      "file": "raw/02-subscriptions.mp4",
+      "sha256": "c022d851d93c164425159f90db52a9c638c27eaecba881d3c561d939e49c9196"
+    },
+    {
+      "file": "raw/03-transfers.mp4",
+      "sha256": "400cfebe417752f44e5d6f95710f92acbf3f10ab8ad2eca8e7449fd465ddf349"
+    },
+    {
+      "file": "raw/04-condition.mp4",
+      "sha256": "760ddb2e812a425a3dbb1cccf17ef81f651d841513a22f84f271a71688ec3e65"
+    }
+  ]
+}

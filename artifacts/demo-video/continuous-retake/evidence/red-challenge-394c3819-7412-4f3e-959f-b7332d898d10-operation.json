@@ -1,0 +1,17 @@
+{
+  "operation_id": "ffc59d6d-826f-4000-a85e-2d05023be2cd",
+  "workflow_id": "394c3819-7412-4f3e-959f-b7332d898d10",
+  "operation_type": "SUBSCRIPTION_CANCEL",
+  "status": "SUCCEEDED",
+  "version": 3,
+  "provider_reference": "mocksub_0e39acf682664282884466f92c6e86df",
+  "error_code": null,
+  "error_message": null,
+  "created_at": "2026-11-01T12:50:49.385980Z",
+  "submitted_at": "2026-11-01T12:50:49.398266Z",
+  "completed_at": "2026-11-01T12:50:49.417778Z",
+  "next_reconcile_at": null,
+  "reconcile_attempts": 1,
+  "last_reconcile_at": "2026-11-01T12:50:49.417781Z",
+  "updated_at": "2026-11-01T12:50:49.418851Z"
+}

@@ -1,0 +1,238 @@
+- alert
+- main:
+  - paragraph: AI BANKING AGENT · v1.0.1
+  - heading "金融总览" [level=1]
+  - paragraph: 账户与账单事实由银行服务提供，金额按币种展示。
+  - navigation "金融服务":
+    - link "对话工作台":
+      - /url: /
+  - region "账户与账单":
+    - heading "账户与账单" [level=2]
+    - region "账户 Dashboard":
+      - heading "账户与余额" [level=3]
+      - generic "账户查询结果":
+        - region "工资卡余额":
+          - paragraph: 工资卡
+          - paragraph: "****6688 · 借记账户 · CNY"
+          - paragraph: 余额
+          - paragraph: ¥22,564.52
+          - paragraph:
+            - text: 查询时间：
+            - time: 2026-11-01 15:21:45
+        - region "储蓄卡余额":
+          - paragraph: 储蓄卡
+          - paragraph: "****1024 · 储蓄账户 · CNY"
+          - paragraph: 余额
+          - paragraph: ¥78,620.00
+          - paragraph:
+            - text: 查询时间：
+            - time: 2026-11-01 15:21:45
+        - region "信用卡余额":
+          - paragraph: 信用卡
+          - paragraph: "****9527 · 信用账户 · CNY"
+          - paragraph: 余额
+          - paragraph: "-¥4,860.35"
+          - paragraph:
+            - text: 查询时间：
+            - time: 2026-11-01 15:21:45
+        - region "旅行卡余额":
+          - paragraph: 旅行卡
+          - paragraph: "****3366 · 借记账户 · CNY"
+          - paragraph: 余额
+          - paragraph: ¥12,680.40
+          - paragraph:
+            - text: 查询时间：
+            - time: 2026-11-01 15:21:45
+    - region "账单明细":
+      - heading "账单明细" [level=2]
+      - paragraph: 按时间倒序展示已入账收支，含理财、订阅及转账。可筛选年月、类别和账户，下滑查看更多。
+      - button "清除筛选"
+      - button "刷新账单"
+      - region "账单明细列表":
+        - table "账单明细表":
+          - rowgroup:
+            - row "时间 2026年 11月 交易 / 描述 分类 转账 账户 工资卡 金额":
+              - columnheader "时间 2026年 11月":
+                - generic: 时间
+                - combobox "筛选账单年份":
+                  - option "全部年份"
+                  - option "2026年" [selected]
+                  - option "2025年"
+                - combobox "筛选账单月份":
+                  - option "全部月份"
+                  - option "1月"
+                  - option "2月"
+                  - option "3月"
+                  - option "4月"
+                  - option "5月"
+                  - option "6月"
+                  - option "7月"
+                  - option "8月"
+                  - option "9月"
+                  - option "10月"
+                  - option "11月" [selected]
+                  - option "12月"
+              - columnheader "交易 / 描述"
+              - columnheader "分类 转账":
+                - text: 分类
+                - combobox "筛选账单类别":
+                  - option "全部类别"
+                  - option "奖金收入"
+                  - option "娱乐"
+                  - option "餐饮"
+                  - option "健康"
+                  - option "住房"
+                  - option "其他"
+                  - option "退款"
+                  - option "工资收入"
+                  - option "购物"
+                  - option "订阅"
+                  - option "转账" [selected]
+                  - option "通勤"
+                  - option "旅行"
+                  - option "水电通信"
+              - columnheader "账户 工资卡":
+                - text: 账户
+                - combobox "筛选账单账户":
+                  - option "全部账户"
+                  - option "工资卡" [selected]
+                  - option "储蓄卡"
+                  - option "信用卡"
+                  - option "旅行卡"
+              - columnheader "金额"
+          - rowgroup:
+            - row "2026-11-01 15:21:21 张三 转账支出 · 已入账 转账 工资卡 -¥1,200.00CNY":
+              - cell "2026-11-01 15:21:21":
+                - time: 2026-11-01 15:21:21
+              - cell "张三 转账支出 · 已入账":
+                - paragraph: 张三
+                - paragraph: 转账支出 · 已入账
+              - cell "转账"
+              - cell "工资卡"
+              - cell "-¥1,200.00CNY"
+            - row "2026-11-01 15:16:36 李小雨 餐费 转账 工资卡 -¥100.00CNY":
+              - cell "2026-11-01 15:16:36":
+                - time: 2026-11-01 15:16:36
+              - cell "李小雨 餐费":
+                - paragraph: 李小雨
+                - paragraph: 餐费
+              - cell "转账"
+              - cell "工资卡"
+              - cell "-¥100.00CNY"
+  - region "免密支付额度":
+    - heading "免密支付额度" [level=2]
+    - region "免密支付额度设置":
+      - paragraph: 最高可设置200元，设为0可关闭免密。只有单笔金额严格小于此额度、且含本笔的当日累计不超过1000元时，确认后可免强验证；其他转账需要强验证。
+      - paragraph:
+        - text: 当前额度：
+        - strong: ¥200.00
+      - text: 新额度（元）
+      - spinbutton "新免密额度": "200.00"
+      - button "核对额度设置"
+  - region "消费分析":
+    - heading "消费分析" [level=2]
+    - generic "消费查询":
+      - text: 消费年份
+      - combobox "消费年份":
+        - option "2026年" [selected]
+        - option "2025年"
+      - text: 消费月份
+      - combobox "消费月份":
+        - option "1月"
+        - option "2月"
+        - option "3月"
+        - option "4月"
+        - option "5月"
+        - option "6月"
+        - option "7月"
+        - option "8月"
+        - option "9月"
+        - option "10月"
+        - option "11月" [selected]
+        - option "12月"
+      - button "刷新银行事实"
+      - generic: 查询等级 GREEN · 绿色
+      - generic: 只读查询 · 截至 2026-11-01 15:21:45
+    - region "消费 Dashboard":
+      - heading "2026年11月消费总览" [level=2]
+      - region "报告概览":
+        - paragraph: 总支出
+        - paragraph: ¥0.00
+        - paragraph: 总收入
+        - paragraph: ¥0.00
+        - paragraph: 消费笔数
+        - paragraph: "0"
+      - region "支出变化":
+        - heading "较上月" [level=2]
+        - paragraph: 对比 2026年10月
+        - paragraph: 上月支出
+        - paragraph: ¥20,594.00
+        - paragraph: "-¥20,594.00"
+        - paragraph: "-100.0%"
+      - heading "分类构成" [level=2]
+      - heading "主要交易" [level=2]
+      - paragraph: 按金额排序，展示本期主要消费。
+      - paragraph: 暂无主要交易数据。
+    - heading "异常交易分析" [level=2]
+    - paragraph: 分析区间：2026-10-02 15:21:45 至 2026-11-01 15:21:45
+    - paragraph: 异常提示 ≠ 已确认欺诈；请核对交易，不会自动触发安全锁定。
+    - article:
+      - paragraph: 远帆家居（虚构）
+      - time: 2026-10-07 20:00:00
+      - paragraph: ¥8,600.00
+      - paragraph: 高度关注 · CNY
+      - paragraph: 金额明显高于历史
+      - paragraph: 规则：AMOUNT_SPIKE
+      - paragraph: 原因：金额明显高于历史，建议核对相关扣费。
+      - list:
+        - listitem: 历史中位数：¥949.00
+        - listitem: 本笔金额：¥8,600.00
+        - listitem: 金额倍数：9.06
+        - listitem: 历史样本数：8
+        - listitem: 比较范围：同分类
+      - paragraph: 新商户高额消费
+      - paragraph: 规则：NEW_MERCHANT_HIGH_AMOUNT
+      - paragraph: 原因：新商户高额消费，建议核对相关扣费。
+      - list:
+        - listitem: 历史中位数：¥949.00
+        - listitem: 本笔金额：¥8,600.00
+        - listitem: 金额倍数：9.06
+        - listitem: 历史样本数：8
+        - listitem: 比较范围：同分类
+        - listitem: 历史出现过商户：否
+    - article:
+      - paragraph: 晨雾数码（虚构）
+      - time: 2026-10-06 20:06:00
+      - paragraph: ¥999.00
+      - paragraph: 高度关注 · CNY
+      - paragraph: 短时间相同金额重复扣款
+      - paragraph: 规则：RAPID_DUPLICATE
+      - paragraph: 原因：短时间相同金额重复扣款，建议核对相关扣费。
+      - list:
+        - listitem: 本笔金额：¥999.00
+        - listitem: 重复扣费笔数：3
+        - listitem: 时间窗口（分钟）：10
+    - article:
+      - paragraph: 禾田生鲜
+      - time: 2026-10-06 20:00:00
+      - paragraph: ¥219.00
+      - paragraph: 中等关注 · CNY
+      - paragraph: 金额明显高于历史
+      - paragraph: 规则：AMOUNT_SPIKE
+      - paragraph: 原因：金额明显高于历史，建议核对相关扣费。
+      - list:
+        - listitem: 历史中位数：¥45.05
+        - listitem: 本笔金额：¥219.00
+        - listitem: 金额倍数：4.86
+        - listitem: 历史样本数：46
+        - listitem: 比较范围：同分类
+      - paragraph: 新商户高额消费
+      - paragraph: 规则：NEW_MERCHANT_HIGH_AMOUNT
+      - paragraph: 原因：新商户高额消费，建议核对相关扣费。
+      - list:
+        - listitem: 历史中位数：¥45.05
+        - listitem: 本笔金额：¥219.00
+        - listitem: 金额倍数：4.86
+        - listitem: 历史样本数：46
+        - listitem: 比较范围：同分类
+        - listitem: 历史出现过商户：否

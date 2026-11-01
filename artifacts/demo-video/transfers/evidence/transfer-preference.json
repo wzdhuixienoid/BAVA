@@ -1,0 +1,7 @@
+{
+  "passwordless_limit": "200.00",
+  "maximum": "200.00",
+  "daily_threshold": "1000.00",
+  "version": 0,
+  "passwordless_limit_display": "¥200.00"
+}

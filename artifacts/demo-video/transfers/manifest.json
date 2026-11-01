@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "current": true,
+  "capture_method": "Apple ScreenCaptureKit independent BAVA browser window",
+  "duration_seconds": 90,
+  "combined_duration_seconds": 185,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "audio": false,
+  "burned_in_subtitles": false,
+  "video": "recording/native/BAVA-part4-90s-native-recording.mp4",
+  "combined": "recording/native/BAVA-preview-185s-native-recording.mp4",
+  "narration": "recording/native/第四部分文案与时间轴.md",
+  "subtitles": "recording/native/BAVA-part4-native.srt",
+  "combined_subtitles": "recording/native/BAVA-00-185.srt",
+  "raw_recording": "recording/native/BAVA-part4-native-raw.mp4",
+  "edl": "recording/native/edit-decision-list.json",
+  "business_verification": "recording/native/business-verification.json",
+  "media_verification": "recording/native/media-verification.json",
+  "prompts": [
+    "从工资卡给李小雨转100元，备注餐费",
+    "查工资卡余额，如果余额不少于3000元，给张三转1200元"
+  ],
+  "previous_version_manifest": "recording/static-v1-manifest.json"
+}

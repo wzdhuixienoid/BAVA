@@ -1,0 +1,28 @@
+[
+  {
+    "file": "raw/01-03-native.mp4",
+    "epoch": 1793533128,
+    "epochSource": "MP4 creation_time, approximate; calibrated visually"
+  },
+  {
+    "file": "raw/03-04-native.mp4",
+    "epoch": 1793533793.751,
+    "epochSource": "ScreenCaptureKit recordingOutputDidStartRecording"
+  },
+  {
+    "file": "raw/06-yellow-final.mp4",
+    "epoch": 1793534720.134
+  },
+  {
+    "file": "raw/07-dag-final.mp4",
+    "epoch": 1793534835.488
+  },
+  {
+    "file": "raw/07b-dag-final.mp4",
+    "epoch": 1793534914.504
+  },
+  {
+    "file": "raw/08-verify-final.mp4",
+    "epoch": 1793535073.87
+  }
+]

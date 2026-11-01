@@ -1,0 +1,224 @@
+- main:
+  - complementary "对话导航":
+    - button "消息提醒，3 条未读":
+    - paragraph: 智能银行服务
+    - generic: v1.0.1
+    - heading "银行助理工作台" [level=1]
+    - button "+ 新建对话"
+    - navigation "功能导航":
+      - link "金融总览 Dashboard":
+        - /url: /dashboard
+      - link "转账与收款":
+        - /url: /transfers
+      - link "订阅管理":
+        - /url: /subscriptions
+      - link "理财中心":
+        - /url: /wealth
+      - link "历史消费报告":
+        - /url: /reports
+    - paragraph: 最近对话
+    - navigation:
+      - button "从工资卡给张三转100元，备注聚餐AA":
+        - generic: 从工资卡给张三转100元，备注聚餐AA
+      - button "编辑对话：从工资卡给张三转100元，备注聚餐AA": 编辑
+      - button "删除对话：从工资卡给张三转100元，备注聚餐AA": 删除
+      - button "我有哪些订阅？":
+        - generic: 我有哪些订阅？
+      - button "编辑对话：我有哪些订阅？": 编辑
+      - button "删除对话：我有哪些订阅？": 删除
+      - button "分析2026年8月消费，生成报告":
+        - generic: 分析2026年8月消费，生成报告
+      - button "编辑对话：分析2026年8月消费，生成报告": 编辑
+      - button "删除对话：分析2026年8月消费，生成报告": 删除
+  - heading "从工资卡给张三转100元，备注聚餐AA" [level=2]
+  - paragraph: 处理过程与结果都在对话中
+  - generic: ● 实时连接正常
+  - region "对话工作区":
+    - generic "对话消息与回复":
+      - article "用户消息":
+        - paragraph: 从工资卡给张三转100元，备注聚餐AA
+      - article "助理回复":
+        - generic: B
+        - text: 银行助理
+        - generic "✓ 已完成处理 查看过程 ›":
+          - generic: ✓
+          - generic: 已完成处理
+          - text: 查看过程
+          - generic: ›
+        - button "查看审计链"
+        - region "转账回执":
+          - paragraph: ✓ 转账已完成
+          - paragraph: Mock 模拟转账回执，未进入真实银行清算网络。
+          - paragraph: ¥100.00
+          - term: 收款人
+          - definition: 张三 · ****2231
+          - term: 备注
+          - definition: 聚餐AA
+          - term: 转出账户
+          - definition: 工资卡 · ****6688
+          - term: 收款银行
+          - definition: 星河银行（虚构）
+          - region "转账风险评估":
+            - heading "风险等级" [level=3]
+            - generic: YELLOW · 黄色
+            - term: 本笔转账 · CNY
+            - definition: ¥100.00
+            - term: 本人单笔免密额度
+            - definition: ¥200.00
+            - term: 当日已成功
+            - definition: ¥0.00
+            - term: 当日执行中
+            - definition: ¥0.00
+            - term: 当日累计风险暴露（含本笔）
+            - definition: ¥100.00
+            - term: 业务日期
+            - definition: 2026-11-01
+            - paragraph: ✓ 需要用户确认
+            - paragraph: ○ 无需强身份验证
+          - region "业务执行时间线":
+            - heading "业务执行进度" [level=3]
+            - list:
+              - generic: 1. 需求解析
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 2. 收款人确认
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 3. 付款账户确认
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 4. 金额与余额校验
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 5. 风险评估
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 6. 用户确认
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 7. 强身份验证
+              - generic "后端决定跳过该步骤":
+                - generic: ↷
+                - text: 已跳过
+              - generic: 8. 提交执行
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 9. Provider 处理
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+              - generic: 10. 最终结果
+              - generic "任务步骤已完成，不代表写业务成功":
+                - generic: ✓
+                - text: 已完成
+            - text: 用户确认：
+            - generic "已绑定唯一业务操作":
+              - generic: ✓
+              - text: 确认已使用
+            - text: 银行操作：
+            - generic "对应业务资源已由银行确认":
+              - generic: ✓
+              - text: 已成功
+          - paragraph: 参考号：mocktr_bf41f4fad8894ccd81e03f815b110aeb
+          - paragraph: 2026-11-01 14:41:36
+        - paragraph: 转账流程已建立，请在转账卡片中选择或核对资料，并查看最终执行状态。
+      - article "用户消息":
+        - paragraph: 从工资卡给李小雨转1200元，备注房租
+      - article "助理回复":
+        - generic: B
+        - text: 银行助理
+        - generic "○ 等待你的操作 查看过程 ›":
+          - generic: ○
+          - generic: 等待你的操作
+          - text: 查看过程
+          - generic: ›
+        - button "查看审计链"
+        - paragraph: 转账工作流
+        - paragraph: 版本 3
+        - generic "完成模拟强身份验证后才能继续":
+          - generic: ◇
+          - text: 需要身份验证
+        - region "转账风险评估":
+          - heading "风险等级" [level=3]
+          - generic: RED · 红色
+          - paragraph: 本笔金额已达到或超过本人免密额度，需要强验证。
+          - paragraph: 含本笔的当日累计已超过1000元，需要强验证。
+          - term: 本笔转账 · CNY
+          - definition: ¥1,200.00
+          - term: 本人单笔免密额度
+          - definition: ¥200.00
+          - term: 当日已成功
+          - definition: ¥100.00
+          - term: 当日执行中
+          - definition: ¥0.00
+          - term: 当日累计风险暴露（含本笔）
+          - definition: ¥1,300.00
+          - term: 业务日期
+          - definition: 2026-11-01
+          - paragraph: ✓ 需要用户确认
+          - paragraph: ✓ 需要强身份验证
+        - region "业务执行时间线":
+          - heading "业务执行进度" [level=3]
+          - list:
+            - generic: 1. 需求解析
+            - generic "任务步骤已完成，不代表写业务成功":
+              - generic: ✓
+              - text: 已完成
+            - generic: 2. 收款人确认
+            - generic "任务步骤已完成，不代表写业务成功":
+              - generic: ✓
+              - text: 已完成
+            - generic: 3. 付款账户确认
+            - generic "任务步骤已完成，不代表写业务成功":
+              - generic: ✓
+              - text: 已完成
+            - generic: 4. 金额与余额校验
+            - generic "任务步骤已完成，不代表写业务成功":
+              - generic: ✓
+              - text: 已完成
+            - generic: 5. 风险评估
+            - generic "任务步骤已完成，不代表写业务成功":
+              - generic: ✓
+              - text: 已完成
+            - generic: 6. 用户确认
+            - generic "任务步骤已完成，不代表写业务成功":
+              - generic: ✓
+              - text: 已完成
+            - generic: 7. 强身份验证
+            - generic "请完成当前确认或输入":
+              - generic: ◇
+              - text: 等待用户操作
+            - generic: 8. 提交执行
+            - generic "等待前置步骤或执行调度":
+              - generic: ○
+              - text: 等待处理
+            - generic: 9. Provider 处理
+            - generic "等待前置步骤或执行调度":
+              - generic: ○
+              - text: 等待处理
+            - generic: 10. 最终结果
+            - generic "等待前置步骤或执行调度":
+              - generic: ○
+              - text: 等待处理
+          - text: 用户确认：
+          - generic "确认已绑定当前业务内容":
+            - generic: ✓
+            - text: 用户已确认
+          - paragraph: 用户确认、身份验证或任务完成均不代表业务成功；最终结果以银行确认状态为准。
+        - paragraph: 需要完成身份验证后才能继续
+        - button "开始身份验证"
+        - button "修改转账草稿"
+        - button "取消转账"
+        - paragraph: 转账流程已建立，请在转账卡片中选择或核对资料，并查看最终执行状态。
+    - button "↓ 回到最新消息"
+    - textbox "消息":
+      - /placeholder: 输入消息…
+    - button "发送" [disabled]
+- alert

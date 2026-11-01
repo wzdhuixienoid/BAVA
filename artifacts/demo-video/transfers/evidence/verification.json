@@ -1,0 +1,63 @@
+{
+  "salary_balance_before": "23864.52",
+  "salary_balance_after_yellow": "23764.52",
+  "salary_balance_after_both": "22564.52",
+  "total_debit": "1300.00",
+  "reauthentication_mode": "MOCK_CODE",
+  "transfers": [
+    {
+      "risk": "YELLOW",
+      "workflow_id": "a7c49da5-159d-435c-9508-613e09702189",
+      "operation_id": "f51d655a-0af6-482c-a6d5-34f1586c5391",
+      "amount": "100",
+      "payee": "张三",
+      "masked_account": "****2231",
+      "remark": "聚餐AA",
+      "completed_at": "2026-11-01T06:41:36.292544Z"
+    },
+    {
+      "risk": "RED",
+      "workflow_id": "751c51c9-ddeb-454e-bded-526fed5acae3",
+      "operation_id": "05ef1cc7-9221-4797-8755-b961f25728f7",
+      "amount": "1200",
+      "payee": "李小雨",
+      "masked_account": "****4815",
+      "remark": "房租",
+      "completed_at": "2026-11-01T06:45:32.675226Z"
+    }
+  ],
+  "checks": {
+    "mock_bank_and_mock_auth": true,
+    "demo_owner_and_zero_initial_exposure": true,
+    "same_name_candidates_require_ui_choice": true,
+    "selected_payee_bound_to_review": true,
+    "yellow_risk_requires_confirmation_without_mfa": true,
+    "yellow_amount_within_actual_limits": true,
+    "yellow_confirmed_is_not_submitted": true,
+    "yellow_final_success_and_consumed_approval": true,
+    "yellow_debit_matches_100": true,
+    "red_bound_to_requested_payee_and_remark": true,
+    "red_risk_requires_confirmation_and_mfa": true,
+    "red_cumulative_exposure_1300": true,
+    "red_exceeds_daily_threshold_and_single_limit": true,
+    "red_confirmation_stops_for_auth": true,
+    "mock_challenge_pending_before_verification": true,
+    "verified_is_not_submitted": true,
+    "no_red_debit_before_commit": true,
+    "red_auth_bound_to_same_approval_and_payload": true,
+    "red_final_success_and_consumed_approval": true,
+    "red_debit_matches_1200": true,
+    "total_debit_matches_1300": true,
+    "other_account_balances_unchanged": true,
+    "security_guard_remains_normal": true,
+    "yellow_single_ledger_entry_matches_receipt": true,
+    "yellow_operation_matches_workflow": true,
+    "yellow_audit_confirms_one_submission_and_success": true,
+    "red_single_ledger_entry_matches_receipt": true,
+    "red_operation_matches_workflow": true,
+    "red_audit_confirms_one_submission_and_success": true,
+    "exactly_two_new_transfer_workflows": true,
+    "previous_videos_unchanged": true,
+    "no_verification_code_in_ui_capture_text": true
+  }
+}

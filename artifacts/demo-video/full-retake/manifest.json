@@ -1,0 +1,58 @@
+{
+  "video": "BAVA-demo-full-retake-silent.mp4",
+  "duration_seconds": 239.5,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "narration": "产品讲解稿与时间轴.md",
+  "srt": "BAVA-demo-full-retake.srt",
+  "chapters": [
+    {
+      "name": "开场",
+      "start": 0,
+      "end": 15
+    },
+    {
+      "name": "账单分析",
+      "start": 15,
+      "end": 55
+    },
+    {
+      "name": "订阅管理",
+      "start": 55,
+      "end": 109
+    },
+    {
+      "name": "智能转账",
+      "start": 109,
+      "end": 239.5
+    }
+  ],
+  "media_checks_passed": true,
+  "business_checks_passed": true,
+  "video_sha256": "12ddf3694f1d7e21f7503c5b7395749f70376e7df76780b9aa6d57166c3276fa",
+  "native_sources": [
+    {
+      "file": "raw/01-03-native.mp4",
+      "sha256": "51b90329e557275e626d5886d017870555d1611b58e25d94ec21b78619350804"
+    },
+    {
+      "file": "raw/03-04-native.mp4",
+      "sha256": "ad87fb1429dddff92233a1564e7d6382830b66696d41c1fcb5f3b1009827f79e"
+    },
+    {
+      "file": "raw/06-yellow-final.mp4",
+      "sha256": "36aae0ddde963604c164a88d1a0b9e7111cd9c21437aa90e10d15e283ba7211f"
+    },
+    {
+      "file": "raw/07b-dag-final.mp4",
+      "sha256": "25e41a9cf80f8512e9dcb5205b2cc172f68c60ece162b8ea2866a199beff7d82"
+    },
+    {
+      "file": "raw/08-verify-final.mp4",
+      "sha256": "03c213c8b123820e0615ce0c91579a7f3a2d43281d397dcdf0426c6b130f49a6"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "adce7bf7-5622-4364-84ae-6508d7507f9e",
+  "conversation_id": "20900106-e1c5-4888-923a-ee741c186767",
+  "task_type": "BANKING_REQUEST",
+  "runtime_backend": "langgraph",
+  "executor_type": "WORKFLOW",
+  "executor_id": "workflow:transfer",
+  "requested_output": "WORKFLOW",
+  "status": "COMPLETED",
+  "input": {
+    "message_id": "2c80f178-6c1c-4d58-84c2-53a0f8b97add",
+    "request_id": "be97a014-fc72-49b2-8409-9d49aa4d2157"
+  },
+  "output": {
+    "route": "TRANSFER_WORKFLOW",
+    "requested_output": "WORKFLOW",
+    "workflow_id": "b135bcf6-a03a-4e1d-96f7-675c84e215a4",
+    "assistant_message_id": "4cf44fc9-d49b-4290-9c35-6cc1a99bdcdd"
+  },
+  "error": null,
+  "progress_message": null,
+  "version": 4,
+  "created_at": "2026-11-01T10:52:43.609626Z",
+  "updated_at": "2026-11-01T10:52:45.886434Z"
+}

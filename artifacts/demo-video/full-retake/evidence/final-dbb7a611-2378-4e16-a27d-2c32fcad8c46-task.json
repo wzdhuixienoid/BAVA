@@ -1,0 +1,25 @@
+{
+  "task_id": "cecea470-efea-46db-a3f2-1af2d45bf80b",
+  "conversation_id": "43d01f82-fc09-4d8a-9090-47e6f8b32857",
+  "task_type": "BANKING_REQUEST",
+  "runtime_backend": "langgraph",
+  "executor_type": "WORKFLOW",
+  "executor_id": "workflow:subscription-cancel",
+  "requested_output": "WORKFLOW",
+  "status": "COMPLETED",
+  "input": {
+    "message_id": "7465f07a-df74-4449-b54f-5427b9805216",
+    "request_id": "62ec5626-624d-42e5-a087-7c2a53b91c75"
+  },
+  "output": {
+    "route": "SUBSCRIPTION_CANCEL",
+    "requested_output": "WORKFLOW",
+    "workflow_id": "dbb7a611-2378-4e16-a27d-2c32fcad8c46",
+    "assistant_message_id": "90a0a261-293a-403c-9b5d-69bf022e1ab4"
+  },
+  "error": null,
+  "progress_message": null,
+  "version": 4,
+  "created_at": "2026-11-01T11:41:35.053256Z",
+  "updated_at": "2026-11-01T11:41:36.994409Z"
+}

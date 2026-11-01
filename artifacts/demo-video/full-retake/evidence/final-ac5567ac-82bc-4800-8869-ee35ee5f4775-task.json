@@ -1,0 +1,23 @@
+{
+  "task_id": "12ea36e9-e8a8-4e39-89f5-f8f9a520b446",
+  "conversation_id": "12ee485e-3522-4326-b372-ddf3cd54583d",
+  "task_type": "BANKING_REQUEST",
+  "runtime_backend": "langgraph",
+  "executor_type": null,
+  "executor_id": "planner:constrained",
+  "requested_output": "ANSWER",
+  "status": "COMPLETED",
+  "input": {
+    "message_id": "5db967cb-e4ce-4513-bf7f-ca17924a47fc",
+    "request_id": "9913ee72-9fa3-494c-85db-a1e900747881"
+  },
+  "output": {
+    "plan_id": "31092eb0-1476-4f8f-93ab-d7f5daa4ee84",
+    "assistant_message_id": "8c709f4f-22b2-4fdc-92e5-cc4298cfa35a"
+  },
+  "error": null,
+  "progress_message": null,
+  "version": 24,
+  "created_at": "2026-11-01T11:54:01.487734Z",
+  "updated_at": "2026-11-01T11:57:54.558295Z"
+}

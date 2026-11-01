@@ -1,0 +1,174 @@
+{
+  "part": 4,
+  "scenario": "Intelligent transfers with same-name selection and YELLOW/RED control",
+  "output": "BAVA-transfers-70s-silent.mp4",
+  "combined_preview": "BAVA-preview-165s-silent.mp4",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_seconds": 70,
+  "global_start_seconds": 95,
+  "global_end_seconds": 165,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "source": "Actual local Mock bank UI captures, same-state native-card reconstruction and whole functional-group framing; no recreated financial text",
+  "question_focus": "Opening-style ease-out focus, dim, blur and shadow; float placement, fixed background, two requests",
+  "reading_motion": "Static cached compositions; clean state cuts, no continuous panning, zoom or overlapping page text",
+  "footer_separator_y": 987,
+  "maximum_image_or_shadow_bottom_y": 970,
+  "reference_numbers_visible": false,
+  "verification_code_visible": false,
+  "receipt_presentation": "Native transaction header/details, complete ten-step timeline and timestamp; repeated risk block and reference row omitted",
+  "authentication_boundary": "MOCK_CODE verification only; no real SMS, face, U-shield or live bank MFA",
+  "business_results_fabricated": false,
+  "business_verification": {
+    "salary_balance_before": "23864.52",
+    "salary_balance_after_yellow": "23764.52",
+    "salary_balance_after_both": "22564.52",
+    "total_debit": "1300.00",
+    "reauthentication_mode": "MOCK_CODE",
+    "transfers": [
+      {
+        "risk": "YELLOW",
+        "workflow_id": "a7c49da5-159d-435c-9508-613e09702189",
+        "operation_id": "f51d655a-0af6-482c-a6d5-34f1586c5391",
+        "amount": "100",
+        "payee": "张三",
+        "masked_account": "****2231",
+        "remark": "聚餐AA",
+        "completed_at": "2026-11-01T06:41:36.292544Z"
+      },
+      {
+        "risk": "RED",
+        "workflow_id": "751c51c9-ddeb-454e-bded-526fed5acae3",
+        "operation_id": "05ef1cc7-9221-4797-8755-b961f25728f7",
+        "amount": "1200",
+        "payee": "李小雨",
+        "masked_account": "****4815",
+        "remark": "房租",
+        "completed_at": "2026-11-01T06:45:32.675226Z"
+      }
+    ],
+    "checks": {
+      "mock_bank_and_mock_auth": true,
+      "demo_owner_and_zero_initial_exposure": true,
+      "same_name_candidates_require_ui_choice": true,
+      "selected_payee_bound_to_review": true,
+      "yellow_risk_requires_confirmation_without_mfa": true,
+      "yellow_amount_within_actual_limits": true,
+      "yellow_confirmed_is_not_submitted": true,
+      "yellow_final_success_and_consumed_approval": true,
+      "yellow_debit_matches_100": true,
+      "red_bound_to_requested_payee_and_remark": true,
+      "red_risk_requires_confirmation_and_mfa": true,
+      "red_cumulative_exposure_1300": true,
+      "red_exceeds_daily_threshold_and_single_limit": true,
+      "red_confirmation_stops_for_auth": true,
+      "mock_challenge_pending_before_verification": true,
+      "verified_is_not_submitted": true,
+      "no_red_debit_before_commit": true,
+      "red_auth_bound_to_same_approval_and_payload": true,
+      "red_final_success_and_consumed_approval": true,
+      "red_debit_matches_1200": true,
+      "total_debit_matches_1300": true,
+      "other_account_balances_unchanged": true,
+      "security_guard_remains_normal": true,
+      "yellow_single_ledger_entry_matches_receipt": true,
+      "yellow_operation_matches_workflow": true,
+      "yellow_audit_confirms_one_submission_and_success": true,
+      "red_single_ledger_entry_matches_receipt": true,
+      "red_operation_matches_workflow": true,
+      "red_audit_confirms_one_submission_and_success": true,
+      "exactly_two_new_transfer_workflows": true,
+      "previous_videos_unchanged": true,
+      "no_verification_code_in_ui_capture_text": true
+    }
+  },
+  "previous_artifacts_overwritten": false,
+  "shots": [
+    {
+      "start": 0,
+      "end": 4,
+      "asset": "yellow-query",
+      "purpose": "Natural-language request; retain the opening-style question focus"
+    },
+    {
+      "start": 4,
+      "end": 11,
+      "asset": "payee-choice",
+      "purpose": "Two real same-name candidates; bank and masked account require user choice"
+    },
+    {
+      "start": 11,
+      "end": 14,
+      "asset": "yellow-risk",
+      "purpose": "Actual YELLOW decision, personal limit and daily exposure"
+    },
+    {
+      "start": 14,
+      "end": 18,
+      "asset": "yellow-review",
+      "purpose": "Complete bound account, payee, bank, amount and remark before approval"
+    },
+    {
+      "start": 18,
+      "end": 22,
+      "asset": "yellow-approved",
+      "purpose": "Approval is complete but transfer has not been submitted"
+    },
+    {
+      "start": 22,
+      "end": 27,
+      "asset": "yellow-success",
+      "purpose": "Native success receipt, transaction details and all ten execution steps"
+    },
+    {
+      "start": 27,
+      "end": 31,
+      "asset": "red-query",
+      "purpose": "Second request, 1200 yuan, with opening-style focus"
+    },
+    {
+      "start": 31,
+      "end": 35,
+      "asset": "red-risk",
+      "purpose": "RED: personal limit reached and daily exposure 1300 exceeds 1000"
+    },
+    {
+      "start": 35,
+      "end": 39,
+      "asset": "red-review",
+      "purpose": "Complete 1200-yuan transfer details before confirmation"
+    },
+    {
+      "start": 39,
+      "end": 45,
+      "asset": "red-confirmed",
+      "purpose": "Confirmation alone stops at the separate identity-verification gate"
+    },
+    {
+      "start": 45,
+      "end": 51,
+      "asset": "red-challenge",
+      "purpose": "Actual Mock challenge pending; no verification code is displayed"
+    },
+    {
+      "start": 51,
+      "end": 56,
+      "asset": "red-verified",
+      "purpose": "Identity verified; transaction details and explicit commit remain visible"
+    },
+    {
+      "start": 56,
+      "end": 64,
+      "asset": "red-success",
+      "purpose": "Native final success, consumed approval, verified auth and complete timeline"
+    },
+    {
+      "start": 64,
+      "end": 70,
+      "asset": "final-check",
+      "purpose": "Fresh native balance and filtered ledger show both posted transfers"
+    }
+  ]
+}

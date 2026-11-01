@@ -1,0 +1,22 @@
+{
+  "task_id": "aaaa05be-2fd3-46f4-b303-40e72f6b001b",
+  "conversation_id": "b3acb328-a54e-479a-8c69-382fc198e68d",
+  "task_type": "BANKING_REQUEST",
+  "runtime_backend": "langgraph",
+  "executor_type": null,
+  "executor_id": "planner:constrained",
+  "requested_output": "ANSWER",
+  "status": "WAITING_USER",
+  "input": {
+    "message_id": "8d430242-a058-44b2-b2c1-3049709a1ebc",
+    "request_id": "69eda3cf-9af5-4f74-a067-af5e8392262f"
+  },
+  "output": {
+    "plan_id": "53bde749-11d0-47f0-8fb2-4b85e9b5a9fc"
+  },
+  "error": null,
+  "progress_message": "前置步骤已完成，下一步需要你的操作",
+  "version": 24,
+  "created_at": "2026-11-01T12:08:46.658755Z",
+  "updated_at": "2026-11-01T12:12:01.253213Z"
+}

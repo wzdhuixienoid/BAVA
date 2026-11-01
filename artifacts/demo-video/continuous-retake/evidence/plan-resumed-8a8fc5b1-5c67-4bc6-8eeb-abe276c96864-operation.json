@@ -1,0 +1,17 @@
+{
+  "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+  "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+  "operation_type": "TRANSFER",
+  "status": "SUCCEEDED",
+  "version": 3,
+  "provider_reference": "mocktr_ed8d8c282181475aa22707c5f8001853",
+  "error_code": null,
+  "error_message": null,
+  "created_at": "2026-11-01T12:55:40.569073Z",
+  "submitted_at": "2026-11-01T12:55:40.579896Z",
+  "completed_at": "2026-11-01T12:55:40.594150Z",
+  "next_reconcile_at": null,
+  "reconcile_attempts": 1,
+  "last_reconcile_at": "2026-11-01T12:55:40.594153Z",
+  "updated_at": "2026-11-01T12:55:40.595077Z"
+}
