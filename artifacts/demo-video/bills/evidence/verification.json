@@ -1,0 +1,24 @@
+{
+  "report_id": "c5a34b78-00d9-4ad1-8a5f-08ecb196b668",
+  "task_id": "1c179a29-879b-4ecb-938f-5d22fa528f22",
+  "conversation_id": "517358e1-8f04-48ec-9bb3-5b4db71bc877",
+  "period": "2026-08",
+  "total_spending": "16547.30",
+  "transaction_count": 45,
+  "rent_amount": "6200.00",
+  "created_at": "2026-10-31T16:50:52.712345Z",
+  "checks": {
+    "period_matches_request": true,
+    "task_completed": true,
+    "same_report_and_task": true,
+    "same_conversation": true,
+    "request_matches_capture": true,
+    "category_amounts_sum_to_total": true,
+    "category_counts_sum_to_total": true,
+    "period_change_matches_total": true,
+    "rent_summary_matches_transaction": true,
+    "report_saved_in_history": true,
+    "no_financial_write_started": true,
+    "no_workflow_or_operation": true
+  }
+}

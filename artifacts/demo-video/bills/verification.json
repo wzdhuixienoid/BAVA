@@ -1,0 +1,30 @@
+{
+  "outputs": [
+    {
+      "file": "BAVA-bills-40s-silent.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 1200,
+      "bytes": 4438000,
+      "duration_seconds": 40.0,
+      "has_audio_stream": false,
+      "full_decode_passed": true
+    },
+    {
+      "file": "BAVA-opening-and-bills-55s-silent.mp4",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30.0,
+      "frames": 1650,
+      "bytes": 6870843,
+      "duration_seconds": 55.0,
+      "has_audio_stream": false,
+      "full_decode_passed": true
+    }
+  ],
+  "opening_sha256": "231bfe41864f84ce2bad660dcbf51ee9266948a50535c8ed74ec024a624fa5d8",
+  "opening_unchanged": true,
+  "opening_frames_preserved_in_joined_preview": true,
+  "business_evidence_passed": true
+}

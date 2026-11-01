@@ -1,0 +1,85 @@
+{
+  "take": "Fresh isolated environment after deleting the previous segment's four captures",
+  "duration_seconds": 40,
+  "global_start_seconds": 15,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "audio": false,
+  "burned_in_subtitles": false,
+  "business_results_fabricated": false,
+  "source_type": "Actual local mock-banking UI screenshots, continuous UI captures after submitting the request, and camera motion",
+  "model_timeout_changed": false,
+  "business_evidence": {
+    "report_id": "c5a34b78-00d9-4ad1-8a5f-08ecb196b668",
+    "task_id": "1c179a29-879b-4ecb-938f-5d22fa528f22",
+    "conversation_id": "517358e1-8f04-48ec-9bb3-5b4db71bc877",
+    "period": "2026-08",
+    "total_spending": "16547.30",
+    "transaction_count": 45,
+    "rent_amount": "6200.00",
+    "created_at": "2026-10-31T16:50:52.712345Z",
+    "checks": {
+      "period_matches_request": true,
+      "task_completed": true,
+      "same_report_and_task": true,
+      "same_conversation": true,
+      "request_matches_capture": true,
+      "category_amounts_sum_to_total": true,
+      "category_counts_sum_to_total": true,
+      "period_change_matches_total": true,
+      "rent_summary_matches_transaction": true,
+      "report_saved_in_history": true,
+      "no_financial_write_started": true,
+      "no_workflow_or_operation": true
+    }
+  },
+  "shots": [
+    [
+      0,
+      3,
+      "Request and recorded Send action"
+    ],
+    [
+      3,
+      7,
+      "Actual UI capture after the request; waiting omitted"
+    ],
+    [
+      7,
+      10,
+      "Report created in this conversation"
+    ],
+    [
+      10,
+      12,
+      "Expand the completed task's actual execution record"
+    ],
+    [
+      12,
+      20,
+      "Report overview and previous-month comparison"
+    ],
+    [
+      20,
+      26,
+      "Category breakdown"
+    ],
+    [
+      26,
+      30,
+      "Verified insights and transactions to review"
+    ],
+    [
+      30,
+      35,
+      "Source transaction and report data scope"
+    ],
+    [
+      35,
+      40,
+      "Same report saved in history"
+    ]
+  ],
+  "editorial_highlight": "Outline only, around the actual rent transaction; financial text is unchanged"
+}
