@@ -1,9 +1,14 @@
-# BAVA 最新演示视频
+# BAVA 最新完整演示视频
 
-连续演示版：04:44.2，1080p / 30 fps，静音，无内嵌讲解字幕。
+最终完整版：**04:54.900**，1080p / 30 fps，静音，无内嵌讲解字幕。距五分钟上限留出5.1秒。
 
-- [观看视频](continuous-retake/BAVA-demo-continuous-silent.mp4)
-- [产品讲解稿与时间轴](continuous-retake/产品讲解稿与时间轴.md)
-- [后期字幕SRT](continuous-retake/BAVA-demo-continuous.srt)
+- [观看完整视频](final/BAVA-final-demo.mp4)
+- [产品讲解稿与时间轴](final/产品讲解稿与时间轴.md)
+- [后期字幕SRT](final/BAVA-final-demo.srt)
+- [核验与制作信息](final/manifest.json)
 
-本版全程使用同一个对话和同一套Mock数据，保留全部早期消息；已重新录制，无之前插件浮层，并保留网页四角圆角。
+包含账单分析、订阅查询与取消、小额转账、条件转账与强验证、模拟理财和品牌收尾。全程使用同一个对话和同一套Mock数据，保留全部早期消息，网页四角保持24px圆角，画面底边位于分隔线上方。
+
+理财展示原订单已受理、待成交的真实状态，尚无实际份额。全部63项业务核验、15项媒体核验通过；590帧OCR抽检未发现参考号或明文验证码。
+
+前四部分未压缩的已认可版本仍保留在continuous-retake目录。

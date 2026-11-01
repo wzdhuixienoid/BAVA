@@ -1,0 +1,639 @@
+[
+  {
+    "product_id": "mock-wealth-01",
+    "version_id": "mock-wealth-01:v1",
+    "name": "演示稳享日日",
+    "risk": "R1",
+    "minimum_display": "100.00 元",
+    "open_display": "每个模拟交易日 15:00前",
+    "fees_display": "申购 0.00% / 赎回 0.00%",
+    "nav_display": "1.007551",
+    "nav_date": "2026-10-30",
+    "change_display": "-0.05%（模拟历史）",
+    "drawdown_display": "0.12%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-01:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-01:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-01:v1:3"
+    ],
+    "purchase_allowed": true,
+    "purchase_block_reason": null,
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-01:v1:1": "8f50dcadb217c1797d48b200ed85e6aaf70315fbf010a28a42a231ecb5de2465",
+        "mock-wealth-01:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-01:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "100",
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0",
+      "redeem_rate": "0",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-01:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "现金与短债为主，侧重较低波动和申请灵活性",
+      "strategy": "以现金类工具和短久期利率债作为模拟底仓，尽量减少对权益市场的依赖。",
+      "allocation": {
+        "现金及货币市场工具": 70,
+        "短久期利率债": 30
+      },
+      "return_sources": [
+        "现金类工具的利息",
+        "短债票息及价格变化"
+      ],
+      "risk_drivers": [
+        "利率变化",
+        "再投资利率下降",
+        "赎回现金异步到账"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "主要考虑较低波动、需要较多申请窗口的资金；不是即时应急现金",
+      "unsuitable_for": "追求显著权益增长、要求保本或即时提现",
+      "observation_days": 30,
+      "observation_label": "以一个月及以上作为观察参考，非必须持有期限",
+      "growth_exposure": 0,
+      "concentration": 0,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "ccb6dbfc0b5578832635b51f25292d8acb5849b854f4b01b597d9b89491d4bbc"
+    }
+  },
+  {
+    "product_id": "mock-wealth-02",
+    "version_id": "mock-wealth-02:v1",
+    "name": "演示稳享周周",
+    "risk": "R2",
+    "minimum_display": "1,000.00 元",
+    "open_display": "每周一 15:00前",
+    "fees_display": "申购 0.00% / 赎回 0.10%",
+    "nav_display": "0.995304",
+    "nav_date": "2026-10-30",
+    "change_display": "-0.56%（模拟历史）",
+    "drawdown_display": "0.56%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-02:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-02:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-02:v1:3"
+    ],
+    "purchase_allowed": true,
+    "purchase_block_reason": null,
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-02:v1:1": "330626254e10238ff8f8eadf0eb8a2966be67eff1a26d19a78e2c3f3d334d813",
+        "mock-wealth-02:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-02:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "1000",
+      "weekdays": [
+        0
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0",
+      "redeem_rate": "0.001",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-02:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "债券票息为主、周开放的稳健型观察选项",
+      "strategy": "利率债与分散信用债搭配，主要依靠债券收益来源；采用周一申请窗口。",
+      "allocation": {
+        "现金类工具": 15,
+        "利率债": 55,
+        "分散信用债": 30
+      },
+      "return_sources": [
+        "债券票息",
+        "债券价格变化"
+      ],
+      "risk_drivers": [
+        "利率上行导致债券价格承压",
+        "信用利差扩大或违约",
+        "错过周开放窗口"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "能提前安排申赎、接受债券净值波动的资金",
+      "unsuitable_for": "希望每天申请、急用钱或不能承受本金损失",
+      "observation_days": 90,
+      "observation_label": "建议按三个月及以上观察债券策略，非锁定期",
+      "growth_exposure": 0,
+      "concentration": 1,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "f2fbfbb400be85b40a988a1284464e1732c698fad9438e0cd9ab07b0cec3fd46"
+    }
+  },
+  {
+    "product_id": "mock-wealth-03",
+    "version_id": "mock-wealth-03:v1",
+    "name": "演示稳健优选",
+    "risk": "R2",
+    "minimum_display": "1,000.00 元",
+    "open_display": "每个模拟交易日 15:00前",
+    "fees_display": "申购 0.10% / 赎回 0.10%",
+    "nav_display": "1.004871",
+    "nav_date": "2026-10-30",
+    "change_display": "-0.05%（模拟历史）",
+    "drawdown_display": "0.16%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-03:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-03:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-03:v1:3"
+    ],
+    "purchase_allowed": true,
+    "purchase_block_reason": null,
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-03:v1:1": "16b9af02204310946a5b884dc4d470d2ae4c2b81563fd535e126f3fda3e3af19",
+        "mock-wealth-03:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-03:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "1000",
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0.001",
+      "redeem_rate": "0.001",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-03:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "债券组合为主、日开放，兼顾票息与申请便利",
+      "strategy": "分散配置利率债和信用债，保留现金缓冲；不设置权益增强仓位。",
+      "allocation": {
+        "现金类工具": 20,
+        "利率债": 50,
+        "分散信用债": 30
+      },
+      "return_sources": [
+        "债券票息",
+        "利率与信用利差变化带来的债券价格变化"
+      ],
+      "risk_drivers": [
+        "利率与信用风险",
+        "净值阶段性回撤",
+        "赎回到账等待"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "接受债券波动，同时希望有日开放申请窗口的资金",
+      "unsuitable_for": "将债券收益当作固定利息、追求较大权益增长或需要保本",
+      "observation_days": 90,
+      "observation_label": "建议按三个月及以上观察，非强制持有期限",
+      "growth_exposure": 0,
+      "concentration": 1,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "475018fcd27bfa8ead4130dda6cd5dd348b5b7d49b8b48d55ad7373e1e766ea4"
+    }
+  },
+  {
+    "product_id": "mock-wealth-04",
+    "version_id": "mock-wealth-04:v1",
+    "name": "演示均衡优选",
+    "risk": "R3",
+    "minimum_display": "1,000.00 元",
+    "open_display": "每个模拟交易日 15:00前",
+    "fees_display": "申购 0.20% / 赎回 0.10%",
+    "nav_display": "0.992829",
+    "nav_date": "2026-10-30",
+    "change_display": "-0.88%（模拟历史）",
+    "drawdown_display": "0.98%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-04:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-04:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-04:v1:3"
+    ],
+    "purchase_allowed": false,
+    "purchase_block_reason": "该产品不符合您的风险承受能力",
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-04:v1:1": "dd4a56ba3a5cc8bb7e91244025721f17e4986434f5636f039f363ada701de6c2",
+        "mock-wealth-04:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-04:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "1000",
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0.002",
+      "redeem_rate": "0.001",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-04:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "债券打底、适量权益增强，兼顾增长与波动的混合策略",
+      "strategy": "用债券底仓搭配分散权益，增加权益相关收益来源，保留日开放安排。",
+      "allocation": {
+        "现金类工具": 10,
+        "债券组合": 60,
+        "分散权益": 30
+      },
+      "return_sources": [
+        "债券票息及价格变化",
+        "权益分红和价格变化"
+      ],
+      "risk_drivers": [
+        "债券和权益同时下跌",
+        "权益市场波动",
+        "信用与利率风险"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "希望在债券基础上增加增长来源、能够承受阶段性亏损的中期资金",
+      "unsuitable_for": "短期刚性用款、只接受极小波动或要求收益保证",
+      "observation_days": 180,
+      "observation_label": "建议按半年及以上观察，开放日仍可申请赎回",
+      "growth_exposure": 30,
+      "concentration": 1,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "0ae9321399e453666a48049c36e7c7847144d48f6f440aae3ba0bfa57b27e8c7"
+    }
+  },
+  {
+    "product_id": "mock-wealth-05",
+    "version_id": "mock-wealth-05:v1",
+    "name": "演示均衡周享",
+    "risk": "R3",
+    "minimum_display": "1,000.00 元",
+    "open_display": "每周一 15:00前",
+    "fees_display": "申购 0.20% / 赎回 0.20%",
+    "nav_display": "1.031590",
+    "nav_date": "2026-10-30",
+    "change_display": "-0.08%（模拟历史）",
+    "drawdown_display": "0.26%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-05:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-05:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-05:v1:3"
+    ],
+    "purchase_allowed": false,
+    "purchase_block_reason": "该产品不符合您的风险承受能力",
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-05:v1:1": "ce4ec38051c448455c9002f9ed2d92049918e9a2bd49c7a2615dec2c776a5d62",
+        "mock-wealth-05:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-05:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "1000",
+      "weekdays": [
+        0
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0.002",
+      "redeem_rate": "0.002",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-05:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "混合配置、权益增强略多，以周开放安排换取不同的策略选择",
+      "strategy": "债券底仓搭配分散权益，设计权益比重略高于均衡优选；每周一开放。",
+      "allocation": {
+        "现金类工具": 10,
+        "债券组合": 55,
+        "分散权益": 35
+      },
+      "return_sources": [
+        "债券票息及价格变化",
+        "权益分红和价格变化"
+      ],
+      "risk_drivers": [
+        "权益与债券共振下跌",
+        "权益波动",
+        "周开放与较高赎回费的取舍"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "能安排周开放、希望了解混合增长策略的中期资金",
+      "unsuitable_for": "为周开放支付较高费用却期待必然更高收益、急用钱或保本需求",
+      "observation_days": 180,
+      "observation_label": "建议按半年及以上观察，非锁定期",
+      "growth_exposure": 35,
+      "concentration": 1,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "cb8561d330635da360acb6c750653e0057c20184e6fa478e772622c6950edf01"
+    }
+  },
+  {
+    "product_id": "mock-wealth-06",
+    "version_id": "mock-wealth-06:v1",
+    "name": "演示进取成长",
+    "risk": "R4",
+    "minimum_display": "1,000.00 元",
+    "open_display": "每个模拟交易日 15:00前",
+    "fees_display": "申购 0.30% / 赎回 0.20%",
+    "nav_display": "1.045293",
+    "nav_date": "2026-10-30",
+    "change_display": "-1.28%（模拟历史）",
+    "drawdown_display": "1.31%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-06:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-06:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-06:v1:3"
+    ],
+    "purchase_allowed": false,
+    "purchase_block_reason": "该产品不符合您的风险承受能力",
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-06:v1:1": "cb75f6e8c27f4f55b3b0fdabeb26221bfba7352249c5cfcc99f5b58342b86a75",
+        "mock-wealth-06:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-06:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "1000",
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0.003",
+      "redeem_rate": "0.002",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-06:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "分散权益主导的成长策略，增长参与度与波动承担均更大",
+      "strategy": "以分散权益为主要模拟增长来源，债券和现金用于分散部分风险，日开放。",
+      "allocation": {
+        "现金类工具": 10,
+        "债券组合": 30,
+        "分散权益": 60
+      },
+      "return_sources": [
+        "权益价格变化与分红",
+        "债券票息"
+      ],
+      "risk_drivers": [
+        "权益市场持续下跌",
+        "估值变化",
+        "较长时间不能恢复的回撤"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "有较长观察期、愿意承担明显净值波动且测评允许的成长资金",
+      "unsuitable_for": "把部分亏损理解为只能承受极小回撤、近期刚性用款或保证盈利需求",
+      "observation_days": 365,
+      "observation_label": "建议按一年及以上观察，非承诺一年后盈利",
+      "growth_exposure": 60,
+      "concentration": 1,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "865ef4357eb4985db3190a18ea2ab866b38f6358534523df66ac254a5cbd8ce0"
+    }
+  },
+  {
+    "product_id": "mock-wealth-07",
+    "version_id": "mock-wealth-07:v1",
+    "name": "演示进取周享",
+    "risk": "R4",
+    "minimum_display": "5,000.00 元",
+    "open_display": "每周五 15:00前",
+    "fees_display": "申购 0.30% / 赎回 0.30%",
+    "nav_display": "1.044677",
+    "nav_date": "2026-10-30",
+    "change_display": "-0.01%（模拟历史）",
+    "drawdown_display": "0.32%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-07:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-07:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-07:v1:3"
+    ],
+    "purchase_allowed": false,
+    "purchase_block_reason": "该产品不符合您的风险承受能力",
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-07:v1:1": "0d040b2adf68b95946384a9bf3e0a53f082a242ed291c4b791c4939a4df5aa26",
+        "mock-wealth-07:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-07:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "5000",
+      "weekdays": [
+        4
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0.003",
+      "redeem_rate": "0.003",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-07:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "周开放的权益成长策略，更需要提前安排用款",
+      "strategy": "以分散权益为主，设计权益比重略高于进取成长；采用每周五申请窗口。",
+      "allocation": {
+        "现金类工具": 5,
+        "债券组合": 30,
+        "分散权益": 65
+      },
+      "return_sources": [
+        "权益价格变化与分红",
+        "债券票息"
+      ],
+      "risk_drivers": [
+        "权益波动与深度回撤",
+        "周开放等待",
+        "相对较高交易费用"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "长期观察成长资产、能提前安排周窗口且愿意承担明显亏损的资金",
+      "unsuitable_for": "预算不足起购、急用钱、不能承受明显回撤或期待周开放必然提高收益",
+      "observation_days": 365,
+      "observation_label": "建议按一年及以上观察，非锁定期或收益保证",
+      "growth_exposure": 65,
+      "concentration": 1,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "6f2cb65aaf3d7f3c4236cbdfda663a8fc635d86d54530ba461eef8135ce7f8ca"
+    }
+  },
+  {
+    "product_id": "mock-wealth-08",
+    "version_id": "mock-wealth-08:v1",
+    "name": "演示高波动精选",
+    "risk": "R5",
+    "minimum_display": "1,000.00 元",
+    "open_display": "每个模拟交易日 15:00前",
+    "fees_display": "申购 0.50% / 赎回 0.50%",
+    "nav_display": "1.027757",
+    "nav_date": "2026-10-30",
+    "change_display": "0.43%（模拟历史）",
+    "drawdown_display": "0.37%（模拟历史）",
+    "missing_reason": null,
+    "sources": [
+      "/api/v1/wealth/documents/mock-wealth-08:v1:1",
+      "/api/v1/wealth/documents/mock-wealth-08:v1:2",
+      "/api/v1/wealth/documents/mock-wealth-08:v1:3"
+    ],
+    "purchase_allowed": false,
+    "purchase_block_reason": "该产品不符合您的风险承受能力",
+    "tradable": true,
+    "terms": {
+      "document_hashes": {
+        "mock-wealth-08:v1:1": "18f07407598c5c879fc6b420c56b5468f925cbf7b81ac0de09e4e79af89ea236",
+        "mock-wealth-08:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+        "mock-wealth-08:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+      },
+      "sale_status": "ON_SALE",
+      "currency": "CNY",
+      "minimum": "1000",
+      "weekdays": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "cutoff": "15:00",
+      "purchase_rate": "0.005",
+      "redeem_rate": "0.005",
+      "document_version": "v1",
+      "management_rate": "0",
+      "pricing": "future_trade_date_nav",
+      "confirm": "next_weekday_10",
+      "settle": "purchase_at_confirm_redeem_next_weekday_10"
+    },
+    "design_profile": {
+      "version": "mock-design-v1",
+      "product_version_id": "mock-wealth-08:v1",
+      "published_at": "2026-10-12T00:00:00+00:00",
+      "positioning": "主题权益集中配置，用更大波动承担换取主题增长参与度",
+      "strategy": "以成长主题权益为主，保留少量分散权益、债券与现金；集中度较高。",
+      "allocation": {
+        "现金类工具": 10,
+        "债券组合": 5,
+        "分散权益": 15,
+        "成长主题权益": 70
+      },
+      "return_sources": [
+        "主题与权益价格变化",
+        "权益分红及少量债券票息"
+      ],
+      "risk_drivers": [
+        "主题景气反转",
+        "行业集中风险",
+        "权益市场与估值波动",
+        "深度或长期回撤"
+      ],
+      "scenarios": {
+        "利率上行": "债券价格可能承压，短久期与现金部分通常相对少受长期利率变化影响。",
+        "权益下跌": "权益比重与主题集中度越大，设计上的权益风险暴露越多；债券也不能保证对冲。",
+        "突然用钱": "需要等待申赎和现金到账；周开放还需安排申请日期。"
+      },
+      "suitable_for": "已理解主题集中风险、有长期资金并具备相应测评的高波动策略观察",
+      "unsuitable_for": "仅因最近涨幅较高就追涨、不能承受明显亏损、急用钱或要求最大损失保护",
+      "observation_days": 730,
+      "observation_label": "建议以两年及以上观察主题周期，非实际赎回限制",
+      "growth_exposure": 85,
+      "concentration": 3,
+      "notice": "以下是项目新增的模拟设计画像，不是真实银行产品、实际持仓或收益预测。合成净值由独立程序生成，并非按该组合回测；配置比例不能用于预测模拟收益。建议观察期不是锁定期；申赎、费用和到账仍以原版本交易条款为准。",
+      "content_hash": "5371f6fc982003952269010dae2ce60dc82c839381299c5a132446ac13239b51"
+    }
+  }
+]

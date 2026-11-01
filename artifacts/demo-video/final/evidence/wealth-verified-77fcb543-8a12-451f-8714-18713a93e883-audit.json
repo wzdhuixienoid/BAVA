@@ -1,0 +1,662 @@
+{
+  "trace_id": "2938d464-c4b3-4216-95a3-075c804b8b66",
+  "source_task_id": "2938d464-c4b3-4216-95a3-075c804b8b66",
+  "generated_at": "2026-11-01T14:09:18.339395Z",
+  "task_status": "WAITING_USER",
+  "entries": [
+    {
+      "event_id": "6bbc5410-53f2-4fc1-994d-91b6ed37aa87",
+      "sequence": 247,
+      "timestamp": "2026-11-01T14:06:41.785589Z",
+      "category": "CONVERSATION",
+      "event_type": "conversation.message.created",
+      "actor_type": "USER",
+      "resource_type": "MESSAGE",
+      "resource_id": "5acf675b-7a17-438d-9b59-f38bb6330c4b",
+      "status": null,
+      "decision_summary": "用户请求已接收（原文见当前对话）",
+      "related_resource_ids": {
+        "message_id": "5acf675b-7a17-438d-9b59-f38bb6330c4b"
+      },
+      "facts": [],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "e2fa00fd-6dfe-45d6-9a27-36fda6f990ce",
+      "sequence": 248,
+      "timestamp": "2026-11-01T14:06:41.787807Z",
+      "category": "TASK",
+      "event_type": "task.created",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "2938d464-c4b3-4216-95a3-075c804b8b66",
+      "status": "PENDING",
+      "decision_summary": "任务已创建",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "PENDING"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "5b7fa8fe-8a83-4837-9911-80ee0eeb6bc0",
+      "sequence": 249,
+      "timestamp": "2026-11-01T14:06:42.156504Z",
+      "category": "TASK",
+      "event_type": "task.started",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "2938d464-c4b3-4216-95a3-075c804b8b66",
+      "status": "RUNNING",
+      "decision_summary": "任务开始执行",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "RUNNING"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "93e16435-b6a0-4e54-a018-ca875036ed7a",
+      "sequence": 251,
+      "timestamp": "2026-11-01T14:06:44.542323Z",
+      "category": "REQUEST",
+      "event_type": "request.routed",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "2938d464-c4b3-4216-95a3-075c804b8b66",
+      "status": null,
+      "decision_summary": "请求已路由至注册执行者",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "route",
+          "label": "路由",
+          "value": "WEALTH_PURCHASE"
+        },
+        {
+          "key": "executor_id",
+          "label": "注册执行者",
+          "value": "workflow:wealth-purchase"
+        },
+        {
+          "key": "requested_output",
+          "label": "输出类型",
+          "value": "WORKFLOW"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "033801cb-961f-42ff-a303-552f6c715c94",
+      "sequence": 253,
+      "timestamp": "2026-11-01T14:06:44.558265Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.created",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "77fcb543-8a12-451f-8714-18713a93e883",
+      "status": "READY_FOR_REVIEW",
+      "decision_summary": "创建业务草稿并保存提取意图",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "READY_FOR_REVIEW"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    },
+    {
+      "event_id": "384ce632-9f5b-4fc6-8c4e-ef70a694f5f4",
+      "sequence": 256,
+      "timestamp": "2026-11-01T14:08:29.968581Z",
+      "category": "APPROVAL",
+      "event_type": "approval.approved",
+      "actor_type": "USER",
+      "resource_type": "APPROVAL",
+      "resource_id": "61e68859-3552-4096-bff6-207257b84c0b",
+      "status": "REAUTH_REQUIRED",
+      "decision_summary": "用户已确认当前 payload",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+        "approval_id": "61e68859-3552-4096-bff6-207257b84c0b"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T14:18:29.950102+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "REAUTH_REQUIRED"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    },
+    {
+      "event_id": "2d32bf5a-44f9-48d4-96e7-6f800b157c0b",
+      "sequence": 257,
+      "timestamp": "2026-11-01T14:08:29.972929Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.updated",
+      "actor_type": "WORKFLOW",
+      "resource_type": "APPROVAL",
+      "resource_id": "61e68859-3552-4096-bff6-207257b84c0b",
+      "status": "REAUTH_REQUIRED",
+      "decision_summary": "业务信息更新",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+        "approval_id": "61e68859-3552-4096-bff6-207257b84c0b"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T14:18:29.950102+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "REAUTH_REQUIRED"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    },
+    {
+      "event_id": "c7e72086-a3fe-4aae-806b-2811372359cd",
+      "sequence": 258,
+      "timestamp": "2026-11-01T14:08:39.446571Z",
+      "category": "REAUTH",
+      "event_type": "reauth.challenge.created",
+      "actor_type": "WORKFLOW",
+      "resource_type": "REAUTH",
+      "resource_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e",
+      "status": "REAUTH_REQUIRED",
+      "decision_summary": "创建 Mock Reauthentication",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+        "approval_id": "61e68859-3552-4096-bff6-207257b84c0b",
+        "reauth_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T14:18:29.950102+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "REAUTH_REQUIRED"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    },
+    {
+      "event_id": "df6d09d8-6cb8-463c-bcb0-56ae2d473fdc",
+      "sequence": 259,
+      "timestamp": "2026-11-01T14:08:39.452287Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.updated",
+      "actor_type": "WORKFLOW",
+      "resource_type": "REAUTH",
+      "resource_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e",
+      "status": "REAUTH_REQUIRED",
+      "decision_summary": "业务信息更新",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+        "approval_id": "61e68859-3552-4096-bff6-207257b84c0b",
+        "reauth_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "3"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T14:18:29.950102+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "REAUTH_REQUIRED"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    },
+    {
+      "event_id": "df7def62-114b-4516-b399-f403aeca3b97",
+      "sequence": 260,
+      "timestamp": "2026-11-01T14:09:08.211938Z",
+      "category": "REAUTH",
+      "event_type": "reauth.verified",
+      "actor_type": "WORKFLOW",
+      "resource_type": "REAUTH",
+      "resource_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e",
+      "status": "READY_FOR_COMMIT",
+      "decision_summary": "Mock 强验证通过；不代表业务成功",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+        "approval_id": "61e68859-3552-4096-bff6-207257b84c0b",
+        "reauth_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "3"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T14:18:29.950102+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "READY_FOR_COMMIT"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    },
+    {
+      "event_id": "9f100a78-f898-458b-8355-955edaf10322",
+      "sequence": 261,
+      "timestamp": "2026-11-01T14:09:08.213497Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.updated",
+      "actor_type": "WORKFLOW",
+      "resource_type": "REAUTH",
+      "resource_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e",
+      "status": "READY_FOR_COMMIT",
+      "decision_summary": "业务信息更新",
+      "related_resource_ids": {
+        "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+        "approval_id": "61e68859-3552-4096-bff6-207257b84c0b",
+        "reauth_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e"
+      },
+      "facts": [
+        {
+          "key": "trade_date",
+          "label": "绑定交易日期",
+          "value": "2026-11-02"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "4"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T14:18:29.950102+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "READY_FOR_COMMIT"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": {
+        "requires_confirmation": true,
+        "requires_reauthentication": true,
+        "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+        "customer_grade": "C2",
+        "product_risk": "R1",
+        "reasons": [
+          "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+        ]
+      },
+      "condition_decision": null
+    }
+  ],
+  "resources": [
+    {
+      "resource_type": "APPROVAL",
+      "resource_id": "61e68859-3552-4096-bff6-207257b84c0b",
+      "status": "APPROVED",
+      "facts": [
+        {
+          "key": "user_id",
+          "label": "所属用户",
+          "value": "dev-user-001"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        },
+        {
+          "key": "created_at",
+          "label": "创建时间",
+          "value": "2026-11-01 14:08:29.963851+00:00"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01 14:18:29.950102+00:00"
+        },
+        {
+          "key": "within_ttl",
+          "label": "查询时仍在有效期内（不代表动作已授权）",
+          "value": "True"
+        },
+        {
+          "key": "approved_at",
+          "label": "确认时间",
+          "value": "2026-11-01 14:08:29.950102+00:00"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "dfb5a3bdfa881d2dfd0322d50de2374a6d0d42f23806717ed2140102aa751c09"
+        }
+      ]
+    },
+    {
+      "resource_type": "REAUTHENTICATION",
+      "resource_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e",
+      "status": "VERIFIED",
+      "facts": [
+        {
+          "key": "method",
+          "label": "验证模式",
+          "value": "Mock Reauthentication"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "77fcb543-8a12-451f-8714-18713a93e883"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "61e68859-3552-4096-bff6-207257b84c0b"
+        },
+        {
+          "key": "created_at",
+          "label": "创建时间",
+          "value": "2026-11-01 14:08:39.443776+00:00"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01 14:13:39.439757+00:00"
+        },
+        {
+          "key": "within_ttl",
+          "label": "查询时仍在有效期内（不代表动作已授权）",
+          "value": "True"
+        },
+        {
+          "key": "attempt_count",
+          "label": "失败尝试数",
+          "value": "1"
+        },
+        {
+          "key": "verified_at",
+          "label": "验证时间",
+          "value": "2026-11-01 14:09:08.208375+00:00"
+        }
+      ]
+    }
+  ],
+  "write_evidence": {
+    "workflow_count": 1,
+    "approval_count": 1,
+    "operation_count": 0,
+    "provider_ledger_count": 0,
+    "provider_submission_count": 0,
+    "skipped_write_step_ids": [],
+    "business_success": false,
+    "no_write_started": false
+  },
+  "history_truncated": false,
+  "history_note": "时间线来自持久 Event；资源详情是当前快照。旧版本未记录的细节不会补造。原文见所属对话；不复制完整 Prompt 或模型推理。"
+}

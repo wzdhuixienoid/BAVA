@@ -1,0 +1,35 @@
+[
+  {
+    "kind": "ACCOUNT_BALANCE",
+    "account_id": "acc_salary",
+    "display_name": "工资卡",
+    "masked_number": "****6688",
+    "account_type": "DEBIT",
+    "currency": "CNY",
+    "balance": "21564.52",
+    "balance_display": "¥21,564.52",
+    "as_of": "2026-11-01T14:12:12.952866Z"
+  },
+  {
+    "kind": "ACCOUNT_BALANCE",
+    "account_id": "acc_savings",
+    "display_name": "储蓄卡",
+    "masked_number": "****1024",
+    "account_type": "SAVINGS",
+    "currency": "CNY",
+    "balance": "78620.00",
+    "balance_display": "¥78,620.00",
+    "as_of": "2026-11-01T14:12:12.953918Z"
+  },
+  {
+    "kind": "ACCOUNT_BALANCE",
+    "account_id": "acc_travel",
+    "display_name": "旅行卡",
+    "masked_number": "****3366",
+    "account_type": "DEBIT",
+    "currency": "CNY",
+    "balance": "12680.40",
+    "balance_display": "¥12,680.40",
+    "as_of": "2026-11-01T14:12:12.954869Z"
+  }
+]

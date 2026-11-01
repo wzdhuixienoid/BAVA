@@ -1071,10 +1071,10 @@ class InProcessTaskRunner:
                         WorkflowModel.workflow_type == "WEALTH_" + direction,
                         WorkflowModel.status.in_(
                             [
-                                "WAITING_FOR_INPUT",
-                                "READY_FOR_REVIEW",
-                                "AWAITING_APPROVAL",
-                                "AWAITING_REAUTH",
+                                WorkflowStatus.WAITING_FOR_INPUT,
+                                WorkflowStatus.READY_FOR_REVIEW,
+                                WorkflowStatus.REAUTH_REQUIRED,
+                                WorkflowStatus.READY_FOR_COMMIT,
                             ]
                         ),
                     )

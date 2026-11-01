@@ -1,0 +1,16 @@
+[
+  {
+    "deleted_at": null,
+    "report_id": "d68dd4e2-92bc-45e1-bf61-e82ed3253219",
+    "report_type": "MONTHLY_SPENDING",
+    "period": "2026-08",
+    "headline": "本期消费结构与变化概览",
+    "total_spending_display": "¥16,547.30",
+    "scope": {
+      "account_ids": []
+    },
+    "conversation_id": "6c4ec632-6481-42b1-870d-0fb5275bbc68",
+    "source_task_id": "8bedc2a9-f5ce-46dd-ab79-b991aab893af",
+    "created_at": "2026-11-01T12:41:30.398068Z"
+  }
+]

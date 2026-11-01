@@ -77,6 +77,12 @@ async def test_postgres_roundtrip(pg_wealth):
     await roundtrip_scenario(pg_wealth)
 
 
+async def test_postgres_natural_purchase_creates_and_updates_one_draft(pg_wealth, monkeypatch):
+    from test_wealth_v0113 import test_persisted_prepare_to_review_and_existing_draft_update
+
+    await test_persisted_prepare_to_review_and_existing_draft_update(pg_wealth, monkeypatch)
+
+
 async def test_purchase_transfer_subscription_share_available_balance(pg_wealth):
     factory, clock, balances, provider, _, _ = pg_wealth
     await assessment(pg_wealth)

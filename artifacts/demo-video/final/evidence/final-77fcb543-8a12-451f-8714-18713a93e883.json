@@ -1,0 +1,198 @@
+{
+  "workflow_id": "77fcb543-8a12-451f-8714-18713a93e883",
+  "user_id": "dev-user-001",
+  "conversation_id": "6c4ec632-6481-42b1-870d-0fb5275bbc68",
+  "source_task_id": "2938d464-c4b3-4216-95a3-075c804b8b66",
+  "workflow_type": "WEALTH_PURCHASE",
+  "status": "COMMITTING",
+  "version": 6,
+  "state": {
+    "draft": {
+      "direction": "PURCHASE",
+      "product_id": "mock-wealth-01",
+      "account_id": "acc_salary",
+      "quantity": "1000",
+      "quantity_unit": "元",
+      "redeem_all": false,
+      "quantity_message": null
+    },
+    "review": {
+      "direction": "PURCHASE",
+      "product_id": "mock-wealth-01",
+      "account_id": "acc_salary",
+      "quantity": "1000",
+      "quantity_unit": "元",
+      "redeem_all": false,
+      "quantity_message": null,
+      "trade_date": "2026-11-02",
+      "confirm_at": "2026-11-03T10:00:00+08:00",
+      "settle_at": "2026-11-03T10:00:00+08:00",
+      "version_id": "mock-wealth-01:v1",
+      "name": "演示稳享日日",
+      "account_display": "工资卡",
+      "account_masked": "****6688",
+      "terms": {
+        "document_hashes": {
+          "mock-wealth-01:v1:1": "8f50dcadb217c1797d48b200ed85e6aaf70315fbf010a28a42a231ecb5de2465",
+          "mock-wealth-01:v1:2": "1f4bee35aa6f7327cdcf214cbef032ffaf1124e8975c780a614ab9b95bfd6f53",
+          "mock-wealth-01:v1:3": "329977987eeb58dd311478de2a2f67d8b9ab226fb5c55f45c1fd8f24879af26e"
+        },
+        "sale_status": "ON_SALE",
+        "currency": "CNY",
+        "minimum": "100",
+        "weekdays": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "cutoff": "15:00",
+        "purchase_rate": "0",
+        "redeem_rate": "0",
+        "document_version": "v1",
+        "management_rate": "0",
+        "pricing": "future_trade_date_nav",
+        "confirm": "next_weekday_10",
+        "settle": "purchase_at_confirm_redeem_next_weekday_10"
+      },
+      "risk": "R1",
+      "sources": [
+        "/api/v1/wealth/documents/mock-wealth-01:v1:1",
+        "/api/v1/wealth/documents/mock-wealth-01:v1:2",
+        "/api/v1/wealth/documents/mock-wealth-01:v1:3"
+      ],
+      "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+      "customer_grade": "C2",
+      "estimate": {
+        "fee": "0.00",
+        "shares": "992.505590",
+        "cost": "1000.00",
+        "refund": "0.00",
+        "net": "1000.00"
+      },
+      "estimated_nav": "1.007551",
+      "quantity_display": "1,000.00 元",
+      "fee_display": "0.00 元（估算）",
+      "net_display": "1,000.00 元（估算）",
+      "shares_display": "992.505590 份（估算）",
+      "notice": "按未来交易日净值成交，费用、份额及到账金额为估算；成交后以实际账本为准。无本金或收益保证。受理后不可撤单。"
+    },
+    "wealth_risk": {
+      "requires_confirmation": true,
+      "requires_reauthentication": true,
+      "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+      "customer_grade": "C2",
+      "product_risk": "R1",
+      "reasons": [
+        "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+      ]
+    },
+    "validation_message": null
+  },
+  "risk_level": "RED",
+  "risk_decision": null,
+  "wealth_risk_decision": {
+    "requires_confirmation": true,
+    "requires_reauthentication": true,
+    "assessment_id": "c95b588a-7eaf-4df6-8f4d-aaa59f15c1e8",
+    "customer_grade": "C2",
+    "product_risk": "R1",
+    "reasons": [
+      "所有申购与赎回均需确认和强验证；申购需有效适当性证据"
+    ]
+  },
+  "approval_summary": {
+    "approval_id": "61e68859-3552-4096-bff6-207257b84c0b",
+    "status": "CONSUMED",
+    "expires_at": "2026-11-01T14:18:29.950102Z"
+  },
+  "reauth_summary": {
+    "reauth_id": "2b2eb6a7-d4d8-4749-bd6f-2063b33d1b1e",
+    "status": "VERIFIED",
+    "method": "MOCK_CODE",
+    "expires_at": "2026-11-01T14:13:39.439757Z"
+  },
+  "operation_summary": {
+    "operation_id": "508485f9-2055-4164-83b8-791b7f7a5407",
+    "status": "SUBMITTED",
+    "provider_reference": "mockwealth_5cb3cf6f5f534f64924bce3b6798e3c9",
+    "error_code": null,
+    "created_at": "2026-11-01T14:09:45.226256Z",
+    "completed_at": null
+  },
+  "presentation": {
+    "wealth_state": {
+      "order_received": true,
+      "order_stage": "ACCEPTED",
+      "purchase_entry_allowed": true,
+      "purchase_entry_block_reason": null,
+      "validation_message": null,
+      "draft": {
+        "direction": "PURCHASE",
+        "product_id": "mock-wealth-01",
+        "account_id": "acc_salary",
+        "quantity": "1000",
+        "quantity_unit": "元",
+        "redeem_all": false
+      },
+      "review": {
+        "direction": "PURCHASE",
+        "product_id": "mock-wealth-01",
+        "account_id": "acc_salary",
+        "quantity": "1000",
+        "quantity_unit": "元",
+        "redeem_all": false,
+        "account_display": "工资卡",
+        "account_masked": "****6688",
+        "name": "演示稳享日日",
+        "version_id": "mock-wealth-01:v1",
+        "trade_date": "2026-11-02",
+        "confirm_at": "2026-11-03T10:00:00+08:00",
+        "settle_at": "2026-11-03T10:00:00+08:00",
+        "quantity_display": "1,000.00 元",
+        "fee_display": "0.00 元（估算）",
+        "net_display": "1,000.00 元（估算）",
+        "shares_display": "992.505590 份（估算）",
+        "notice": "按未来交易日净值成交，费用、份额及到账金额为估算；成交后以实际账本为准。无本金或收益保证。受理后不可撤单。",
+        "sources": [
+          "/api/v1/wealth/documents/mock-wealth-01:v1:1",
+          "/api/v1/wealth/documents/mock-wealth-01:v1:2",
+          "/api/v1/wealth/documents/mock-wealth-01:v1:3"
+        ]
+      }
+    },
+    "business_success": false,
+    "approval_required": true,
+    "reauthentication_required": true,
+    "amount_display": "1,000.00 元",
+    "transfer_state": null,
+    "subscription_state": null,
+    "account_options": [],
+    "payee_options": [],
+    "stages": [
+      {
+        "key": "review",
+        "label": "核对交易",
+        "status": "COMPLETED"
+      },
+      {
+        "key": "approval",
+        "label": "用户确认",
+        "status": "COMPLETED"
+      },
+      {
+        "key": "reauth",
+        "label": "强验证",
+        "status": "COMPLETED"
+      },
+      {
+        "key": "settle",
+        "label": "成交及到账",
+        "status": "RUNNING"
+      }
+    ]
+  },
+  "created_at": "2026-11-01T14:06:44.556956Z",
+  "updated_at": "2026-11-01T14:09:45.264470Z"
+}

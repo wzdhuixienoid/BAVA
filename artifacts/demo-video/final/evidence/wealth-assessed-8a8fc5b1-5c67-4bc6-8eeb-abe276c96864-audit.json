@@ -1,0 +1,1502 @@
+{
+  "trace_id": "06392ad1-436c-418c-93f7-f244520521cb",
+  "source_task_id": "06392ad1-436c-418c-93f7-f244520521cb",
+  "generated_at": "2026-11-01T13:37:12.837672Z",
+  "task_status": "COMPLETED",
+  "entries": [
+    {
+      "event_id": "0a1b27fb-63b0-4beb-94e0-7cb3d141f65a",
+      "sequence": 91,
+      "timestamp": "2026-11-01T12:53:16.883260Z",
+      "category": "CONVERSATION",
+      "event_type": "conversation.message.created",
+      "actor_type": "USER",
+      "resource_type": "MESSAGE",
+      "resource_id": "cfa6c71f-0b5d-4e9f-a067-502483d9c041",
+      "status": null,
+      "decision_summary": "用户请求已接收（原文见当前对话）",
+      "related_resource_ids": {
+        "message_id": "cfa6c71f-0b5d-4e9f-a067-502483d9c041"
+      },
+      "facts": [],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "06f01f40-a499-4620-877d-988e5c6e908f",
+      "sequence": 92,
+      "timestamp": "2026-11-01T12:53:16.884294Z",
+      "category": "TASK",
+      "event_type": "task.created",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "06392ad1-436c-418c-93f7-f244520521cb",
+      "status": "PENDING",
+      "decision_summary": "任务已创建",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "PENDING"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "4908a6b6-d55e-4905-8d53-91ff55819150",
+      "sequence": 93,
+      "timestamp": "2026-11-01T12:53:17.188886Z",
+      "category": "TASK",
+      "event_type": "task.started",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "06392ad1-436c-418c-93f7-f244520521cb",
+      "status": "RUNNING",
+      "decision_summary": "任务开始执行",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "RUNNING"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "33d35a91-7f40-454c-a9ba-21063490e6a7",
+      "sequence": 95,
+      "timestamp": "2026-11-01T12:53:18.539486Z",
+      "category": "REQUEST",
+      "event_type": "request.routed",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "06392ad1-436c-418c-93f7-f244520521cb",
+      "status": null,
+      "decision_summary": "请求已路由至注册执行者",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "route",
+          "label": "路由",
+          "value": "TRANSFER_WORKFLOW"
+        },
+        {
+          "key": "executor_id",
+          "label": "注册执行者",
+          "value": "workflow:transfer"
+        },
+        {
+          "key": "requested_output",
+          "label": "输出类型",
+          "value": "WORKFLOW"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "dd348087-456c-4997-bb56-d487b01752aa",
+      "sequence": 96,
+      "timestamp": "2026-11-01T12:53:19.777860Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.created",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "DRAFT",
+      "decision_summary": "创建业务草稿并保存提取意图",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "DRAFT"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "recipient_query",
+          "label": "收款人查询",
+          "value": "李小雨"
+        },
+        {
+          "key": "source_account_hint",
+          "label": "付款账户提示",
+          "value": "工资卡"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "59fe228b-8b77-4084-b11a-70f57c1c6041",
+      "sequence": 97,
+      "timestamp": "2026-11-01T12:53:19.800535Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.ready_for_review",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "READY_FOR_REVIEW",
+      "decision_summary": "业务校验完成，等待用户确认",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "READY_FOR_REVIEW"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "recipient_query",
+          "label": "收款人查询",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_id",
+          "label": "已解析收款人",
+          "value": "payee_003"
+        },
+        {
+          "key": "source_account_id",
+          "label": "已选择付款账户",
+          "value": "acc_salary"
+        },
+        {
+          "key": "source_account_hint",
+          "label": "付款账户提示",
+          "value": "工资卡"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "source_account_display_name",
+          "label": "付款账户",
+          "value": "工资卡"
+        },
+        {
+          "key": "source_account_masked_number",
+          "label": "账户尾号",
+          "value": "****6688"
+        },
+        {
+          "key": "payee_display_name",
+          "label": "收款人",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_masked_account",
+          "label": "收款尾号",
+          "value": "****4815"
+        },
+        {
+          "key": "validation_valid",
+          "label": "确定性校验通过",
+          "value": "True"
+        },
+        {
+          "key": "validated_at",
+          "label": "校验时间",
+          "value": "2026-11-01T12:53:19.793242Z"
+        },
+        {
+          "key": "validation_codes",
+          "label": "校验领域错误",
+          "value": "[]"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "eb01c802-6b03-4169-b44e-88e472a4ba8e",
+      "sequence": 98,
+      "timestamp": "2026-11-01T12:53:19.801214Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.risk_evaluated",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": null,
+      "decision_summary": "后端风险评估",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "evaluated_at",
+          "label": "策略决策时间",
+          "value": "2026-11-01T12:53:19.793280Z"
+        },
+        {
+          "key": "required_approval",
+          "label": "需要用户确认",
+          "value": "True"
+        },
+        {
+          "key": "required_reauthentication",
+          "label": "需要 Mock 强验证",
+          "value": "False"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": {
+        "level": "YELLOW",
+        "required_approval": true,
+        "required_reauthentication": false,
+        "reason_codes": [
+          "DAILY_TRANSFER_WITHIN_LIMIT"
+        ],
+        "business_date": "2026-11-01",
+        "currency": "CNY",
+        "daily_successful_total": "0",
+        "daily_in_flight_exposure": "0",
+        "requested_amount": "100",
+        "projected_daily_total": "100",
+        "threshold": "1000.00",
+        "evaluated_at": "2026-11-01T12:53:19.793280Z",
+        "passwordless_limit": "200.00",
+        "passwordless_limit_display": "¥200.00",
+        "requested_amount_display": "¥100.00",
+        "daily_successful_total_display": "¥0.00",
+        "daily_in_flight_exposure_display": "¥0.00",
+        "projected_daily_total_display": "¥100.00",
+        "threshold_display": "¥1,000.00"
+      },
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "a3e67fb3-c1ab-4727-bbca-be9468a49574",
+      "sequence": 99,
+      "timestamp": "2026-11-01T12:53:19.808778Z",
+      "category": "TASK",
+      "event_type": "task.completed",
+      "actor_type": "SYSTEM",
+      "resource_type": "TASK",
+      "resource_id": "06392ad1-436c-418c-93f7-f244520521cb",
+      "status": "COMPLETED",
+      "decision_summary": "任务完成；写业务结果仍由 Workflow / Operation 决定",
+      "related_resource_ids": {},
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "4"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "COMPLETED"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "971ff6d7-d9a8-4316-90dc-0756b7627ba4",
+      "sequence": 101,
+      "timestamp": "2026-11-01T12:55:15.681984Z",
+      "category": "APPROVAL",
+      "event_type": "approval.created",
+      "actor_type": "WORKFLOW",
+      "resource_type": "APPROVAL",
+      "resource_id": "1581de4c-d096-414f-812a-9f92da518dcf",
+      "status": "PENDING",
+      "decision_summary": "创建绑定 canonical payload 的确认",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "approval_id": "1581de4c-d096-414f-812a-9f92da518dcf"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T13:05:15.677731+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "PENDING"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "1581de4c-d096-414f-812a-9f92da518dcf"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "ff6cbd46-a51e-4eb6-9fc5-e3e05fd55631",
+      "sequence": 102,
+      "timestamp": "2026-11-01T12:55:15.684688Z",
+      "category": "APPROVAL",
+      "event_type": "approval.approved",
+      "actor_type": "USER",
+      "resource_type": "APPROVAL",
+      "resource_id": "1581de4c-d096-414f-812a-9f92da518dcf",
+      "status": "APPROVED",
+      "decision_summary": "用户已确认当前 payload",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "approval_id": "1581de4c-d096-414f-812a-9f92da518dcf"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "3"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01T13:05:15.677731+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "APPROVED"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "1581de4c-d096-414f-812a-9f92da518dcf"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "74af1aac-acf7-41d5-991a-a40b98edfed9",
+      "sequence": 103,
+      "timestamp": "2026-11-01T12:55:15.685372Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.risk_evaluated",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": null,
+      "decision_summary": "后端风险评估",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "3"
+        },
+        {
+          "key": "evaluated_at",
+          "label": "策略决策时间",
+          "value": "2026-11-01T12:55:15.677736Z"
+        },
+        {
+          "key": "required_approval",
+          "label": "需要用户确认",
+          "value": "True"
+        },
+        {
+          "key": "required_reauthentication",
+          "label": "需要 Mock 强验证",
+          "value": "False"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": {
+        "level": "YELLOW",
+        "required_approval": true,
+        "required_reauthentication": false,
+        "reason_codes": [
+          "DAILY_TRANSFER_WITHIN_LIMIT"
+        ],
+        "business_date": "2026-11-01",
+        "currency": "CNY",
+        "daily_successful_total": "0",
+        "daily_in_flight_exposure": "0",
+        "requested_amount": "100",
+        "projected_daily_total": "100",
+        "threshold": "1000.00",
+        "evaluated_at": "2026-11-01T12:55:15.677736Z",
+        "passwordless_limit": "200.00",
+        "passwordless_limit_display": "¥200.00",
+        "requested_amount_display": "¥100.00",
+        "daily_successful_total_display": "¥0.00",
+        "daily_in_flight_exposure_display": "¥0.00",
+        "projected_daily_total_display": "¥100.00",
+        "threshold_display": "¥1,000.00"
+      },
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "bd9c01bf-bbd7-4b3c-8561-9df9560612ce",
+      "sequence": 104,
+      "timestamp": "2026-11-01T12:55:15.686368Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.ready_for_commit",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "READY_FOR_COMMIT",
+      "decision_summary": "安全控制完成，可以提交",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "3"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "READY_FOR_COMMIT"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "recipient_query",
+          "label": "收款人查询",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_id",
+          "label": "已解析收款人",
+          "value": "payee_003"
+        },
+        {
+          "key": "source_account_id",
+          "label": "已选择付款账户",
+          "value": "acc_salary"
+        },
+        {
+          "key": "source_account_hint",
+          "label": "付款账户提示",
+          "value": "工资卡"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "source_account_display_name",
+          "label": "付款账户",
+          "value": "工资卡"
+        },
+        {
+          "key": "source_account_masked_number",
+          "label": "账户尾号",
+          "value": "****6688"
+        },
+        {
+          "key": "payee_display_name",
+          "label": "收款人",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_masked_account",
+          "label": "收款尾号",
+          "value": "****4815"
+        },
+        {
+          "key": "validation_valid",
+          "label": "确定性校验通过",
+          "value": "True"
+        },
+        {
+          "key": "validated_at",
+          "label": "校验时间",
+          "value": "2026-11-01T12:55:15.677696Z"
+        },
+        {
+          "key": "validation_codes",
+          "label": "校验领域错误",
+          "value": "[]"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "efaa5a6c-bf02-49f6-8678-08152f1e575c",
+      "sequence": 105,
+      "timestamp": "2026-11-01T12:55:40.545668Z",
+      "category": "SECURITY",
+      "event_type": "security.write_check",
+      "actor_type": "SECURITY_GUARD",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "NORMAL",
+      "decision_summary": "Security Guard 新写操作检查",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "attempt_count",
+          "label": "失败尝试数",
+          "value": "0"
+        },
+        {
+          "key": "window_seconds",
+          "label": "窗口（秒）",
+          "value": "600"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "NORMAL"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "04e557e5-79cf-42a7-9aa8-5f5aac396a77",
+      "sequence": 106,
+      "timestamp": "2026-11-01T12:55:40.571713Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.risk_evaluated",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": null,
+      "decision_summary": "后端风险评估",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "4"
+        },
+        {
+          "key": "evaluated_at",
+          "label": "策略决策时间",
+          "value": "2026-11-01T12:55:40.550863Z"
+        },
+        {
+          "key": "required_approval",
+          "label": "需要用户确认",
+          "value": "True"
+        },
+        {
+          "key": "required_reauthentication",
+          "label": "需要 Mock 强验证",
+          "value": "False"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": {
+        "level": "YELLOW",
+        "required_approval": true,
+        "required_reauthentication": false,
+        "reason_codes": [
+          "DAILY_TRANSFER_WITHIN_LIMIT"
+        ],
+        "business_date": "2026-11-01",
+        "currency": "CNY",
+        "daily_successful_total": "0",
+        "daily_in_flight_exposure": "0",
+        "requested_amount": "100",
+        "projected_daily_total": "100",
+        "threshold": "1000.00",
+        "evaluated_at": "2026-11-01T12:55:40.550863Z",
+        "passwordless_limit": "200.00",
+        "passwordless_limit_display": "¥200.00",
+        "requested_amount_display": "¥100.00",
+        "daily_successful_total_display": "¥0.00",
+        "daily_in_flight_exposure_display": "¥0.00",
+        "projected_daily_total_display": "¥100.00",
+        "threshold_display": "¥1,000.00"
+      },
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "37c1caa7-9595-4397-a7f1-b7d9920cc9e6",
+      "sequence": 107,
+      "timestamp": "2026-11-01T12:55:40.572792Z",
+      "category": "OPERATION",
+      "event_type": "operation.created",
+      "actor_type": "SYSTEM",
+      "resource_type": "OPERATION",
+      "resource_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+      "status": "CREATED",
+      "decision_summary": "创建唯一银行 Operation",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f"
+      },
+      "facts": [
+        {
+          "key": "operation_id",
+          "label": "关联资金 Operation",
+          "value": "a8db201e-d90d-4422-adab-2712317ec65f"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "CREATED"
+        },
+        {
+          "key": "provider_mode",
+          "label": "Provider 模式",
+          "value": "Mock"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "064bc6da-84c8-4b2d-bb0d-5f03130fbe5c",
+      "sequence": 108,
+      "timestamp": "2026-11-01T12:55:40.573461Z",
+      "category": "APPROVAL",
+      "event_type": "approval.consumed",
+      "actor_type": "WORKFLOW",
+      "resource_type": "APPROVAL",
+      "resource_id": "1581de4c-d096-414f-812a-9f92da518dcf",
+      "status": "CONSUMED",
+      "decision_summary": "确认已消费并绑定唯一 Operation",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+        "approval_id": "1581de4c-d096-414f-812a-9f92da518dcf"
+      },
+      "facts": [
+        {
+          "key": "operation_id",
+          "label": "关联资金 Operation",
+          "value": "a8db201e-d90d-4422-adab-2712317ec65f"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "consumed_at",
+          "label": "消费时间",
+          "value": "2026-11-01T12:55:40.550863+00:00"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "CONSUMED"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "1581de4c-d096-414f-812a-9f92da518dcf"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "f846c5e3-869c-4212-9075-b95bb0d30cb9",
+      "sequence": 109,
+      "timestamp": "2026-11-01T12:55:40.574399Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.committing",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "COMMITTING",
+      "decision_summary": "正在提交；尚未确认业务成功",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "4"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "COMMITTING"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "recipient_query",
+          "label": "收款人查询",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_id",
+          "label": "已解析收款人",
+          "value": "payee_003"
+        },
+        {
+          "key": "source_account_id",
+          "label": "已选择付款账户",
+          "value": "acc_salary"
+        },
+        {
+          "key": "source_account_hint",
+          "label": "付款账户提示",
+          "value": "工资卡"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "source_account_display_name",
+          "label": "付款账户",
+          "value": "工资卡"
+        },
+        {
+          "key": "source_account_masked_number",
+          "label": "账户尾号",
+          "value": "****6688"
+        },
+        {
+          "key": "payee_display_name",
+          "label": "收款人",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_masked_account",
+          "label": "收款尾号",
+          "value": "****4815"
+        },
+        {
+          "key": "validation_valid",
+          "label": "确定性校验通过",
+          "value": "True"
+        },
+        {
+          "key": "validated_at",
+          "label": "校验时间",
+          "value": "2026-11-01T12:55:40.566752Z"
+        },
+        {
+          "key": "validation_codes",
+          "label": "校验领域错误",
+          "value": "[]"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "ca69794f-56ff-4b59-b9fb-e7a6bb537c97",
+      "sequence": 110,
+      "timestamp": "2026-11-01T12:55:40.579052Z",
+      "category": "OPERATION",
+      "event_type": "operation.reconcile_started",
+      "actor_type": "USER",
+      "resource_type": "OPERATION",
+      "resource_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+      "status": "CREATED",
+      "decision_summary": "对原 Operation 发起 reconcile / recovery",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f"
+      },
+      "facts": [
+        {
+          "key": "operation_id",
+          "label": "关联资金 Operation",
+          "value": "a8db201e-d90d-4422-adab-2712317ec65f"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "CREATED"
+        },
+        {
+          "key": "provider_mode",
+          "label": "Provider 模式",
+          "value": "Mock"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "f8572a88-5095-48c9-b153-a8078a3da761",
+      "sequence": 111,
+      "timestamp": "2026-11-01T12:55:40.580600Z",
+      "category": "PROVIDER",
+      "event_type": "provider.submit_started",
+      "actor_type": "PROVIDER",
+      "resource_type": "OPERATION",
+      "resource_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+      "status": "CREATED",
+      "decision_summary": "向 Mock Provider 提交原幂等身份",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f"
+      },
+      "facts": [
+        {
+          "key": "operation_id",
+          "label": "关联资金 Operation",
+          "value": "a8db201e-d90d-4422-adab-2712317ec65f"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "1"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "CREATED"
+        },
+        {
+          "key": "provider_mode",
+          "label": "Provider 模式",
+          "value": "Mock"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "9b847437-e301-4e94-bab9-301593b789a1",
+      "sequence": 112,
+      "timestamp": "2026-11-01T12:55:40.591065Z",
+      "category": "OPERATION",
+      "event_type": "operation.submitted",
+      "actor_type": "PROVIDER",
+      "resource_type": "OPERATION",
+      "resource_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+      "status": "SUBMITTED",
+      "decision_summary": "Mock Provider 已接收，结果尚未最终确认",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f"
+      },
+      "facts": [
+        {
+          "key": "operation_id",
+          "label": "关联资金 Operation",
+          "value": "a8db201e-d90d-4422-adab-2712317ec65f"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "2"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "provider_reference",
+          "label": "Provider reference",
+          "value": "mocktr_ed8d8c282181475aa22707c5f8001853"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "SUBMITTED"
+        },
+        {
+          "key": "provider_mode",
+          "label": "Provider 模式",
+          "value": "Mock"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "45a6abbb-0a85-472f-b791-dc8b7139bf8b",
+      "sequence": 113,
+      "timestamp": "2026-11-01T12:55:40.591748Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.committing",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "COMMITTING",
+      "decision_summary": "正在提交；尚未确认业务成功",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "5"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "COMMITTING"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "recipient_query",
+          "label": "收款人查询",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_id",
+          "label": "已解析收款人",
+          "value": "payee_003"
+        },
+        {
+          "key": "source_account_id",
+          "label": "已选择付款账户",
+          "value": "acc_salary"
+        },
+        {
+          "key": "source_account_hint",
+          "label": "付款账户提示",
+          "value": "工资卡"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "source_account_display_name",
+          "label": "付款账户",
+          "value": "工资卡"
+        },
+        {
+          "key": "source_account_masked_number",
+          "label": "账户尾号",
+          "value": "****6688"
+        },
+        {
+          "key": "payee_display_name",
+          "label": "收款人",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_masked_account",
+          "label": "收款尾号",
+          "value": "****4815"
+        },
+        {
+          "key": "validation_valid",
+          "label": "确定性校验通过",
+          "value": "True"
+        },
+        {
+          "key": "validated_at",
+          "label": "校验时间",
+          "value": "2026-11-01T12:55:40.566752Z"
+        },
+        {
+          "key": "validation_codes",
+          "label": "校验领域错误",
+          "value": "[]"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "ef6f9128-dd61-4df8-a52e-f62f4d4d76ea",
+      "sequence": 114,
+      "timestamp": "2026-11-01T12:55:40.597230Z",
+      "category": "OPERATION",
+      "event_type": "operation.succeeded",
+      "actor_type": "PROVIDER",
+      "resource_type": "OPERATION",
+      "resource_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+      "status": "SUCCEEDED",
+      "decision_summary": "Mock Provider 最终确认成功",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+        "operation_id": "a8db201e-d90d-4422-adab-2712317ec65f"
+      },
+      "facts": [
+        {
+          "key": "operation_id",
+          "label": "关联资金 Operation",
+          "value": "a8db201e-d90d-4422-adab-2712317ec65f"
+        },
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "3"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "provider_reference",
+          "label": "Provider reference",
+          "value": "mocktr_ed8d8c282181475aa22707c5f8001853"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "SUCCEEDED"
+        },
+        {
+          "key": "provider_mode",
+          "label": "Provider 模式",
+          "value": "Mock"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    },
+    {
+      "event_id": "3bd10f91-7e9d-4fb2-949c-abb59d89f295",
+      "sequence": 115,
+      "timestamp": "2026-11-01T12:55:40.597838Z",
+      "category": "WORKFLOW",
+      "event_type": "workflow.succeeded",
+      "actor_type": "WORKFLOW",
+      "resource_type": "WORKFLOW",
+      "resource_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864",
+      "status": "SUCCEEDED",
+      "decision_summary": "Workflow 已成功（需同时确认 Operation）",
+      "related_resource_ids": {
+        "workflow_id": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+      },
+      "facts": [
+        {
+          "key": "version",
+          "label": "资源版本",
+          "value": "6"
+        },
+        {
+          "key": "status",
+          "label": "状态",
+          "value": "SUCCEEDED"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "recipient_query",
+          "label": "收款人查询",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_id",
+          "label": "已解析收款人",
+          "value": "payee_003"
+        },
+        {
+          "key": "source_account_id",
+          "label": "已选择付款账户",
+          "value": "acc_salary"
+        },
+        {
+          "key": "source_account_hint",
+          "label": "付款账户提示",
+          "value": "工资卡"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "source_account_display_name",
+          "label": "付款账户",
+          "value": "工资卡"
+        },
+        {
+          "key": "source_account_masked_number",
+          "label": "账户尾号",
+          "value": "****6688"
+        },
+        {
+          "key": "payee_display_name",
+          "label": "收款人",
+          "value": "李小雨"
+        },
+        {
+          "key": "payee_masked_account",
+          "label": "收款尾号",
+          "value": "****4815"
+        },
+        {
+          "key": "validation_valid",
+          "label": "确定性校验通过",
+          "value": "True"
+        },
+        {
+          "key": "validated_at",
+          "label": "校验时间",
+          "value": "2026-11-01T12:55:40.566752Z"
+        },
+        {
+          "key": "validation_codes",
+          "label": "校验领域错误",
+          "value": "[]"
+        }
+      ],
+      "risk_decision": null,
+      "wealth_risk_decision": null,
+      "condition_decision": null
+    }
+  ],
+  "resources": [
+    {
+      "resource_type": "APPROVAL",
+      "resource_id": "1581de4c-d096-414f-812a-9f92da518dcf",
+      "status": "CONSUMED",
+      "facts": [
+        {
+          "key": "user_id",
+          "label": "所属用户",
+          "value": "dev-user-001"
+        },
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "created_at",
+          "label": "创建时间",
+          "value": "2026-11-01 12:55:15.680964+00:00"
+        },
+        {
+          "key": "expires_at",
+          "label": "有效期至",
+          "value": "2026-11-01 13:05:15.677731+00:00"
+        },
+        {
+          "key": "within_ttl",
+          "label": "查询时仍在有效期内（不代表动作已授权）",
+          "value": "False"
+        },
+        {
+          "key": "approved_at",
+          "label": "确认时间",
+          "value": "2026-11-01 12:55:15.677731+00:00"
+        },
+        {
+          "key": "consumed_at",
+          "label": "消费时间",
+          "value": "2026-11-01 12:55:40.550863+00:00"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "amount",
+          "label": "金额（Decimal）",
+          "value": "100.00"
+        },
+        {
+          "key": "currency",
+          "label": "币种",
+          "value": "CNY"
+        },
+        {
+          "key": "source_account_id",
+          "label": "已选择付款账户",
+          "value": "acc_salary"
+        },
+        {
+          "key": "payee_id",
+          "label": "已解析收款人",
+          "value": "payee_003"
+        }
+      ]
+    },
+    {
+      "resource_type": "OPERATION",
+      "resource_id": "a8db201e-d90d-4422-adab-2712317ec65f",
+      "status": "SUCCEEDED",
+      "facts": [
+        {
+          "key": "workflow_id",
+          "label": "关联 Workflow",
+          "value": "8a8fc5b1-5c67-4bc6-8eeb-abe276c96864"
+        },
+        {
+          "key": "approval_id",
+          "label": "关联确认",
+          "value": "1581de4c-d096-414f-812a-9f92da518dcf"
+        },
+        {
+          "key": "idempotency_key",
+          "label": "Provider 幂等身份",
+          "value": "a81854bb-bac8-45d3-9880-2b66fe7fd2ce"
+        },
+        {
+          "key": "payload_hash",
+          "label": "完整 payload hash",
+          "value": "ca7e45737383b58733ce7caf550a885b547c90479daa724f35a9894f376bb865"
+        },
+        {
+          "key": "created_at",
+          "label": "创建时间",
+          "value": "2026-11-01 12:55:40.569073+00:00"
+        },
+        {
+          "key": "provider_reference",
+          "label": "Provider reference",
+          "value": "mocktr_ed8d8c282181475aa22707c5f8001853"
+        },
+        {
+          "key": "reconcile_attempts",
+          "label": "恢复次数",
+          "value": "1"
+        },
+        {
+          "key": "provider_mode",
+          "label": "Provider 模式",
+          "value": "Mock"
+        }
+      ]
+    }
+  ],
+  "write_evidence": {
+    "workflow_count": 1,
+    "approval_count": 1,
+    "operation_count": 1,
+    "provider_ledger_count": 1,
+    "provider_submission_count": 1,
+    "skipped_write_step_ids": [],
+    "business_success": true,
+    "no_write_started": false
+  },
+  "history_truncated": false,
+  "history_note": "时间线来自持久 Event；资源详情是当前快照。旧版本未记录的细节不会补造。原文见所属对话；不复制完整 Prompt 或模型推理。"
+}

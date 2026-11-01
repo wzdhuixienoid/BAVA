@@ -1,0 +1,77 @@
+{
+  "video": "BAVA-final-demo.mp4",
+  "duration_seconds": 294.9,
+  "duration_display": "04:54.900",
+  "maximum_duration_seconds": 300,
+  "remaining_seconds": 5.1,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 30,
+  "frames": 8847,
+  "audio": false,
+  "burned_in_narration_subtitles": false,
+  "ui_rectangle": [
+    170,
+    112,
+    1580,
+    856
+  ],
+  "corner_radius_px": 24,
+  "separator_y": 987,
+  "single_conversation_id": "6c4ec632-6481-42b1-870d-0fb5275bbc68",
+  "single_conversation_title": "BAVA 银行服务演示",
+  "all_historical_messages_preserved": true,
+  "same_mock_fixture_throughout": true,
+  "contents": [
+    "账单分析",
+    "订阅管理",
+    "小额转账",
+    "条件转账与强验证",
+    "模拟理财",
+    "品牌收尾"
+  ],
+  "narration": "产品讲解稿与时间轴.md",
+  "srt": "BAVA-final-demo.srt",
+  "business_checks_passed": 63,
+  "media_checks_passed": 15,
+  "video_sha256": "c8289a604084c114be81116b5e17333199381fca6966a4be665551498e980b30",
+  "wealth_status": "已受理，待成交，未生成实际份额",
+  "wealth_expected_processing": "2026-11-03 10:00:00 Asia/Shanghai",
+  "code_fix": {
+    "file": "apps/api/src/banking_api/runtime/task_runner.py",
+    "description": "Replace obsolete wealth workflow state strings with valid WorkflowStatus enums",
+    "validation": [
+      "SQLite create/update draft regression passed",
+      "PostgreSQL create/update draft regression passed in isolated disposable database",
+      "Targeted Ruff checks passed"
+    ]
+  },
+  "native_sources": [
+    {
+      "file": "raw/01-bills.mp4",
+      "sha256": "0f29dde14586af60db068c64ffccc603605b65268b61d0dc4809d2ec2f668d95"
+    },
+    {
+      "file": "raw/02-subscriptions.mp4",
+      "sha256": "c022d851d93c164425159f90db52a9c638c27eaecba881d3c561d939e49c9196"
+    },
+    {
+      "file": "raw/03-transfers.mp4",
+      "sha256": "400cfebe417752f44e5d6f95710f92acbf3f10ab8ad2eca8e7449fd465ddf349"
+    },
+    {
+      "file": "raw/04-condition.mp4",
+      "sha256": "760ddb2e812a425a3dbb1cccf17ef81f651d841513a22f84f271a71688ec3e65"
+    },
+    {
+      "file": "raw/05-wealth.mp4",
+      "sha256": "899dfc2a44080d6f9d7cbdb4ac6c05eddb3ce7e6e8cc499eef6ad0ee5402dad3"
+    },
+    {
+      "file": "raw/06-wealth-submit.mp4",
+      "sha256": "dd709795ebc1c7bdce448a57c4f4084617ee60f3b8db75c7474e4309df8cb183"
+    }
+  ]
+}
