@@ -14,6 +14,22 @@ test("current month follows Beijing calendar at year boundaries", () => {
   assert.equal(currentMonth(new Date("2025-12-31T16:00:00Z")),"2026-01");
   assert.equal(currentMonth(new Date("2025-12-31T15:59:59Z")),"2025-12");
 });
+test("an empty month retains accounts, posted history and historical period controls", async () => {
+  const original={getDashboard:api.getDashboard,getDashboardTransactions:api.getDashboardTransactions,transferPreference:api.transferPreference,mfaStatus:api.mfaStatus};
+  let r;
+  try {
+    api.getDashboard=async month=>({...snapshot(month),spending:null,spending_message:"所选月份暂无已入账交易，可选择其他月份查看消费分析。"});
+    api.getDashboardTransactions=async()=>({transactions:[],total_count:0,offset:0,available_months:["2025-08"],available_categories:[]});
+    api.transferPreference=async()=>({passwordless_limit:"200.00",passwordless_limit_display:"¥200.00",version:1});
+    api.mfaStatus=async()=>({method:"mock",enrolled:false});
+    await act(async()=>{r=create(createElement(DashboardPage));});
+    assert.match(text(r.toJSON()),/账户与余额/);
+    assert.match(text(r.toJSON()),/账单明细/);
+    assert.match(text(r.toJSON()),/暂无已入账交易/);
+    assert.ok(r.root.findByProps({id:"dashboard-year"}).findAllByType("option").some(n=>n.props.value==="2025"));
+    assert.equal(r.root.findAllByProps({role:"alert"}).length,0);
+  } finally {if(r)await act(async()=>r.unmount());Object.assign(api,original);}
+});
 test("overview opens in current month and supports historical years and independent months", async () => {
   const originalDashboard=api.getDashboard, originalTransactions=api.getDashboardTransactions, originalPreference=api.transferPreference;
   let r;

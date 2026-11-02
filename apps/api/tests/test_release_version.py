@@ -11,7 +11,7 @@ from banking_api.main import create_app
 
 def test_release_version_matches_packages_lock_api_and_current_docs():
     root = Path(__file__).resolve().parents[3]
-    assert __version__ == "1.0.1"
+    assert __version__ == "1.0.2"
     for name in ("package.json", "apps/web/package.json", "packages/api-client/package.json"):
         assert json.loads((root / name).read_text())["version"] == __version__
     project = tomllib.loads((root / "apps/api/pyproject.toml").read_text())

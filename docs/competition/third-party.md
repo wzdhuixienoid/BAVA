@@ -11,6 +11,7 @@
 | Cryptography、PyJWT | TOTP／Fernet、JWT验证 | API锁文件；TOTP算法见RFC6238 |
 | Next.js、React、TypeScript、Tailwind CSS | Web工作台与类型检查 | Web项目配置及pnpm锁文件 |
 | oidc-client-ts | OIDC Authorization Code + PKCE | Web项目配置 |
+| Keycloak 26.8.1 | 完整认证演示环境的独立 OIDC 身份服务 | [官方容器指南](https://www.keycloak.org/server/containers)、infra/oidc/compose.yml |
 | PostgreSQL、Python容器 | 业务持久化、隔离分析 | Docker Compose与沙箱Dockerfile |
 | OpenAI-compatible接口 | 可替换的大模型提供商协议适配 | 提供商及模型由部署者配置，不将协议兼容视作模型许可 |
 

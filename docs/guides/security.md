@@ -18,8 +18,8 @@
 
 订阅查询仍需明确确认，授权5分钟；取消、恢复使用各自授权。页面取消、额度修改和查询授权等记录通过后端 `/api/v1/security/audit` 按本人查询，不再提供独立操作记录页面。对话中的审计入口保留。记录不包含验证码、认证器密钥或原始请求正文。
 
-## 可选：真实认证器后端能力
+## 认证器动态码
 
-部署者可使用 `scripts/configure_local_mfa.py --method totp` 启用TOTP，并通过已认证的 `/api/v1/security/mfa/enrollment` 和 `/api/v1/security/mfa/enrollment/confirm` 完成本人绑定；接口字段见运行API的 `/docs`。当前金融总览不提供认证器管理模块。OIDC模式绑定要求5分钟内的主身份认证。
+部署者可使用[完整登录与动态码环境](../development/oidc-demo.md)或 `scripts/configure_local_mfa.py --method totp` 启用TOTP。登录后在金融总览的“认证器验证”中绑定本人认证器，输入当前动态码确认；成功后页面清除绑定密钥。OIDC模式绑定要求5分钟内的主身份认证。绑定过或已经授权过的动态码不能再次用于交易，使用认证器随后生成的新动态码。
 
 TOTP采用 [RFC 6238](https://www.rfc-editor.org/rfc/rfc6238)，密钥使用 [Fernet](https://cryptography.io/en/latest/fernet/) 加密，动态码防重放及失败锁定继续执行。生产身份、私密配置和数据库升级见[环境说明](../development/setup.md)。

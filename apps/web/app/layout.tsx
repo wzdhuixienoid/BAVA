@@ -4,8 +4,8 @@ import { AuthGate } from "@/components/auth/AuthGate";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 
 export const metadata: Metadata = {
-  title: "AI 银行助理",
-  description: "支持账户查询、消费分析与安全订阅管理的 AI 银行助理",
+  title: "BAVA · Banking AI for Verified Actions",
+  description: "BAVA 以 Ask. Plan. Verify. Act. 为理念，支持账户分析、订阅管理、智能转账与模拟理财，实现可核验、可追溯的受控执行。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

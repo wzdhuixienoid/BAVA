@@ -14,6 +14,23 @@ from banking_api.domain.principal import Principal
 from banking_api.planning.models import ConditionDecision, ConditionPredicate
 
 
+async def test_empty_dashboard_month_keeps_accounts_and_posted_history(app, client):
+    bank, provider, _, _ = operation_runtime(app)
+    app.state.mock_bank = bank
+    app.state.transfer_provider = provider
+    response = await client.get("/api/v1/dashboard", params={"month": "2026-11"})
+    assert response.status_code == 200
+    snapshot = response.json()
+    assert len(snapshot["accounts"]) == 4
+    assert snapshot["accounts"][0]["balance_display"] == "¥23,864.52"
+    assert snapshot["recent_transactions"]
+    assert snapshot["spending"] is None
+    assert "暂无已入账交易" in snapshot["spending_message"]
+    invalid = await client.get("/api/v1/dashboard", params={"month": "2026-13"})
+    assert invalid.status_code == 422
+    assert invalid.json()["detail"]["code"] == "INVALID_PERIOD"
+
+
 async def test_dashboard_transaction_filters_pagination_and_principal_scope(app, client):
     response = await client.get("/api/v1/dashboard/transactions", params={"limit": 5})
     assert response.status_code == 200
@@ -112,7 +129,11 @@ async def test_dashboard_reuses_existing_analysis_and_scoped_live_balance(app, c
         user_id="other-user", issuer="test", subject="other-user"
     )
     isolated = await client.get("/api/v1/dashboard")
-    assert isolated.status_code == 422
+    assert isolated.status_code == 200
+    assert isolated.json()["accounts"] == []
+    assert isolated.json()["recent_transactions"] == []
+    assert isolated.json()["spending"] is None
+    assert isolated.json()["subscriptions"]["subscriptions"] == []
     assert "23864.52" not in isolated.text
     assert "23364.52" not in isolated.text
 

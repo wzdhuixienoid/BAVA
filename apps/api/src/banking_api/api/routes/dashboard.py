@@ -16,7 +16,7 @@ from banking_api.domain.dashboard import (
 from banking_api.financial.analysis_snapshot import FinancialAnalysisSnapshot, ToolEvidence
 from banking_api.financial.analytics_service import FinancialAnalyticsService
 from banking_api.financial.anomaly_detector import TransactionAnomalyDetector
-from banking_api.financial.errors import FinancialDomainError
+from banking_api.financial.errors import FinancialDomainError, FinancialErrorCode
 from banking_api.skills.monthly_spending_report import MonthlySpendingReportSkill
 from banking_api.subscriptions.service import SubscriptionAnalysisService
 
@@ -71,6 +71,7 @@ async def get_dashboard(
     analysis_bank = PostedAnalysisBank(bank, user_id, posted)
     analytics = FinancialAnalyticsService(analysis_bank)
     now = datetime.now(UTC)
+    spending_message = None
     try:
         snapshot = FinancialAnalysisSnapshot(
             period=month,
@@ -90,9 +91,13 @@ async def get_dashboard(
             ],
         )
     except FinancialDomainError as exc:
-        raise HTTPException(
-            status_code=422, detail={"code": exc.code.value, "message": exc.message}
-        ) from exc
+        if exc.code is not FinancialErrorCode.NO_TRANSACTIONS_IN_PERIOD:
+            raise HTTPException(
+                status_code=422, detail={"code": exc.code.value, "message": exc.message}
+            ) from exc
+        # An empty analysis month must not hide authoritative accounts and posted history.
+        snapshot = None
+        spending_message = "所选月份暂无已入账交易，可选择其他月份查看消费分析。"
     accounts = []
     for account in bank.list_accounts(user_id=user_id)[:100]:
         values = bank.get_balance(account["account_id"], user_id=user_id)
@@ -103,7 +108,10 @@ async def get_dashboard(
     return DashboardSnapshot(
         accounts=accounts,
         recent_transactions=posted[:100],
-        spending=MonthlySpendingReportSkill().build_core(snapshot),
+        spending=(
+            MonthlySpendingReportSkill().build_core(snapshot) if snapshot is not None else None
+        ),
+        spending_message=spending_message,
         subscriptions=await SubscriptionAnalysisService(bank, session).analyze(
             user_id=user_id, generated_at=reference_now(), upcoming_days=30
         ),

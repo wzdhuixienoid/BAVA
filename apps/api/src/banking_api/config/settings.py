@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     mock_reauth_code: str = Field(default="246810", repr=False)
     reauth_provider: Literal["mock", "totp"] = "mock"
     mfa_encryption_key: str = Field(default="", repr=False)
-    mfa_issuer: str = "AI Banking Agent"
+    mfa_issuer: str = "BAVA"
     subscription_read_consent_seconds: int = Field(default=300, ge=30, le=600)
     security_reauth_failure_limit: int = Field(default=3, ge=1)
     security_reauth_failure_window_seconds: int = Field(default=600, ge=1)

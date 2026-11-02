@@ -191,7 +191,7 @@ def create_app() -> FastAPI:
                 await checkpoint_manager.close()
 
     application = FastAPI(
-        title="AI 银行助理 API",
+        title="BAVA API — Banking AI for Verified Actions",
         version=__version__,
         lifespan=lifespan,
     )

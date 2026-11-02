@@ -1,4 +1,4 @@
-# 测试与演示
+# 测试与验证
 
 本文提供可重复的当前验证方法，不保存发布流水、历史测试数量或临时验收结论。先按 [环境配置](setup.md) 安装依赖；默认不需要模型联网的检查与真实模型评估分开执行。
 
@@ -53,7 +53,7 @@ RUN_DOCKER_SANDBOX_TESTS=1 APP_ENVIRONMENT=test AUTH_MODE=development \
   apps/api/.venv/bin/python -m pytest apps/api/tests/test_code_sandbox.py -m sandbox -q
 ```
 
-参赛演示见[验收说明](../competition/acceptance.md)，残余风险见[安全自评](../competition/security-assessment.md)。
+人工功能用例见[验收说明](../competition/acceptance.md)，本次实测范围见[提交验证记录](../competition/verification.md)，残余风险见[安全自评](../competition/security-assessment.md)。
 
 ## 功能验证地图
 
@@ -145,7 +145,9 @@ reset 清理指定用户业务、对话、任务、报告、消息、相关审�
 | 脚本 | 用途及限制 |
 | --- | --- |
 | check_docs.py | 本地链接、锚点、目录、版本、迁移和已废弃操作说明检查 |
+| package_source.py | 输出源码 ZIP 与 SHA-256；排除私密配置、依赖、构建结果及视频制作资料 |
 | configure_local_mfa.py | 切换后端验证模式，保留本人验证码和已有密钥，不输出凭据 |
+| prepare_oidc_demo.py | 生成私有 Keycloak／TOTP 演示配置及显式用户映射；重复准备不覆盖原密钥 |
 | demo_preflight.py | 只读检查专用演示的初始条件，不自动重置正常使用数据 |
 | validate_mock_data.py | 校验合成数据的归属、类型及数量 |
 | generate_mock_data.py | 显式重建合成银行数据，会修改提交的fixture |

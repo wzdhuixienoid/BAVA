@@ -4,4 +4,10 @@ __pycache__
 .ruff_cache
 tests
 .env
+.env.*
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.log
 

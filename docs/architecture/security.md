@@ -69,6 +69,8 @@ PersonalBanking 与 SubscriptionAnalysis 的客户答复由本轮有类型的成
 
 ## 当前范围
 
-真实银行、真实 IdP 完整验收、短信／人脸／U盾、独立 Worker 部署、跨进程 SSE broker、事件回放及完整生产监控尚未完成。TOTP 本地和数据库并发验证不等于真实 IdP 端到端验收。开发 reset 是明确按用户的数据清理，不能替代业务撤销；重置撤销订阅读取授权，保留个人安全额度、独立安全审计和认证器凭据。
+作品在模拟银行环境运行，完整认证演示采用独立 Keycloak OIDC 登录与认证器 TOTP，覆盖浏览器绑定、交易核对、动态码验证、提交与回执；配置及复现见[完整演示环境](../development/oidc-demo.md)。真实银行与短信／人脸／U盾属于金融渠道扩展；Worker 由 API 托管，实时通知采用进程内 SSE，部署结构见[系统架构](system.md)。
+
+开发 reset 是明确按用户的数据清理，不能替代业务撤销；重置撤销订阅读取授权，保留个人安全额度、独立安全审计和认证器凭据。
 
 源码入口：[认证](../../apps/api/src/banking_api/security/authentication/service.py)、[Policy](../../apps/api/src/banking_api/policy/service.py)、[Security Guard](../../apps/api/src/banking_api/security/guard.py)、[审计](../../apps/api/src/banking_api/audit/README.md)。配置见 [环境说明](../development/setup.md)，操作排查见 [运行维护](../development/operations.md)。

@@ -30,7 +30,8 @@ class DashboardTransactionPage(BaseModel):
 class DashboardSnapshot(BaseModel):
     accounts: list[AccountBalanceResult] = Field(max_length=100)
     recent_transactions: list[DashboardTransaction] = Field(default_factory=list, max_length=100)
-    spending: MonthlySpendingReportCore
+    spending: MonthlySpendingReportCore | None = None
+    spending_message: str | None = None
     subscriptions: SubscriptionAnalysisSnapshot
     anomalies: TransactionAnomalySnapshot
     risk_level: BusinessRiskLevel = BusinessRiskLevel.GREEN

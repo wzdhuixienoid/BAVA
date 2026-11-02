@@ -1927,7 +1927,9 @@ export interface components {
             accounts: components["schemas"]["AccountBalanceResult"][];
             /** Recent Transactions */
             recent_transactions?: components["schemas"]["DashboardTransaction"][];
-            spending: components["schemas"]["MonthlySpendingReportCore"];
+            spending?: components["schemas"]["MonthlySpendingReportCore"] | null;
+            /** Spending Message */
+            spending_message?: string | null;
             subscriptions: components["schemas"]["SubscriptionAnalysisSnapshot"];
             anomalies: components["schemas"]["TransactionAnomalySnapshot"];
             /** @default GREEN */

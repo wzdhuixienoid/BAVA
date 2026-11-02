@@ -1,6 +1,6 @@
-# 文档导航
+# BAVA 文档导航
 
-当前版本为 **v1.0.1**，数据库迁移 head 为 **0038**。本文档集只说明当前代码与交互；应用版本以包配置为准，Skill 资源、接口契约和业务资料各自独立版本化。
+当前版本为 **v1.0.2**，数据库迁移 head 为 **0038**。本文档集只说明当前代码与交互；应用版本以包配置为准，Skill 资源、接口契约和业务资料各自独立版本化。
 
 ## 使用指南
 
@@ -49,9 +49,10 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [作品简介与提交资料](competition/submission.md) | 作品名称、少于200字简介和文件对应 |
+| [作品简介与提交资料](competition/submission.md) | BAVA 名称、项目简介、源码打包及文件对应 |
 | [安全自评报告](competition/security-assessment.md) | 权限矩阵、安全证据与已知风险 |
-| [演示与验收](competition/acceptance.md) | 四场景、安全演示和可重复检查 |
+| [功能验收用例](competition/acceptance.md) | 四场景、安全控制、复杂任务和预期结果 |
+| [提交验证记录](competition/verification.md) | 本次实测范围、结果与未执行检查 |
 | [第三方组件与来源](competition/third-party.md) | 依赖、资料及作者提交前核对事项 |
 
 ## 开发与维护
@@ -59,6 +60,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [环境配置与升级](development/setup.md) | Docker、本地开发、开关、OIDC 和数据库迁移 |
+| [完整登录与动态码演示](development/oidc-demo.md) | 独立 Keycloak、OIDC+PKCE、身份映射与 TOTP 交易验证 |
 | [测试与演示](development/testing.md) | 自动检查、隔离数据库、合成数据及真实模型评估 |
 | [运行与文档维护](development/operations.md) | 启停、备份、状态排查、恢复和文档维护规则 |
 

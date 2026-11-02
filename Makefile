@@ -1,22 +1,23 @@
-.PHONY: up migrate api web test lint typecheck build api-generate agent-smoke postgres-test
+.PHONY: up migrate api web test lint typecheck build api-generate agent-smoke postgres-test docs package
 
 up:
 	docker compose up --build
 
 migrate:
-	cd apps/api && uv run alembic upgrade head
+	cd apps/api && uv run --env-file ../../.env alembic upgrade head
 
 api:
-	cd apps/api && uv run uvicorn banking_api.main:app --reload
+	cd apps/api && uv run --env-file ../../.env uvicorn banking_api.main:app --reload
 
 web:
 	pnpm web:dev
 
 test:
-	cd apps/api && uv run pytest
+	uv run --project apps/api pytest apps/api/tests -m 'not postgres and not sandbox'
+	pnpm --filter @banking/web test
 
 lint:
-	cd apps/api && uv run ruff check .
+	uv run --project apps/api ruff check apps/api scripts
 	pnpm web:lint
 
 typecheck:
@@ -33,3 +34,9 @@ agent-smoke:
 
 postgres-test:
 	cd apps/api && uv run pytest -m postgres
+
+docs:
+	python3 scripts/check_docs.py
+
+package: docs
+	python3 scripts/package_source.py

@@ -88,7 +88,7 @@ export default function HomePage() {
             <p className="text-xs font-semibold tracking-[0.2em] text-cyan-300">智能银行服务</p>
             <span className="text-[10px] text-slate-400">v{APP_VERSION}</span>
           </div>
-          <h1 className="mt-2 pr-8 text-xl font-semibold">银行助理工作台</h1>
+          <h1 className="mt-2 pr-8 text-xl font-semibold">BAVA 银行助理工作台</h1>
         </div>
         <button
           className="mb-5 w-full rounded-lg bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 hover:bg-cyan-300"

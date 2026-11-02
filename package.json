@@ -1,5 +1,5 @@
 {
-  "name": "ai-banking-agent",
+  "name": "bava",
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "scripts": {
@@ -9,5 +9,5 @@
     "web:typecheck": "pnpm --filter @banking/web typecheck",
     "web:build": "pnpm --filter @banking/web build"
   },
-  "version": "1.0.1"
+  "version": "1.0.2"
 }

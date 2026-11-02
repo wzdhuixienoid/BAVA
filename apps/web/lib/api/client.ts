@@ -53,6 +53,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  mfaStatus: () => request<components["schemas"]["MfaStatus"]>("/api/v1/security/mfa"),
+  beginMfaEnrollment: () => request<components["schemas"]["MfaEnrollment"]>("/api/v1/security/mfa/enrollment", {method: "POST", body: "{}"}),
+  confirmMfaEnrollment: (code: string) => request<components["schemas"]["MfaStatus"]>("/api/v1/security/mfa/enrollment/confirm", {method: "POST", body: JSON.stringify({code})}),
   transferPreference: () => request<TransferPreference>("/api/v1/security/transfer-preference"),
   saveTransferPreference: (amount: string, expected_version: number, verification_code: string) => request<TransferPreference>("/api/v1/security/transfer-preference", {method: "POST", body: JSON.stringify({amount, expected_version, verification_code, confirmed: true})}),
   confirmSubscriptionRead: () => request<{expires_at: string}>("/api/v1/security/subscription-read-consent", {method: "POST", body: JSON.stringify({confirmed: true})}),

@@ -3,6 +3,8 @@
 Uses only the standard library; does not fetch external links or load application secrets.
 """
 
+from __future__ import annotations
+
 import ast
 import json
 import os

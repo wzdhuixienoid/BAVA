@@ -1,0 +1,22 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.1
+    user: "${OIDC_LOCAL_UID:-1000}:0"
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./.local/oidc:/opt/keycloak/data/import:ro
+      - keycloak-data:/opt/keycloak/data
+
+  api:
+    depends_on:
+      keycloak:
+        condition: service_started
+
+volumes:
+  keycloak-data:

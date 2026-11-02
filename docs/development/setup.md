@@ -1,4 +1,8 @@
-# 环境配置与升级
+# BAVA 部署、环境配置与升级
+
+## 环境要求
+
+Docker 方式需要已启动的 Docker Engine／Docker Desktop 和 Docker Compose v2+，以及访问容器镜像与依赖仓库的网络。首次构建会下载镜像、Python 和 Node 依赖；不需要在宿主机单独安装 Python／Node。默认占用 3000、8000、5432 端口。自然语言功能需要部署者配置可用的 OpenAI-compatible 模型服务，源码包不携带 API key。
 
 ## Docker 启动
 
@@ -8,9 +12,30 @@
 cp .env.example .env
 chmod 600 .env
 docker compose up --build -d
+docker compose ps
+curl --fail http://localhost:8000/health
 ```
 
 示例显式设置 `APP_ENVIRONMENT=development`、`AUTH_MODE=development`、`NEXT_PUBLIC_AUTH_MODE=development`，默认用户为 dev-user-001。Web 3000、API 8000、PostgreSQL 5432；API 启动自动执行 Alembic。
+
+访问 [BAVA 工作台](http://localhost:3000/) 和 [API 文档](http://localhost:8000/docs)。首次账户、交易和产品使用项目合成数据；无需手工导入 SQL。用“我有哪些账户？”检查模型与工具链，再按[验收用例](../competition/acceptance.md)逐项检查。`/health` 只证明 HTTP 进程响应，模型调用是否可用以真实对话为准。
+
+当前日期晚于合成交易数据时，可在 `.env` 中设置模板注释提供的 `DEMO_REFERENCE_TIME=2026-09-28T12:00:00Z`，便于复核近 30 天异常／续费示例；固定月份的账单查询也可直接使用 2026 年 8 月。该设置不改变授权有效期、转账业务日、租约和真实恢复调度。
+
+仅停止服务使用 `docker compose stop`，恢复使用 `docker compose start`；删除容器使用 `docker compose down`，命名卷保留业务数据。重新构建使用 `docker compose up --build -d`。不要把删除数据库卷作为普通更新步骤。
+
+## 远程访问与常见部署问题
+
+浏览器通过公开 API 地址发请求。在其他设备访问时，将 `NEXT_PUBLIC_API_BASE_URL` 改为浏览器可访问的 API 地址，同时把前端地址放入 JSON 数组格式的 `CORS_ORIGINS`，例如 `CORS_ORIGINS=["http://192.168.1.20:3000"]`；改变前端构建配置后必须重建 Web。`WEB_PORT`、`API_PORT` 分别调整宿主端口映射；调整 Web 端口也要同步 CORS。
+
+| 现象 | 处理 |
+| --- | --- |
+| 镜像／依赖下载失败 | 检查 Docker 已启动、网络及镜像仓库访问，再重新构建；安装使用提交的锁文件 |
+| API 启动失败 | 查看 `docker compose logs --tail 100 api`，核对数据库连接、环境模式和迁移；升级已有库先备份 |
+| 页面正常但对话失败 | 检查模型 base URL、key、model 和提供商可用性；base URL 不含 `/chat/completions` |
+| 浏览器无法请求 API | 检查浏览器可达地址、CORS、端口映射；远程浏览器的 localhost 指向其自身设备 |
+
+默认 development 身份面向本机合成环境；对外部署的身份配置见下文 OIDC 与[安全自评](../competition/security-assessment.md)。
 
 ## 关键配置
 
@@ -70,6 +95,8 @@ pnpm web:dev
 
 ## OIDC
 
+评审可直接使用[完整登录与动态码演示环境](oidc-demo.md)，一并启动独立 Keycloak，完成实际 OIDC 与 TOTP 授权闭环。以下参数用于接入自有身份服务。
+
 设置 `AUTH_MODE=oidc`、`OIDC_ISSUER`、`OIDC_AUDIENCE` 及允许的非对称签名算法；`OIDC_JWKS_URL` 为空时使用 discovery。前端设置 OIDC authority、client ID、scope 和对应 auth mode。
 
 前端采用 Authorization Code + PKCE，access token 仅在内存，通过 Bearer header 访问 HTTP 和 fetch-streaming SSE。外部身份须显式映射；在已正确配置数据库的后端终端执行：
@@ -79,7 +106,7 @@ uv run --env-file ../../.env python -m banking_api.security.authentication.provi
   --user-id dev-user-001 --issuer https://idp.example.com --subject external-subject
 ```
 
-生产模式拒绝 development 身份、合成读取时钟、Mock 理财和 Mock 订阅扣费；设置 production 本身不代表已接入真实金融渠道。真实 IdP／MFA 的完整验收尚未完成。
+生产模式拒绝 development 身份、合成读取时钟、Mock 理财和 Mock 订阅扣费。完整演示环境通过独立 Keycloak 完成 OIDC 登录与 TOTP 交易验证；接入自有身份服务时，配置其 issuer、audience、JWKS 与用户映射。金融渠道的合成／Mock 范围见[提交说明](../competition/submission.md)。
 
 ## 升级数据库
 

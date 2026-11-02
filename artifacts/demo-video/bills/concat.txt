@@ -1,2 +1,0 @@
-file '/Users/zhouz/zhou/项目/banking-agent/artifacts/demo-video/opening/BAVA-opening-15s-silent.mp4'
-file '/Users/zhouz/zhou/项目/banking-agent/artifacts/demo-video/bills/BAVA-bills-40s-silent.mp4'

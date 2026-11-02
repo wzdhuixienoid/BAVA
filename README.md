@@ -1,10 +1,14 @@
-# AI Banking Agent
+# BAVA（Banking AI for Verified Actions）
 
-面向中文用户的个人银行智能助理。通过对话查询账户和账单、分析消费、管理订阅、办理转账和模拟理财，并展示核对、授权、处理过程及可追溯结果。
+**Ask. Plan. Verify. Act.**
 
-**当前版本：v1.0.1 · 数据库迁移：0038**
+BAVA（Banking AI for Verified Actions）以“Ask. Plan. Verify. Act.”为设计理念，构建自然语言驱动的可信银行业务智能体，实现从意图理解到受控执行的业务闭环。系统融合大语言模型、LangGraph工具编排、Skill按需加载及受约束DAG任务规划，支持账户分析、订阅管理、智能转账与模拟理财。通过只读Agent与确定性Workflow分权协同，结合结构化金融事实、分级授权、强验证、幂等控制及异步状态恢复，实现银行业务操作的可核验、可追溯执行。
 
-当前是可运行的模拟银行原型。账户及初始交易为合成数据，转账、订阅扣费、理财执行使用 Mock；本地身份验证码只保存在后端环境，由用户自行输入；另保留可选的真实认证器 TOTP 模式。尚未连接真实银行或支付渠道。
+**当前版本：v1.0.2 · 数据库迁移：0038**
+
+[源码仓库](https://github.com/wzdhuixienoid/banking-agent) · [部署说明](docs/development/setup.md) · [完整登录与动态码演示](docs/development/oidc-demo.md) · [测试用例与验收](docs/competition/acceptance.md) · [提交与打包](docs/competition/submission.md)
+
+作品运行于模拟银行环境：账户及初始交易为合成数据，转账、订阅扣费、理财执行使用 Mock。提供本地验证码的快速体验，以及 OIDC 登录与认证器 TOTP 的完整强验证演示；金融操作仍经过同一套后端授权、幂等和审计控制。
 
 ## 当前能力
 
@@ -35,9 +39,13 @@ chmod 600 .env
 
 ```bash
 docker compose up --build -d
+docker compose ps
+curl --fail http://localhost:8000/health
 ```
 
 API 容器启动自动迁移数据库。示例明确启用 development 身份、模拟订阅扣费和模拟理财；预约默认关闭。配置差异、本地开发、OIDC 与升级步骤见 [环境配置](docs/development/setup.md)。
+
+评审强验证流程时，按[完整登录与动态码演示](docs/development/oidc-demo.md)启动独立 Keycloak。登录后在金融总览绑定本人认证器，再通过动态码验证红色操作。
 
 | 页面 | 地址 |
 | --- | --- |
@@ -91,7 +99,8 @@ apps/api/             FastAPI、Agent、Skill、Workflow、计算、持久化与
 apps/web/             Next.js 15 / React 19 / TypeScript 工作台
 packages/api-client/  OpenAPI 生成的 TypeScript 类型
 infra/postgres/       PostgreSQL 环境说明
-scripts/              数据、校验、评估与隔离演示工具
+infra/oidc/           Keycloak、OIDC 与 TOTP 完整认证演示配置
+scripts/              数据、校验、评估、隔离测试与源码打包工具
 docs/guides/          当前使用指南
 docs/architecture/    当前架构、技能、工具、算法与安全
 docs/development/     环境、测试及运行维护
@@ -107,6 +116,4 @@ docs/development/     环境、测试及运行维护
 
 生成的自定义分析代码可使用[独立容器沙箱](docs/architecture/sandbox.md)，不在银行 API 主进程执行，也没有金融写权限。理财正文保留受限的事实校验与降级，不能据此宣称任意自然语言解释全部正确。
 
-参赛资料见[作品简介与材料](docs/competition/submission.md)、[安全自评](docs/competition/security-assessment.md)和[演示验收](docs/competition/acceptance.md)。按当前安排先完成本地版本，GitHub 地址暂不配置。
-
-当前默认身份验证码用于模拟验证流程，不构成真实多因子认证；可选认证能力及验收边界见[安全自评](docs/competition/security-assessment.md)。
+参赛资料见[作品简介与材料](docs/competition/submission.md)、[安全自评](docs/competition/security-assessment.md)和[功能验收](docs/competition/acceptance.md)。在仓库根目录运行 `python3 scripts/package_source.py`，生成包含源码、README、部署说明和测试用例的 `dist/BAVA-v1.0.2-source.zip` 及 SHA-256 校验文件；打包规则与本次验证记录见[提交说明](docs/competition/submission.md)。

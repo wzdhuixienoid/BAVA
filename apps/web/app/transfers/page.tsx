@@ -25,7 +25,7 @@ export default function TransfersPage() {
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:px-8 sm:py-10">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold tracking-wider text-cyan-700">AI BANKING AGENT · v{APP_VERSION}</p>
+            <p className="text-xs font-semibold tracking-wider text-cyan-700">BAVA · v{APP_VERSION}</p>
             <h1 className="mt-2 text-3xl font-semibold text-slate-950">转账与收款</h1>
             <p className="mt-2 text-sm text-slate-500">管理转账安排、AA 收付款与收款人。</p>
           </div>

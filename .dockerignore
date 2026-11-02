@@ -1,5 +1,16 @@
 .git
 .env
+**/.env
+**/.env.*
+!**/.env.example
+artifacts
+.local
+dist
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.dump
+**/*.log
 node_modules
 .pnpm-store
 **/node_modules

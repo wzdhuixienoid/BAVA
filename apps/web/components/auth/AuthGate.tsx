@@ -17,7 +17,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-50 p-6">
         <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-semibold">登录 AI 银行助理</h1>
+          <h1 className="text-2xl font-semibold">登录 BAVA</h1>
           <p className="mt-2 text-sm text-slate-500">使用组织的身份提供商安全登录。</p>
           <button
             className="mt-6 rounded-lg bg-cyan-500 px-5 py-2.5 font-semibold text-slate-950"

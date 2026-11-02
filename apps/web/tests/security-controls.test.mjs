@@ -5,6 +5,7 @@ import {act, create} from "react-test-renderer";
 import {renderToStaticMarkup} from "react-dom/server";
 import "./tsx-loader.mjs";
 const {TransferLimitSettings} = await import("../features/security/TransferLimitSettings.tsx");
+const {AuthenticatorSettings} = await import("../features/security/AuthenticatorSettings.tsx");
 const {SubscriptionQueryConsent} = await import("../features/security/SubscriptionQueryConsent.tsx");
 const {AssistantTurn} = await import("../features/conversation/AssistantTurn.tsx");
 const {ReauthenticationForm} = await import("../features/workflows/ReauthenticationForm.tsx");
@@ -12,6 +13,62 @@ const {api} = await import("../lib/api/client.ts");
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.self = globalThis;
 const text = node => typeof node === "string" ? node : (node?.children ?? []).map(text).join("");
+
+test("authenticator binding requires explicit action, prevents duplicate enrollment, and clears secrets after confirmation", async () => {
+  const old = {mfaStatus: api.mfaStatus, beginMfaEnrollment: api.beginMfaEnrollment, confirmMfaEnrollment: api.confirmMfaEnrollment};
+  let view, resolve, beginCalls = 0, confirmed = [];
+  const secret = "JBSWY3DPEHPK3PXP";
+  try {
+    api.mfaStatus = async () => ({method: "totp", enrolled: false});
+    api.beginMfaEnrollment = () => { beginCalls++; return new Promise(done => { resolve = done; }); };
+    api.confirmMfaEnrollment = async code => { confirmed.push(code); return {method: "totp", enrolled: true}; };
+    await act(async () => { view = create(createElement(AuthenticatorSettings)); });
+    assert.equal(beginCalls, 0);
+    assert.equal(view.root.findAllByType("input").length, 0);
+    await act(async () => { const begin = view.root.findByType("button").props.onClick; begin(); begin(); });
+    assert.equal(beginCalls, 1);
+    await act(async () => resolve({secret, otpauth_uri: "otpauth://test", expires_at: "2026-11-02T12:00:00Z"}));
+    assert.equal(view.root.findByProps({"aria-label": "认证器绑定密钥"}).props.value, secret);
+    const code = view.root.findByProps({"aria-label": "认证器绑定动态码"});
+    assert.equal(code.props.type, "password");
+    await act(async () => code.props.onChange({target: {value: "123456"}}));
+    await act(async () => view.root.findAllByType("button")[0].props.onClick());
+    assert.deepEqual(confirmed, ["123456"]);
+    assert.equal(view.root.findAllByType("input").length, 0);
+    assert.match(text(view.toJSON()), /认证器已绑定/);
+    assert.doesNotMatch(JSON.stringify(view.toJSON()), /JBSWY3DPEHPK3PXP|123456/);
+  } finally { if (view) await act(async () => view.unmount()); Object.assign(api, old); }
+});
+
+test("failed authenticator confirmation clears the code and cancellation removes the pending secret", async () => {
+  const old = {mfaStatus: api.mfaStatus, beginMfaEnrollment: api.beginMfaEnrollment, confirmMfaEnrollment: api.confirmMfaEnrollment};
+  let view;
+  try {
+    api.mfaStatus = async () => ({method: "totp", enrolled: false});
+    api.beginMfaEnrollment = async () => ({secret: "PRIVATE-TEST-SECRET", otpauth_uri: "otpauth://test", expires_at: "2026-11-02T12:00:00Z"});
+    api.confirmMfaEnrollment = async () => { throw new Error("动态码无效"); };
+    await act(async () => { view = create(createElement(AuthenticatorSettings)); });
+    await act(async () => view.root.findByType("button").props.onClick());
+    await act(async () => view.root.findByProps({"aria-label": "认证器绑定动态码"}).props.onChange({target: {value: "654321"}}));
+    await act(async () => view.root.findAllByType("button")[0].props.onClick());
+    assert.equal(view.root.findByProps({"aria-label": "认证器绑定动态码"}).props.value, "");
+    assert.match(text(view.toJSON()), /动态码无效/);
+    assert.doesNotMatch(text(view.toJSON()), /认证器已绑定/);
+    await act(async () => view.root.findAllByType("button")[1].props.onClick());
+    assert.equal(view.root.findAllByType("input").length, 0);
+    assert.doesNotMatch(JSON.stringify(view.toJSON()), /PRIVATE-TEST-SECRET|654321/);
+  } finally { if (view) await act(async () => view.unmount()); Object.assign(api, old); }
+});
+
+test("mock verification does not show an authenticator enrollment flow", async () => {
+  const old = api.mfaStatus;
+  let view;
+  try {
+    api.mfaStatus = async () => ({method: "mock", enrolled: false});
+    await act(async () => { view = create(createElement(AuthenticatorSettings)); });
+    assert.equal(view.toJSON(), null);
+  } finally { if (view) await act(async () => view.unmount()); api.mfaStatus = old; }
+});
 
 test("limit changes require review and verification, retain server version, and clear code", async () => {
   const old = {transferPreference: api.transferPreference, saveTransferPreference: api.saveTransferPreference};

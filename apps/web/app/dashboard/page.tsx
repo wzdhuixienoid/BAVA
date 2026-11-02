@@ -11,6 +11,7 @@ import { RecentTransactions } from "@/features/dashboard/RecentTransactions";
 import { TransactionAnomalyCard } from "@/features/anomalies/TransactionAnomalyCard";
 import { RiskBadge } from "@/features/workflows/RiskDetails";
 import { TransferLimitSettings } from "@/features/security/TransferLimitSettings";
+import { AuthenticatorSettings } from "@/features/security/AuthenticatorSettings";
 import { currentMonth, queryTime } from "@/lib/presentation/time";
 
 function DashboardSection({ id, title, children }: {
@@ -45,7 +46,7 @@ export default function DashboardPage() {
   return <main className="min-h-screen min-w-0 bg-slate-50">
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:space-y-10 sm:px-8 sm:py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-semibold tracking-wider text-cyan-700">AI BANKING AGENT · v{APP_VERSION}</p><h1 className="mt-2 text-3xl font-semibold text-slate-950">金融总览</h1><p className="mt-2 text-sm text-slate-500">账户与账单事实由银行服务提供，金额按币种展示。</p></div>
+        <div><p className="text-xs font-semibold tracking-wider text-cyan-700">BAVA · v{APP_VERSION}</p><h1 className="mt-2 text-3xl font-semibold text-slate-950">金融总览</h1><p className="mt-2 text-sm text-slate-500">账户与账单事实由银行服务提供，金额按币种展示。</p></div>
         <nav aria-label="金融服务" className="flex flex-wrap gap-2 text-sm"><Link className="rounded-lg border bg-white px-3 py-2" href="/">对话工作台</Link></nav>
       </header>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
@@ -56,6 +57,7 @@ export default function DashboardPage() {
       </DashboardSection>}
       <DashboardSection id="transfer-limit" title="免密支付额度">
         <TransferLimitSettings embedded />
+        <AuthenticatorSettings />
       </DashboardSection>
       <DashboardSection id="spending" title="消费分析">
         <div aria-label="消费查询" className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-3">
@@ -65,7 +67,8 @@ export default function DashboardPage() {
         {snapshot && <><span className="text-xs text-slate-500">查询等级 <RiskBadge level={snapshot.risk_level} /></span><span className="text-xs text-slate-500">只读查询 · 截至 {queryTime(snapshot.as_of)}</span></>}
         </div>
         {snapshot && <>
-          <SpendingDashboard spending={snapshot.spending} />
+          {snapshot.spending ? <SpendingDashboard spending={snapshot.spending} />
+            : <p role="status" className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">{snapshot.spending_message ?? "所选月份暂无已入账交易，可选择其他月份查看消费分析。"}</p>}
           <TransactionAnomalyCard snapshot={snapshot.anomalies} />
         </>}
       </DashboardSection>
